@@ -26,3 +26,11 @@ def test_load_config_defaults_when_missing(tmp_path):
     assert cfg.proxy_username is None
     assert cfg.whisper_device == "cpu"
     assert cfg.db_path == Path("yt_summary.db")
+
+def test_load_config_defaults_to_dotenv_in_cwd(tmp_path, monkeypatch):
+    env = tmp_path / ".env"
+    env.write_text("WEBSHARE_PROXY_USERNAME=cwduser\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("WEBSHARE_PROXY_USERNAME", raising=False)
+    cfg = load_config()
+    assert cfg.proxy_username == "cwduser"

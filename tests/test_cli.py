@@ -1,4 +1,3 @@
-from pathlib import Path
 from yt_summary.config import Config
 from yt_summary.store import db
 from yt_summary.store.models import Video, Segment
@@ -14,7 +13,8 @@ def _cfg(tmp_path):
 
 def test_run_fetch_stores_video_and_transcript(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
-    conn = db.connect(":memory:"); db.init_db(conn)
+    conn = db.connect(":memory:")
+    db.init_db(conn)
     monkeypatch.setattr(cli, "download",
         lambda url, c: (Video(video_id="abc", url=url, status="downloaded"), "/a.mp3"))
     monkeypatch.setattr(cli, "get_transcript",
@@ -28,12 +28,52 @@ def test_run_fetch_stores_video_and_transcript(tmp_path, monkeypatch):
 
 def test_run_fetch_skips_when_seen(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
-    conn = db.connect(":memory:"); db.init_db(conn)
+    conn = db.connect(":memory:")
+    db.init_db(conn)
     db.upsert_video(conn, Video(video_id="abc", url="u"))
-    db.insert_transcript(conn, __import__("yt_summary.store.models", fromlist=["TranscriptRow"]).TranscriptRow("abc","captions","en","x","2026-07-21T00:00:00+00:00"))
+    db.insert_transcript(
+        conn,
+        __import__("yt_summary.store.models", fromlist=["TranscriptRow"]).TranscriptRow(
+            "abc", "captions", "en", "x", "2026-07-21T00:00:00+00:00"
+        ),
+    )
     called = {"dl": False}
-    def _dl(url, c): called["dl"] = True; raise AssertionError("should skip")
+
+    def _dl(url, c):
+        called["dl"] = True
+        raise AssertionError("should skip")
+
     monkeypatch.setattr(cli, "download", _dl)
     vid = cli.run_fetch("https://y/watch?v=abc", cfg, conn=conn, video_id="abc")
     assert vid == "abc"
     assert called["dl"] is False
+
+
+def test_run_fetch_skips_after_download_when_real_id_already_seen(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = db.connect(":memory:")
+    db.init_db(conn)
+    db.upsert_video(conn, Video(video_id="realid", url="u"))
+    existing_transcript = __import__(
+        "yt_summary.store.models", fromlist=["TranscriptRow"]
+    ).TranscriptRow("realid", "captions", "en", "existing", "2026-07-21T00:00:00+00:00")
+    db.insert_transcript(conn, existing_transcript)
+
+    monkeypatch.setattr(
+        cli, "download",
+        lambda url, c: (Video(video_id="realid", url=url, status="downloaded"), "/a.mp3"),
+    )
+    called = {"transcript": False}
+
+    def _get_transcript(v, audio, c):
+        called["transcript"] = True
+        raise AssertionError("should skip transcript when already seen")
+
+    monkeypatch.setattr(cli, "get_transcript", _get_transcript)
+
+    # URL is unrecognizable by _extract_video_id, so the pre-download fast path is bypassed.
+    vid = cli.run_fetch("https://y/embed/xyz", cfg, conn=conn)
+    assert vid == "realid"
+    assert called["transcript"] is False
+    row = conn.execute("SELECT full_text FROM transcripts WHERE video_id='realid'").fetchone()
+    assert row["full_text"] == "existing"

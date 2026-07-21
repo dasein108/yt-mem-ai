@@ -32,6 +32,8 @@ def run_fetch(url: str, cfg, force: bool = False, conn=None, video_id: str | Non
             return vid
 
         video, audio = download(url, cfg)
+        if not force and memory.is_seen(conn, video.video_id):
+            return video.video_id
         db.upsert_video(conn, video)
         result = get_transcript(video, audio, cfg)
         db.insert_transcript(conn, TranscriptRow(
@@ -66,26 +68,38 @@ def transcript(url: str):
 def show(video_id: str):
     """Print stored metadata + transcript snippet."""
     cfg = load_config()
-    conn = db.connect(cfg.db_path); db.init_db(conn)
-    v = db.get_video(conn, video_id)
-    if not v:
-        typer.echo("not found"); raise typer.Exit(1)
-    row = conn.execute("SELECT full_text FROM transcripts WHERE video_id=?", (video_id,)).fetchone()
-    typer.echo(f"{v.title or '(no title)'}  [{v.status}]  {v.url}")
-    if row:
-        typer.echo(row["full_text"][:500])
+    conn = db.connect(cfg.db_path)
+    try:
+        db.init_db(conn)
+        v = db.get_video(conn, video_id)
+        if not v:
+            typer.echo("not found")
+            raise typer.Exit(1)
+        row = conn.execute(
+            "SELECT full_text FROM transcripts WHERE video_id=?", (video_id,)
+        ).fetchone()
+        typer.echo(f"{v.title or '(no title)'}  [{v.status}]  {v.url}")
+        if row:
+            typer.echo(row["full_text"][:500])
+    finally:
+        conn.close()
 
 
 @app.command()
 def status():
     """Show counts by status."""
     cfg = load_config()
-    conn = db.connect(cfg.db_path); db.init_db(conn)
-    rows = conn.execute("SELECT status, COUNT(*) c FROM videos GROUP BY status").fetchall()
-    if not rows:
-        typer.echo("empty"); return
-    for r in rows:
-        typer.echo(f"{r['status'] or '(none)'}: {r['c']}")
+    conn = db.connect(cfg.db_path)
+    try:
+        db.init_db(conn)
+        rows = conn.execute("SELECT status, COUNT(*) c FROM videos GROUP BY status").fetchall()
+        if not rows:
+            typer.echo("empty")
+            return
+        for r in rows:
+            typer.echo(f"{r['status'] or '(none)'}: {r['c']}")
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

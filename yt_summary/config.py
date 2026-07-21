@@ -26,8 +26,10 @@ def _clean(value: str | None) -> str | None:
 
 
 def load_config(env_path: Path | None = None) -> Config:
+    if env_path is None:
+        env_path = Path(".env")
     data: dict[str, str | None] = {}
-    if env_path is not None and Path(env_path).exists():
+    if Path(env_path).exists():
         data.update(dotenv_values(env_path))
     # process env overrides file
     for key in (

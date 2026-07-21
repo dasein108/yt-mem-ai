@@ -1,4 +1,3 @@
-from pathlib import Path
 from yt_summary.config import Config
 from yt_summary import download
 

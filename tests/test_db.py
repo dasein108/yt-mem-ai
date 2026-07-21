@@ -56,3 +56,13 @@ def test_transcript_and_segments_roundtrip():
 
 def test_get_missing_video_returns_none():
     assert db.get_video(_conn(), "missing") is None
+
+
+def test_insert_segments_is_idempotent_on_reingest():
+    conn = _conn()
+    db.upsert_video(conn, Video(video_id="abc", url="u"))
+    segs = [Segment("abc", 0.0, 1.0, "hello"), Segment("abc", 1.0, 2.0, "world")]
+    db.insert_segments(conn, segs)
+    db.insert_segments(conn, segs)
+    rows = conn.execute("SELECT * FROM segments WHERE video_id='abc'").fetchall()
+    assert len(rows) == 2

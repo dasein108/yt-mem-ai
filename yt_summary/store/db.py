@@ -107,6 +107,9 @@ def insert_transcript(conn: sqlite3.Connection, t: TranscriptRow) -> None:
 
 
 def insert_segments(conn: sqlite3.Connection, segments: list[Segment]) -> None:
+    video_ids = {s.video_id for s in segments}
+    for video_id in video_ids:
+        conn.execute("DELETE FROM segments WHERE video_id=?", (video_id,))
     conn.executemany(
         "INSERT INTO segments (video_id, start_s, end_s, text) VALUES (?, ?, ?, ?)",
         [(s.video_id, s.start_s, s.end_s, s.text) for s in segments],
