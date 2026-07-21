@@ -1,5 +1,11 @@
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from .config import Config
+
+if TYPE_CHECKING:
+    from youtube_transcript_api.proxies import WebshareProxyConfig
 
 
 def ytdlp_proxy_url(cfg: Config) -> str | None:
@@ -8,7 +14,7 @@ def ytdlp_proxy_url(cfg: Config) -> str | None:
     return None
 
 
-def webshare_config(cfg: Config):
+def webshare_config(cfg: Config) -> "WebshareProxyConfig | None":
     if cfg.proxy_username and cfg.proxy_password:
         from youtube_transcript_api.proxies import WebshareProxyConfig
         return WebshareProxyConfig(
