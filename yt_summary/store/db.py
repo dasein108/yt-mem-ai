@@ -1,5 +1,6 @@
 # yt_summary/store/db.py
 from __future__ import annotations
+import re
 import lancedb
 from pathlib import Path
 from .models import (
@@ -8,6 +9,15 @@ from .models import (
 )
 
 _VIDEO_FIELDS = list(VideoSchema.model_fields)
+
+_SAFE_ID = re.compile(r"^[A-Za-z0-9_:-]+$")
+
+
+def _safe(value: str) -> str:
+    """Guard an identifier before interpolating it into a LanceDB filter string."""
+    if not isinstance(value, str) or not _SAFE_ID.match(value):
+        raise ValueError(f"unsafe filter identifier: {value!r}")
+    return value
 
 
 def connect(store_path: str | Path) -> lancedb.DBConnection:
@@ -42,7 +52,7 @@ def upsert_video(db: lancedb.DBConnection, v: Video) -> None:
 
 def get_video(db: lancedb.DBConnection, video_id: str) -> Video | None:
     tbl = db.open_table("videos")
-    rows = tbl.search().where(f"video_id = '{video_id}'").limit(1).to_list()
+    rows = tbl.search().where(f"video_id = '{_safe(video_id)}'").limit(1).to_list()
     return _row_to_video(rows[0]) if rows else None
 
 

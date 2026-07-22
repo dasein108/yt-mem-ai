@@ -1,4 +1,5 @@
 import lancedb
+import pytest
 
 from tests.support import fake_embedder
 from yt_summary.store import db as store
@@ -38,7 +39,7 @@ def _db(tmp_path):
 
 def test_init_db_creates_all_tables(tmp_path):
     conn = _db(tmp_path)
-    names = set(conn.table_names())
+    names = set(conn.list_tables().tables)
     assert {"videos", "channels", "transcripts", "chunks",
             "summaries", "feedback", "app_state"} <= names
 
@@ -60,3 +61,9 @@ def test_upsert_video_updates_in_place(tmp_path):
 
 def test_get_missing_video_none(tmp_path):
     assert store.get_video(_db(tmp_path), "missing") is None
+
+
+def test_get_video_rejects_unsafe_id(tmp_path):
+    conn = _db(tmp_path)
+    with pytest.raises(ValueError):
+        store.get_video(conn, "x' OR '1'='1")
