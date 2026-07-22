@@ -150,3 +150,23 @@ def count_by_status(db) -> dict[str, int]:
     tbl = db.open_table("videos")
     rows = tbl.search().limit(100000).to_list()
     return dict(Counter((r.get("status") or "(none)") for r in rows))
+
+
+def search_chunks(db, query: str, k: int = 10, mode: str = "hybrid") -> list[dict]:
+    tbl = db.open_table("chunks")
+    if mode == "fts":
+        res = tbl.search(query, query_type="fts").limit(k)
+    elif mode == "vector":
+        res = tbl.search(query, query_type="vector").limit(k)
+    elif mode == "hybrid":
+        from lancedb.rerankers import RRFReranker
+        res = tbl.search(query, query_type="hybrid").rerank(reranker=RRFReranker()).limit(k)
+    else:
+        raise ValueError(f"unknown search mode: {mode!r}")
+    hits = res.to_list()
+    for h in hits:
+        h.pop("vector", None)
+        h.pop("_relevance_score", None)
+        h.pop("_distance", None)
+        h.pop("_score", None)
+    return hits
