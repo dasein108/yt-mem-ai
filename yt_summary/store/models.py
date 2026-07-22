@@ -1,6 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
+from lancedb.pydantic import LanceModel, Vector
+
 
 @dataclass
 class Video:
@@ -31,3 +33,61 @@ class TranscriptRow:
     lang: str | None
     full_text: str
     created_at: str
+
+
+class VideoSchema(LanceModel):
+    video_id: str
+    channel_id: str | None = None
+    title: str | None = None
+    url: str | None = None
+    duration_s: int | None = None
+    published_at: str | None = None
+    fetched_at: str | None = None
+    audio_path: str | None = None
+    status: str = "discovered"
+
+
+class ChannelSchema(LanceModel):
+    channel_id: str
+    title: str | None = None
+    subscribed: int = 0
+
+
+class TranscriptSchema(LanceModel):
+    video_id: str
+    source: str | None = None
+    lang: str | None = None
+    full_text: str = ""
+    created_at: str | None = None
+
+
+class SummarySchema(LanceModel):
+    video_id: str
+    summary_md: str = ""
+    highlights: str | None = None
+    qa: str | None = None
+    model: str | None = None
+    created_at: str | None = None
+
+
+class FeedbackSchema(LanceModel):
+    video_id: str
+    signal: int
+    created_at: str
+
+
+class StateSchema(LanceModel):
+    key: str
+    value: str | None = None
+
+
+def chunk_schema(embedder) -> type[LanceModel]:
+    class ChunkSchema(LanceModel):
+        id: str
+        video_id: str
+        start_s: float
+        end_s: float
+        text: str = embedder.SourceField()
+        vector: Vector(embedder.ndims()) = embedder.VectorField()
+
+    return ChunkSchema
