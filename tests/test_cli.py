@@ -127,3 +127,21 @@ def test_run_discover_defaults_to_7_days_when_no_after_or_state(tmp_path, monkey
     cli.run_discover(cfg, after=None, db=conn)
     expected = (datetime.date.today() - datetime.timedelta(days=7)).isoformat()
     assert captured["after"] == expected
+
+
+def test_run_list_by_status(tmp_path):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    store.upsert_video(conn, Video(video_id="a", url="u", status="discovered", published_at="2026-07-20"))
+    store.upsert_video(conn, Video(video_id="b", url="u", status="transcribed", published_at="2026-07-22"))
+    got = cli.run_list(cfg, status="discovered", db=conn)
+    assert [v.video_id for v in got] == ["a"]
+
+
+def test_run_list_all_with_since(tmp_path):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    store.upsert_video(conn, Video(video_id="a", url="u", status="discovered", published_at="2026-07-18"))
+    store.upsert_video(conn, Video(video_id="b", url="u", status="transcribed", published_at="2026-07-22"))
+    got = cli.run_list(cfg, since="2026-07-20", db=conn)
+    assert [v.video_id for v in got] == ["b"]

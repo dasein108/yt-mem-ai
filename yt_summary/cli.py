@@ -195,5 +195,37 @@ def discover(
     typer.echo(f"\n{new_count} new / {len(discovered) - new_count} already known")
 
 
+def run_list(cfg, status: str | None = None, since: str | None = None, db=None) -> list[Video]:
+    if db is None:
+        db = open_store(cfg)
+    if status:
+        return store.list_videos_by_status(db, status, since=since)
+    videos = store.list_videos(db)
+    if since is not None:
+        videos = [v for v in videos if (v.published_at or "") >= since]
+    return videos
+
+
+@app.command("list")
+def list_videos_cmd(
+    status: str = typer.Option(None, "--status", help="Filter by status (discovered/transcribed/...)"),
+    since: str = typer.Option(None, "--since", help="Only videos published on/after YYYY-MM-DD"),
+    as_json: bool = typer.Option(False, "--json"),
+):
+    """List stored videos, optionally filtered by status/date."""
+    cfg = load_config()
+    videos = run_list(cfg, status=status, since=since)
+    if as_json:
+        typer.echo(json.dumps([
+            {"video_id": v.video_id, "title": v.title, "url": v.url, "status": v.status,
+             "published_at": v.published_at, "duration_s": v.duration_s} for v in videos]))
+        return
+    if not videos:
+        typer.echo("no videos")
+        return
+    for v in videos:
+        typer.echo(f"{v.published_at or '????-??-??'}  {v.status or '?':12}  {(v.title or '')[:50]:50}  {v.url}")
+
+
 if __name__ == "__main__":
     app()
