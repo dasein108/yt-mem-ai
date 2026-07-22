@@ -1,68 +1,126 @@
+import lancedb
+import pytest
+
+from tests.support import fake_embedder
+from yt_summary.store import db as store
+from yt_summary.store import models
 from yt_summary.store.models import Video, Segment, TranscriptRow
-from yt_summary.store import db
+from yt_summary.store.embeddings import chunk_segments
 
 
-def test_video_dataclass_defaults():
-    v = Video(video_id="abc", url="https://y/abc")
-    assert v.video_id == "abc"
+def test_dataclasses_still_present():
+    v = Video(video_id="abc", url="u")
     assert v.status == "discovered"
-    assert v.channel_id is None
-
-
-def test_segment_and_transcript():
-    s = Segment(video_id="abc", start_s=0.0, end_s=1.5, text="hi")
-    assert s.id is None and s.end_s == 1.5
-    t = TranscriptRow(
-        video_id="abc",
-        source="captions",
-        lang="en",
-        full_text="hi there",
-        created_at="2026-07-21T00:00:00+00:00",
-    )
+    s = Segment(video_id="abc", start_s=0.0, end_s=1.0, text="hi")
+    assert s.end_s == 1.0
+    t = TranscriptRow("abc", "captions", "en", "hi", "2026-07-22T00:00:00+00:00")
     assert t.source == "captions"
 
 
-def _conn():
-    conn = db.connect(":memory:")
-    db.init_db(conn)
+def test_lance_schemas_have_expected_fields():
+    assert set(models.VideoSchema.model_fields) == {
+        "video_id", "channel_id", "title", "url", "duration_s",
+        "published_at", "fetched_at", "audio_path", "status"}
+    assert set(models.TranscriptSchema.model_fields) == {
+        "video_id", "source", "lang", "full_text", "created_at"}
+    assert set(models.StateSchema.model_fields) == {"key", "value"}
+
+
+def test_chunk_schema_carries_vector():
+    Chunk = models.chunk_schema(fake_embedder())
+    fields = set(Chunk.model_fields)
+    assert {"id", "video_id", "start_s", "end_s", "text", "vector"} <= fields
+
+
+def _db(tmp_path):
+    conn = lancedb.connect(str(tmp_path / "lance"))
+    store.init_db(conn, fake_embedder())
     return conn
 
 
-def test_upsert_and_get_video():
-    conn = _conn()
-    db.upsert_video(conn, Video(video_id="abc", url="u", title="T", status="downloaded"))
-    got = db.get_video(conn, "abc")
+def test_init_db_creates_all_tables(tmp_path):
+    conn = _db(tmp_path)
+    names = set(conn.list_tables().tables)
+    assert {"videos", "channels", "transcripts", "chunks",
+            "summaries", "feedback", "app_state"} <= names
+
+
+def test_upsert_and_get_video(tmp_path):
+    conn = _db(tmp_path)
+    store.upsert_video(conn, Video(video_id="abc", url="u", title="T", status="downloaded"))
+    got = store.get_video(conn, "abc")
     assert got is not None and got.title == "T" and got.status == "downloaded"
 
 
-def test_upsert_video_is_idempotent_update():
-    conn = _conn()
-    db.upsert_video(conn, Video(video_id="abc", url="u", status="discovered"))
-    db.upsert_video(conn, Video(video_id="abc", url="u", status="transcribed"))
-    assert db.get_video(conn, "abc").status == "transcribed"
-    assert len(db.list_videos(conn)) == 1
+def test_upsert_video_updates_in_place(tmp_path):
+    conn = _db(tmp_path)
+    store.upsert_video(conn, Video(video_id="abc", url="u", status="discovered"))
+    store.upsert_video(conn, Video(video_id="abc", url="u", status="transcribed"))
+    assert store.get_video(conn, "abc").status == "transcribed"
+    assert len(store.list_videos(conn)) == 1
 
 
-def test_transcript_and_segments_roundtrip():
-    conn = _conn()
-    db.upsert_video(conn, Video(video_id="abc", url="u"))
-    db.insert_transcript(conn, TranscriptRow("abc", "captions", "en", "hello", "2026-07-21T00:00:00+00:00"))
-    db.insert_segments(conn, [Segment("abc", 0.0, 1.0, "hello")])
-    row = conn.execute("SELECT full_text FROM transcripts WHERE video_id='abc'").fetchone()
-    assert row["full_text"] == "hello"
-    seg = conn.execute("SELECT text FROM segments WHERE video_id='abc'").fetchone()
-    assert seg["text"] == "hello"
+def test_get_missing_video_none(tmp_path):
+    assert store.get_video(_db(tmp_path), "missing") is None
 
 
-def test_get_missing_video_returns_none():
-    assert db.get_video(_conn(), "missing") is None
+def test_get_video_rejects_unsafe_id(tmp_path):
+    conn = _db(tmp_path)
+    with pytest.raises(ValueError):
+        store.get_video(conn, "x' OR '1'='1")
 
 
-def test_insert_segments_is_idempotent_on_reingest():
-    conn = _conn()
-    db.upsert_video(conn, Video(video_id="abc", url="u"))
-    segs = [Segment("abc", 0.0, 1.0, "hello"), Segment("abc", 1.0, 2.0, "world")]
-    db.insert_segments(conn, segs)
-    db.insert_segments(conn, segs)
-    rows = conn.execute("SELECT * FROM segments WHERE video_id='abc'").fetchall()
-    assert len(rows) == 2
+def test_transcript_roundtrip(tmp_path):
+    conn = _db(tmp_path)
+    store.insert_transcript(conn, TranscriptRow("abc", "captions", "en", "hello world", "2026-07-22T00:00:00+00:00"))
+    assert store.get_transcript_text(conn, "abc") == "hello world"
+
+
+def test_transcript_merge_updates(tmp_path):
+    conn = _db(tmp_path)
+    store.insert_transcript(conn, TranscriptRow("abc", "captions", "en", "first", "t0"))
+    store.insert_transcript(conn, TranscriptRow("abc", "whisper", "en", "second", "t1"))
+    assert store.get_transcript_text(conn, "abc") == "second"
+
+
+def test_replace_chunks_idempotent(tmp_path):
+    conn = _db(tmp_path)
+    segs = [Segment("abc", 0.0, 10.0, "alpha"), Segment("abc", 10.0, 20.0, "beta")]
+    rows = chunk_segments("abc", segs, target_s=5.0)
+    store.replace_chunks(conn, "abc", rows)
+    store.replace_chunks(conn, "abc", rows)  # second pass must not duplicate
+    got = store.list_chunks(conn, "abc")
+    assert len(got) == len(rows)
+    assert got[0]["start_s"] == 0.0
+
+
+def test_summary_roundtrip(tmp_path):
+    conn = _db(tmp_path)
+    store.upsert_summary(conn, "abc", "sum", "[]", "[]", "claude-code-skill", "t0")
+    s = store.get_summary(conn, "abc")
+    assert s["summary_md"] == "sum" and s["model"] == "claude-code-skill"
+
+
+def test_state_roundtrip(tmp_path):
+    conn = _db(tmp_path)
+    assert store.get_state(conn, "last_discover_at") is None
+    store.set_state(conn, "last_discover_at", "2026-07-22T00:00:00+00:00")
+    assert store.get_state(conn, "last_discover_at") == "2026-07-22T00:00:00+00:00"
+    store.set_state(conn, "last_discover_at", "later")
+    assert store.get_state(conn, "last_discover_at") == "later"
+
+
+def test_count_by_status(tmp_path):
+    conn = _db(tmp_path)
+    store.upsert_video(conn, Video(video_id="a", url="u", status="discovered"))
+    store.upsert_video(conn, Video(video_id="b", url="u", status="transcribed"))
+    store.upsert_video(conn, Video(video_id="c", url="u", status="transcribed"))
+    counts = store.count_by_status(conn)
+    assert counts == {"discovered": 1, "transcribed": 2}
+
+
+def test_feedback_insert(tmp_path):
+    conn = _db(tmp_path)
+    store.insert_feedback(conn, "abc", 1, "t0")
+    tbl = conn.open_table("feedback")
+    assert tbl.count_rows() == 1

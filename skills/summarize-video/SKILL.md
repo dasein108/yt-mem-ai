@@ -1,50 +1,42 @@
 ---
 name: summarize-video
-description: Use when the user wants a summary, highlights, or Q&A for a YouTube video already ingested by yt-ai (present in the SQLite DB). Reads the stored transcript and writes summary/highlights/Q&A back to the summaries table.
+description: Use when the user wants a summary, highlights, or Q&A for a YouTube video already ingested by yt-ai (present in the LanceDB store). Reads the stored transcript via the CLI and writes summary/highlights/Q&A back.
 ---
 
 # Summarize Video
 
-Generate a summary, timestamped highlights, and Q&A for an ingested video, then
-persist to the `summaries` table.
+Generate a summary, timestamped highlights, and Q&A for an ingested video, then persist it.
 
 ## Inputs
 - `video_id` (required)
-- DB path: default `yt_summary.db` (or `YT_DB_PATH` from `.env`)
 
 ## Steps
 
-1. **Load the transcript.** Query:
-   ```sql
-   SELECT v.title, v.url, t.full_text, t.lang
-   FROM videos v JOIN transcripts t ON t.video_id = v.video_id
-   WHERE v.video_id = :video_id;
+1. **Load the video + transcript** (JSON):
+   ```bash
+   yt-ai show <video_id> --json
    ```
-   If no row, tell the user to run `yt-ai fetch <url>` first and stop.
+   If it prints `not found`, tell the user to run `yt-ai fetch <url>` first and stop.
+   The JSON has `title`, `url`, `status`, `duration_s`, and `transcript` (full text).
 
-2. **Load segments for timestamps** (for highlights):
-   ```sql
-   SELECT start_s, text FROM segments WHERE video_id = :video_id ORDER BY start_s;
+2. **Find timestamps for highlights** with semantic search over the video's own chunks — for each candidate highlight phrase:
+   ```bash
+   yt-ai search "<phrase>" --vector -k 3
+   ```
+   Use the returned `MM:SS video_id text` lines whose `video_id` matches to anchor each highlight to a real timestamp. Never invent timestamps.
+
+3. **Produce the analysis** (you, the model — no API call):
+   - Executive summary (2–4 sentences) + key bullets → `summary_md`.
+   - 3–8 highlights as JSON `[{"start_s": <seconds>, "label": "..."}]` (seconds from step 2).
+   - 3–6 Q&A pairs as JSON `[{"q": "...", "a": "..."}]`.
+
+4. **Persist:**
+   ```bash
+   yt-ai save-summary <video_id> "<summary_md>" '<highlights_json>' '<qa_json>'
    ```
 
-3. **Produce the analysis** (you, the model, do this — no API call):
-   - Executive summary (2–4 sentences) + key bullet points → `summary_md`.
-   - 3–8 highlights: pick the most significant moments; map each to the nearest
-     `start_s` from segments. Format as JSON `[{"start_s": float, "label": str}]`.
-   - 3–6 Q&A pairs a viewer would ask. JSON `[{"q": str, "a": str}]`.
-
-4. **Persist.** Upsert into `summaries`:
-   ```sql
-   INSERT INTO summaries (video_id, summary_md, highlights, qa, model, created_at)
-   VALUES (:video_id, :summary_md, :highlights, :qa, 'claude-code-skill', :now)
-   ON CONFLICT(video_id) DO UPDATE SET
-     summary_md=excluded.summary_md, highlights=excluded.highlights,
-     qa=excluded.qa, model=excluded.model, created_at=excluded.created_at;
-   ```
-   Use an ISO8601 UTC timestamp for `:now`.
-
-5. **Report** the summary + highlights (as `MM:SS — label`) + Q&A to the user in chat.
+5. **Report** the summary + highlights (`MM:SS — label`) + Q&A in chat.
 
 ## Notes
-- Highlight timestamps must come from real `segments.start_s` values, never invented.
-- Keep everything grounded in the transcript; do not hallucinate content.
+- Everything must be grounded in the transcript; do not hallucinate.
+- Highlight timestamps come from `yt-ai search` results, never invented.

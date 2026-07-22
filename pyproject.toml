@@ -8,6 +8,9 @@ dependencies = [
     "youtube-transcript-api>=1.0",
     "faster-whisper>=1.0",
     "python-dotenv>=1.0",
+    "lancedb>=0.15",
+    "sentence-transformers>=3.0",
+    "openai>=1.40",
 ]
 
 [project.optional-dependencies]
