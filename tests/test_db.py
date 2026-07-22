@@ -92,3 +92,35 @@ def test_replace_chunks_idempotent(tmp_path):
     got = store.list_chunks(conn, "abc")
     assert len(got) == len(rows)
     assert got[0]["start_s"] == 0.0
+
+
+def test_summary_roundtrip(tmp_path):
+    conn = _db(tmp_path)
+    store.upsert_summary(conn, "abc", "sum", "[]", "[]", "claude-code-skill", "t0")
+    s = store.get_summary(conn, "abc")
+    assert s["summary_md"] == "sum" and s["model"] == "claude-code-skill"
+
+
+def test_state_roundtrip(tmp_path):
+    conn = _db(tmp_path)
+    assert store.get_state(conn, "last_discover_at") is None
+    store.set_state(conn, "last_discover_at", "2026-07-22T00:00:00+00:00")
+    assert store.get_state(conn, "last_discover_at") == "2026-07-22T00:00:00+00:00"
+    store.set_state(conn, "last_discover_at", "later")
+    assert store.get_state(conn, "last_discover_at") == "later"
+
+
+def test_count_by_status(tmp_path):
+    conn = _db(tmp_path)
+    store.upsert_video(conn, Video(video_id="a", url="u", status="discovered"))
+    store.upsert_video(conn, Video(video_id="b", url="u", status="transcribed"))
+    store.upsert_video(conn, Video(video_id="c", url="u", status="transcribed"))
+    counts = store.count_by_status(conn)
+    assert counts == {"discovered": 1, "transcribed": 2}
+
+
+def test_feedback_insert(tmp_path):
+    conn = _db(tmp_path)
+    store.insert_feedback(conn, "abc", 1, "t0")
+    tbl = conn.open_table("feedback")
+    assert tbl.count_rows() == 1

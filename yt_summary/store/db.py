@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 import warnings
+from collections import Counter
 import lancedb
 from pathlib import Path
 from .models import (
@@ -108,3 +109,44 @@ def list_chunks(db: lancedb.DBConnection, video_id: str) -> list[dict]:
     rows = tbl.search().where(f"video_id = '{_safe(video_id)}'").limit(100000).to_list()
     rows.sort(key=lambda d: d.get("start_s", 0.0))
     return rows
+
+
+def upsert_summary(db, video_id, summary_md, highlights, qa, model, created_at) -> None:
+    tbl = db.open_table("summaries")
+    row = {"video_id": video_id, "summary_md": summary_md, "highlights": highlights,
+           "qa": qa, "model": model, "created_at": created_at}
+    tbl.merge_insert("video_id") \
+        .when_matched_update_all() \
+        .when_not_matched_insert_all() \
+        .execute([row])
+
+
+def get_summary(db, video_id: str) -> dict | None:
+    tbl = db.open_table("summaries")
+    rows = tbl.search().where(f"video_id = '{_safe(video_id)}'").limit(1).to_list()
+    return rows[0] if rows else None
+
+
+def insert_feedback(db, video_id: str, signal: int, created_at: str) -> None:
+    tbl = db.open_table("feedback")
+    tbl.add([{"video_id": video_id, "signal": signal, "created_at": created_at}])
+
+
+def get_state(db, key: str) -> str | None:
+    tbl = db.open_table("app_state")
+    rows = tbl.search().where(f"key = '{_safe(key)}'").limit(1).to_list()
+    return rows[0]["value"] if rows else None
+
+
+def set_state(db, key: str, value: str) -> None:
+    tbl = db.open_table("app_state")
+    tbl.merge_insert("key") \
+        .when_matched_update_all() \
+        .when_not_matched_insert_all() \
+        .execute([{"key": key, "value": value}])
+
+
+def count_by_status(db) -> dict[str, int]:
+    tbl = db.open_table("videos")
+    rows = tbl.search().limit(100000).to_list()
+    return dict(Counter((r.get("status") or "(none)") for r in rows))
