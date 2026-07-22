@@ -46,3 +46,19 @@ def test_run_fetch_skips_when_seen(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "download", _boom)
     vid = cli.run_fetch("https://y/watch?v=abc", cfg, db=conn, video_id="abc")
     assert vid == "abc"
+
+
+def test_run_fetch_skips_after_download_when_real_id_seen(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    # real id already fully processed
+    store.upsert_video(conn, Video(video_id="abc", url="u", status="transcribed"))
+    # URL is unparseable by _extract_video_id (no v=/youtu.be/shorts marker),
+    # so the pre-download check can't catch it; download reveals the real id "abc".
+    monkeypatch.setattr(cli, "download",
+        lambda url, c: (Video(video_id="abc", url=url, status="downloaded"), "/a.mp3"))
+    def _boom(*a, **k):
+        raise AssertionError("get_transcript must NOT run when real id already seen")
+    monkeypatch.setattr(cli, "get_transcript", _boom)
+    vid = cli.run_fetch("https://example.com/embed/xyz", cfg, db=conn)
+    assert vid == "abc"
