@@ -1,14 +1,15 @@
 # yt_summary/cli.py
 from __future__ import annotations
 import json
-from datetime import datetime, UTC
+from datetime import date, datetime, timedelta, UTC
 import typer
 from .config import load_config
 from .store import db as store
-from .store.models import TranscriptRow
+from .store.models import TranscriptRow, Video
 from .store.embeddings import build_embedder, chunk_segments
 from .download import download
 from .transcript import get_transcript
+from .discovery import discover as discover_videos
 from . import memory
 
 app = typer.Typer(help="YouTube AI CLI — download, transcribe, embed, search.")
@@ -149,6 +150,49 @@ def save_summary(video_id: str, summary_md: str, highlights: str = "[]", qa: str
     cfg = load_config()
     run_save_summary(cfg, video_id, summary_md, highlights, qa)
     typer.echo(f"saved summary for {video_id}")
+
+
+def run_discover(cfg, after: str | None = None, deep: bool = False,
+                 min_duration: int = 120, db=None) -> tuple[list[Video], int]:
+    if db is None:
+        db = open_store(cfg)
+    cutoff = after or store.get_state(db, "last_discover_at") \
+        or (date.today() - timedelta(days=7)).isoformat()
+    discovered = discover_videos(cfg, cutoff, deep=deep, min_duration=min_duration)
+    new_count = 0
+    for v in discovered:
+        if store.get_video(db, v.video_id) is None:
+            new_count += 1
+        if v.channel_id:
+            store.upsert_channel(db, v.channel_id, None, 1)
+        store.insert_discovered_video(db, v)
+    store.set_state(db, "last_discover_at", date.today().isoformat())
+    return discovered, new_count
+
+
+@app.command()
+def discover(
+    after: str | None = typer.Option(None, "--after", help="Only videos published on/after YYYY-MM-DD"),
+    deep: bool = typer.Option(False, "--deep", help="Enumerate subscribed channels for backfill"),
+    min_duration: int = typer.Option(120, "--min-duration", help="Skip videos shorter than N seconds"),
+    as_json: bool = typer.Option(False, "--json"),
+):
+    """List new subscription uploads after a cutoff and store them as 'discovered'."""
+    cfg = load_config()
+    discovered, new_count = run_discover(cfg, after=after, deep=deep, min_duration=min_duration)
+    if as_json:
+        typer.echo(json.dumps([
+            {"video_id": v.video_id, "title": v.title, "url": v.url,
+             "channel_id": v.channel_id, "duration_s": v.duration_s,
+             "published_at": v.published_at} for v in discovered]))
+        return
+    if not discovered:
+        typer.echo("no new videos")
+        return
+    for v in discovered:
+        dur = f"{(v.duration_s or 0) // 60}m" if v.duration_s else "live"
+        typer.echo(f"{v.published_at or '????-??-??'}  {(v.title or '')[:60]:60}  {dur:>5}  {v.url}")
+    typer.echo(f"\n{new_count} new / {len(discovered) - new_count} already known")
 
 
 if __name__ == "__main__":

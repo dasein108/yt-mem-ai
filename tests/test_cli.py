@@ -1,3 +1,5 @@
+import datetime
+
 import lancedb
 from tests.support import fake_embedder
 from yt_summary.config import Config
@@ -71,3 +73,57 @@ def test_save_summary(tmp_path, monkeypatch):
     cli.run_save_summary(cfg, "abc", "the summary", "[]", "[]", db=conn)
     s = store.get_summary(conn, "abc")
     assert s["summary_md"] == "the summary" and s["model"] == "claude-code-skill"
+
+
+def test_run_discover_writes_and_advances_state(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    monkeypatch.setattr(cli, "discover_videos",
+        lambda cfg, after, deep=False, min_duration=120: [
+            Video(video_id="v1", url="u1", channel_id="c1", title="A", status="discovered", published_at="2026-07-21"),
+            Video(video_id="v2", url="u2", channel_id="c1", title="B", status="discovered", published_at="2026-07-20"),
+        ])
+    discovered, new = cli.run_discover(cfg, after="2026-07-01", db=conn)
+    assert new == 2
+    assert store.get_video(conn, "v1").status == "discovered"
+    assert store.get_state(conn, "last_discover_at") is not None
+
+
+def test_run_discover_reports_known_and_no_downgrade(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    store.upsert_video(conn, Video(video_id="v1", url="u1", status="transcribed"))
+    monkeypatch.setattr(cli, "discover_videos",
+        lambda cfg, after, deep=False, min_duration=120: [
+            Video(video_id="v1", url="u1", channel_id="c1", status="discovered"),
+            Video(video_id="v2", url="u2", channel_id="c1", status="discovered", published_at="2026-07-20"),
+        ])
+    discovered, new = cli.run_discover(cfg, after="2026-07-01", db=conn)
+    assert new == 1                                   # only v2 is new
+    assert store.get_video(conn, "v1").status == "transcribed"  # not downgraded
+
+
+def test_run_discover_cutoff_precedence(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    store.set_state(conn, "last_discover_at", "2026-07-10")
+    captured = {}
+    def fake(cfg, after, deep=False, min_duration=120):
+        captured["after"] = after
+        return []
+    monkeypatch.setattr(cli, "discover_videos", fake)
+    cli.run_discover(cfg, after=None, db=conn)       # no --after → use stored state
+    assert captured["after"] == "2026-07-10"
+
+
+def test_run_discover_defaults_to_7_days_when_no_after_or_state(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)  # fresh store, no last_discover_at set
+    captured = {}
+    def fake(cfg, after, deep=False, min_duration=120):
+        captured["after"] = after
+        return []
+    monkeypatch.setattr(cli, "discover_videos", fake)
+    cli.run_discover(cfg, after=None, db=conn)
+    expected = (datetime.date.today() - datetime.timedelta(days=7)).isoformat()
+    assert captured["after"] == expected

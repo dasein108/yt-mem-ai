@@ -24,7 +24,16 @@ yt-ai show <video_id>        # metadata + transcript ( --json for machine output
 yt-ai status                 # counts by status
 yt-ai search "<query>"       # semantic search ( --hybrid | --fts | --vector, -k N )
 yt-ai save-summary <id> ...  # used by the summarize-video skill
+yt-ai discover               # list new subscription uploads (daily routine)
+                             #   --after YYYY-MM-DD | --deep | --min-duration N | --json
 ```
+
+## Daily routine
+
+`yt-ai discover` lists subscription uploads published since your last run
+(first run defaults to the last 7 days), storing them as `discovered`. It never
+downloads or re-touches videos you've already fetched. Pipe `--json` into your
+own loop to batch-`fetch` the ones you want.
 
 ## Summaries
 
