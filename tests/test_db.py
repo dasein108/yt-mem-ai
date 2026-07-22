@@ -133,6 +133,14 @@ def test_upsert_channel_roundtrip(tmp_path):
     assert rows and rows[0]["title"] == "Cool Channel" and rows[0]["subscribed"] == 1
 
 
+def test_upsert_channel_none_title_does_not_clobber(tmp_path):
+    conn = _db(tmp_path)
+    store.upsert_channel(conn, "c", "Real Title", 1)
+    store.upsert_channel(conn, "c", None, 1)  # e.g. discover() re-running with no title
+    rows = conn.open_table("channels").search().where("channel_id = 'c'").limit(1).to_list()
+    assert rows and rows[0]["title"] == "Real Title"
+
+
 def test_insert_discovered_video_inserts_new(tmp_path):
     conn = _db(tmp_path)
     store.insert_discovered_video(conn, Video(video_id="v1", url="u", title="T",

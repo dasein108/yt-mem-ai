@@ -45,7 +45,10 @@ def _published_date(entry: dict, extract_fn) -> str | None:
     )
     if not url:
         return None
-    info = extract_fn(url, False) or {}
+    try:
+        info = extract_fn(url, False) or {}
+    except Exception:
+        return None
     return _to_date(info.get("timestamp")) or _to_date(info.get("upload_date"))
 
 

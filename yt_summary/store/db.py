@@ -174,10 +174,11 @@ def search_chunks(db, query: str, k: int = 10, mode: str = "hybrid") -> list[dic
 
 def upsert_channel(db, channel_id: str, title: str | None = None, subscribed: int = 1) -> None:
     tbl = db.open_table("channels")
-    tbl.merge_insert("channel_id") \
-        .when_matched_update_all() \
-        .when_not_matched_insert_all() \
-        .execute([{"channel_id": channel_id, "title": title, "subscribed": subscribed}])
+    row = {"channel_id": channel_id, "title": title, "subscribed": subscribed}
+    merge = tbl.merge_insert("channel_id")
+    if title is not None:
+        merge = merge.when_matched_update_all()
+    merge.when_not_matched_insert_all().execute([row])
 
 
 def insert_discovered_video(db, v: Video) -> None:

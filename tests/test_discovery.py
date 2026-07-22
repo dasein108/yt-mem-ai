@@ -61,3 +61,17 @@ def test_discover_uses_timestamp_then_fallback():
         return {"id": "vid", "upload_date": "20260721"}  # fallback provides the date
     out = discovery.discover(_cfg(), after="2026-07-01", extract_fn=extract_fn)
     assert out and out[0].published_at == "2026-07-21"
+
+
+def test_discover_survives_fallback_extract_raising():
+    # entry with no date fields; the per-video fallback lookup raises (e.g. a
+    # private/deleted/geo-blocked video). discover() must not propagate the
+    # exception, and the entry must still be kept (unresolved date -> None).
+    entries = [{"id": "vid", "title": "T", "duration": 600, "channel_id": "c"}]
+    def extract_fn(url, flat):
+        if url == discovery.FEED_URL:
+            return {"entries": entries}
+        raise RuntimeError("video unavailable")
+    out = discovery.discover(_cfg(), after="2026-07-01", extract_fn=extract_fn)
+    assert [v.video_id for v in out] == ["vid"]
+    assert out[0].published_at is None

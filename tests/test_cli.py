@@ -1,3 +1,5 @@
+import datetime
+
 import lancedb
 from tests.support import fake_embedder
 from yt_summary.config import Config
@@ -112,3 +114,16 @@ def test_run_discover_cutoff_precedence(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "discover_videos", fake)
     cli.run_discover(cfg, after=None, db=conn)       # no --after → use stored state
     assert captured["after"] == "2026-07-10"
+
+
+def test_run_discover_defaults_to_7_days_when_no_after_or_state(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)  # fresh store, no last_discover_at set
+    captured = {}
+    def fake(cfg, after, deep=False, min_duration=120):
+        captured["after"] = after
+        return []
+    monkeypatch.setattr(cli, "discover_videos", fake)
+    cli.run_discover(cfg, after=None, db=conn)
+    expected = (datetime.date.today() - datetime.timedelta(days=7)).isoformat()
+    assert captured["after"] == expected
