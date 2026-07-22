@@ -67,3 +67,32 @@ def test_get_video_rejects_unsafe_id(tmp_path):
     conn = _db(tmp_path)
     with pytest.raises(ValueError):
         store.get_video(conn, "x' OR '1'='1")
+
+
+from yt_summary.store.models import TranscriptRow
+from yt_summary.store.embeddings import chunk_segments
+from yt_summary.store.models import Segment
+
+
+def test_transcript_roundtrip(tmp_path):
+    conn = _db(tmp_path)
+    store.insert_transcript(conn, TranscriptRow("abc", "captions", "en", "hello world", "2026-07-22T00:00:00+00:00"))
+    assert store.get_transcript_text(conn, "abc") == "hello world"
+
+
+def test_transcript_merge_updates(tmp_path):
+    conn = _db(tmp_path)
+    store.insert_transcript(conn, TranscriptRow("abc", "captions", "en", "first", "t0"))
+    store.insert_transcript(conn, TranscriptRow("abc", "whisper", "en", "second", "t1"))
+    assert store.get_transcript_text(conn, "abc") == "second"
+
+
+def test_replace_chunks_idempotent(tmp_path):
+    conn = _db(tmp_path)
+    segs = [Segment("abc", 0.0, 10.0, "alpha"), Segment("abc", 10.0, 20.0, "beta")]
+    rows = chunk_segments("abc", segs, target_s=5.0)
+    store.replace_chunks(conn, "abc", rows)
+    store.replace_chunks(conn, "abc", rows)  # second pass must not duplicate
+    got = store.list_chunks(conn, "abc")
+    assert len(got) == len(rows)
+    assert got[0]["start_s"] == 0.0

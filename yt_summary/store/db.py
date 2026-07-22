@@ -61,3 +61,43 @@ def list_videos(db: lancedb.DBConnection) -> list[Video]:
     rows = tbl.search().limit(100000).to_list()
     rows.sort(key=lambda d: (d.get("published_at") or ""), reverse=True)
     return [_row_to_video(d) for d in rows]
+
+
+def _ensure_fts(tbl, column: str) -> None:
+    try:
+        tbl.create_fts_index(column, replace=True)
+    except Exception:
+        # index creation can require >0 rows on some builds; safe to skip when empty
+        pass
+
+
+def insert_transcript(db: lancedb.DBConnection, t) -> None:
+    tbl = db.open_table("transcripts")
+    row = {"video_id": t.video_id, "source": t.source, "lang": t.lang,
+           "full_text": t.full_text, "created_at": t.created_at}
+    tbl.merge_insert("video_id") \
+        .when_matched_update_all() \
+        .when_not_matched_insert_all() \
+        .execute([row])
+    _ensure_fts(tbl, "full_text")
+
+
+def get_transcript_text(db: lancedb.DBConnection, video_id: str) -> str | None:
+    tbl = db.open_table("transcripts")
+    rows = tbl.search().where(f"video_id = '{_safe(video_id)}'").limit(1).to_list()
+    return rows[0]["full_text"] if rows else None
+
+
+def replace_chunks(db: lancedb.DBConnection, video_id: str, chunk_rows: list[dict]) -> None:
+    tbl = db.open_table("chunks")
+    tbl.delete(f"video_id = '{_safe(video_id)}'")
+    if chunk_rows:
+        tbl.add(chunk_rows)
+        _ensure_fts(tbl, "text")
+
+
+def list_chunks(db: lancedb.DBConnection, video_id: str) -> list[dict]:
+    tbl = db.open_table("chunks")
+    rows = tbl.search().where(f"video_id = '{_safe(video_id)}'").limit(100000).to_list()
+    rows.sort(key=lambda d: d.get("start_s", 0.0))
+    return rows
