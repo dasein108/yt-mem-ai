@@ -124,3 +124,29 @@ def test_feedback_insert(tmp_path):
     store.insert_feedback(conn, "abc", 1, "t0")
     tbl = conn.open_table("feedback")
     assert tbl.count_rows() == 1
+
+
+def test_upsert_channel_roundtrip(tmp_path):
+    conn = _db(tmp_path)
+    store.upsert_channel(conn, "chan1", "Cool Channel", 1)
+    rows = conn.open_table("channels").search().where("channel_id = 'chan1'").limit(1).to_list()
+    assert rows and rows[0]["title"] == "Cool Channel" and rows[0]["subscribed"] == 1
+
+
+def test_insert_discovered_video_inserts_new(tmp_path):
+    conn = _db(tmp_path)
+    store.insert_discovered_video(conn, Video(video_id="v1", url="u", title="T",
+                                              status="discovered", published_at="2026-07-20"))
+    got = store.get_video(conn, "v1")
+    assert got is not None and got.status == "discovered" and got.title == "T"
+
+
+def test_insert_discovered_video_does_not_downgrade(tmp_path):
+    conn = _db(tmp_path)
+    # already fetched/transcribed
+    store.upsert_video(conn, Video(video_id="v1", url="u", title="T", status="transcribed"))
+    # re-discovered
+    store.insert_discovered_video(conn, Video(video_id="v1", url="u", title="T",
+                                              status="discovered"))
+    assert store.get_video(conn, "v1").status == "transcribed"  # unchanged
+    assert len(store.list_videos(conn)) == 1
