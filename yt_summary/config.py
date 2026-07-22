@@ -7,7 +7,6 @@ from dotenv import dotenv_values
 
 @dataclass(frozen=True)
 class Config:
-    db_path: Path
     downloads_dir: Path
     proxy_username: str | None
     proxy_password: str | None
@@ -39,7 +38,7 @@ def load_config(env_path: Path | None = None) -> Config:
     # process env overrides file
     for key in (
         "WEBSHARE_PROXY_USERNAME", "WEBSHARE_PROXY_PASSWORD", "YT_COOKIES_BROWSER",
-        "YT_DB_PATH", "YT_DOWNLOADS_DIR", "YT_WHISPER_MODEL", "YT_WHISPER_DEVICE",
+        "YT_DOWNLOADS_DIR", "YT_WHISPER_MODEL", "YT_WHISPER_DEVICE",
         "YT_WHISPER_COMPUTE_TYPE", "OPENROUTER_API_KEY",
         "YT_STORE_PATH", "YT_EMBEDDING_BACKEND", "YT_EMBEDDING_MODEL",
         "YT_CHUNK_TARGET_S", "OPENAI_API_KEY",
@@ -48,7 +47,6 @@ def load_config(env_path: Path | None = None) -> Config:
             data[key] = os.environ[key]
 
     return Config(
-        db_path=Path(_clean(data.get("YT_DB_PATH")) or "yt_summary.db"),
         downloads_dir=Path(_clean(data.get("YT_DOWNLOADS_DIR")) or "downloads"),
         proxy_username=_clean(data.get("WEBSHARE_PROXY_USERNAME")),
         proxy_password=_clean(data.get("WEBSHARE_PROXY_PASSWORD")),

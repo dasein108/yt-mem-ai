@@ -3,7 +3,7 @@ from yt_summary.config import Config
 from yt_summary import download
 
 def _cfg(tmp_path):
-    return Config(db_path=tmp_path / "x.db", downloads_dir=tmp_path / "dl",
+    return Config(downloads_dir=tmp_path / "dl",
                   proxy_username="u", proxy_password="p", cookies_browser="chrome",
                   whisper_model="small", whisper_device="cpu",
                   whisper_compute_type="int8", openrouter_api_key=None,

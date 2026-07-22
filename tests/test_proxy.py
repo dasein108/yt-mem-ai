@@ -4,7 +4,7 @@ from yt_summary import proxy
 
 
 def _cfg(user, pw):
-    return Config(db_path=Path("x"), downloads_dir=Path("d"),
+    return Config(downloads_dir=Path("d"),
                   proxy_username=user, proxy_password=pw, cookies_browser=None,
                   whisper_model="small", whisper_device="cpu",
                   whisper_compute_type="int8", openrouter_api_key=None,

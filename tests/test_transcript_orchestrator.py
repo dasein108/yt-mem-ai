@@ -5,7 +5,7 @@ from yt_summary.store.models import Video, Segment
 from yt_summary import transcript as T
 
 def _cfg():
-    return Config(db_path=Path("x"), downloads_dir=Path("d"), proxy_username=None,
+    return Config(downloads_dir=Path("d"), proxy_username=None,
                   proxy_password=None, cookies_browser=None, whisper_model="small",
                   whisper_device="cpu", whisper_compute_type="int8", openrouter_api_key=None,
                   store_path=Path("s"), embedding_backend="local", embedding_model=None,

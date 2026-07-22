@@ -6,7 +6,7 @@ from yt_summary.store import embeddings
 
 
 def _cfg(**over):
-    base = dict(db_path=Path("d"), downloads_dir=Path("dl"), proxy_username=None,
+    base = dict(downloads_dir=Path("dl"), proxy_username=None,
                 proxy_password=None, cookies_browser=None, whisper_model="small",
                 whisper_device="cpu", whisper_compute_type="int8", openrouter_api_key=None,
                 store_path=Path("s"), embedding_backend="local", embedding_model=None,
