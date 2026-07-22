@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta, UTC
 import typer
 from .config import load_config
 from .store import db as store
-from .store.models import TranscriptRow
+from .store.models import TranscriptRow, Video
 from .store.embeddings import build_embedder, chunk_segments
 from .download import download
 from .transcript import get_transcript
@@ -153,7 +153,7 @@ def save_summary(video_id: str, summary_md: str, highlights: str = "[]", qa: str
 
 
 def run_discover(cfg, after: str | None = None, deep: bool = False,
-                 min_duration: int = 120, db=None) -> tuple[list, int]:
+                 min_duration: int = 120, db=None) -> tuple[list[Video], int]:
     if db is None:
         db = open_store(cfg)
     cutoff = after or store.get_state(db, "last_discover_at") \
@@ -172,7 +172,7 @@ def run_discover(cfg, after: str | None = None, deep: bool = False,
 
 @app.command()
 def discover(
-    after: str = typer.Option(None, "--after", help="Only videos published on/after YYYY-MM-DD"),
+    after: str | None = typer.Option(None, "--after", help="Only videos published on/after YYYY-MM-DD"),
     deep: bool = typer.Option(False, "--deep", help="Enumerate subscribed channels for backfill"),
     min_duration: int = typer.Option(120, "--min-duration", help="Skip videos shorter than N seconds"),
     as_json: bool = typer.Option(False, "--json"),
