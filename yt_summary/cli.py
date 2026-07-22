@@ -100,5 +100,41 @@ def status():
         typer.echo(f"{k}: {c}")
 
 
+def run_search(cfg, query: str, mode: str = "hybrid", k: int = 10, db=None) -> list[dict]:
+    if db is None:
+        db = open_store(cfg)
+    return store.search_chunks(db, query, k=k, mode=mode)
+
+
+def _fmt_ts(seconds: float) -> str:
+    m, s = divmod(int(seconds), 60)
+    return f"{m:02d}:{s:02d}"
+
+
+@app.command()
+def search(
+    query: str,
+    hybrid: bool = typer.Option(False, "--hybrid"),
+    fts: bool = typer.Option(False, "--fts"),
+    vector: bool = typer.Option(False, "--vector"),
+    k: int = typer.Option(10, "-k"),
+):
+    """Semantic search across transcript chunks."""
+    cfg = load_config()
+    mode = "hybrid"
+    if fts:
+        mode = "fts"
+    elif vector:
+        mode = "vector"
+    elif hybrid:
+        mode = "hybrid"
+    hits = run_search(cfg, query, mode=mode, k=k)
+    if not hits:
+        typer.echo("no results")
+        return
+    for h in hits:
+        typer.echo(f"{_fmt_ts(h.get('start_s', 0.0))}  {h['video_id']}  {h['text'][:80]}")
+
+
 if __name__ == "__main__":
     app()
