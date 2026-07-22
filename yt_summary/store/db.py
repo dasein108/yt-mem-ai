@@ -1,12 +1,16 @@
 # yt_summary/store/db.py
 from __future__ import annotations
+import logging
 import re
+import warnings
 import lancedb
 from pathlib import Path
 from .models import (
     Video, VideoSchema, ChannelSchema, TranscriptSchema,
     SummarySchema, FeedbackSchema, StateSchema, chunk_schema,
 )
+
+_log = logging.getLogger(__name__)
 
 _VIDEO_FIELDS = list(VideoSchema.model_fields)
 
@@ -65,10 +69,13 @@ def list_videos(db: lancedb.DBConnection) -> list[Video]:
 
 def _ensure_fts(tbl, column: str) -> None:
     try:
-        tbl.create_fts_index(column, replace=True)
-    except Exception:
-        # index creation can require >0 rows on some builds; safe to skip when empty
-        pass
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            tbl.create_fts_index(column, replace=True)
+    except Exception as exc:
+        # FTS index creation can legitimately fail on an empty table; log so a
+        # real failure (which Task 7 search depends on) is discoverable.
+        _log.debug("FTS index on %r skipped: %s", column, exc)
 
 
 def insert_transcript(db: lancedb.DBConnection, t) -> None:

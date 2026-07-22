@@ -5,6 +5,7 @@ from tests.support import fake_embedder
 from yt_summary.store import db as store
 from yt_summary.store import models
 from yt_summary.store.models import Video, Segment, TranscriptRow
+from yt_summary.store.embeddings import chunk_segments
 
 
 def test_dataclasses_still_present():
@@ -67,11 +68,6 @@ def test_get_video_rejects_unsafe_id(tmp_path):
     conn = _db(tmp_path)
     with pytest.raises(ValueError):
         store.get_video(conn, "x' OR '1'='1")
-
-
-from yt_summary.store.models import TranscriptRow
-from yt_summary.store.embeddings import chunk_segments
-from yt_summary.store.models import Segment
 
 
 def test_transcript_roundtrip(tmp_path):
