@@ -8,7 +8,9 @@ def _cfg(tmp_path):
     return Config(db_path=tmp_path / "t.db", downloads_dir=tmp_path / "dl",
                   proxy_username=None, proxy_password=None, cookies_browser=None,
                   whisper_model="small", whisper_device="cpu",
-                  whisper_compute_type="int8", openrouter_api_key=None)
+                  whisper_compute_type="int8", openrouter_api_key=None,
+                  store_path=tmp_path / "s", embedding_backend="local", embedding_model=None,
+                  chunk_target_s=45.0, openai_api_key=None)
 
 
 def test_run_fetch_stores_video_and_transcript(tmp_path, monkeypatch):
