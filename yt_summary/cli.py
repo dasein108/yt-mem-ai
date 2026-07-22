@@ -136,5 +136,20 @@ def search(
         typer.echo(f"{_fmt_ts(h.get('start_s', 0.0))}  {h['video_id']}  {h['text'][:80]}")
 
 
+def run_save_summary(cfg, video_id, summary_md, highlights_json, qa_json, db=None):
+    if db is None:
+        db = open_store(cfg)
+    store.upsert_summary(db, video_id, summary_md, highlights_json, qa_json,
+                         "claude-code-skill", datetime.now(UTC).isoformat())
+
+
+@app.command("save-summary")
+def save_summary(video_id: str, summary_md: str, highlights: str = "[]", qa: str = "[]"):
+    """Persist a summary/highlights/qa (used by the summarize-video skill)."""
+    cfg = load_config()
+    run_save_summary(cfg, video_id, summary_md, highlights, qa)
+    typer.echo(f"saved summary for {video_id}")
+
+
 if __name__ == "__main__":
     app()

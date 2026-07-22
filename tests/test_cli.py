@@ -62,3 +62,12 @@ def test_run_fetch_skips_after_download_when_real_id_seen(tmp_path, monkeypatch)
     monkeypatch.setattr(cli, "get_transcript", _boom)
     vid = cli.run_fetch("https://example.com/embed/xyz", cfg, db=conn)
     assert vid == "abc"
+
+
+def test_save_summary(tmp_path, monkeypatch):
+    from yt_summary import cli
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    cli.run_save_summary(cfg, "abc", "the summary", "[]", "[]", db=conn)
+    s = store.get_summary(conn, "abc")
+    assert s["summary_md"] == "the summary" and s["model"] == "claude-code-skill"
