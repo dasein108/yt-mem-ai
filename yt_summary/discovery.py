@@ -128,15 +128,21 @@ def discover(cfg: Config, after: str, deep: bool = False,
         extract_fn = _default_extract_fn(cfg)
     timeout_s = timeout_s if timeout_s is not None else cfg.discover_timeout_s
     if timeout_s and timeout_s > 0:
-        raw = extract_fn
+        # Bound EACH extraction call by timeout_s. The feed/channel-list call is
+        # where the Chrome-cookie Keychain hang bites and fails fast to the CLI;
+        # per-video fallback lookups are also bounded but their DiscoverTimeout is
+        # caught by _published_date's best-effort handler (kept, date -> None).
+        _raw = extract_fn
 
-        def extract_fn(url: str, flat: bool) -> dict:  # noqa: F811 - wrap each call in a timeout
+        def timed_extract_fn(url: str, flat: bool) -> dict:
             try:
-                return _run_with_timeout(lambda: raw(url, flat), timeout_s)
+                return _run_with_timeout(lambda: _raw(url, flat), timeout_s)
             except DiscoverTimeout:
                 blog("discover.timeout", level="error", msg="extraction timed out",
                      url=url, timeout_s=timeout_s)
                 raise
+
+        extract_fn = timed_extract_fn
     out: list[Video] = []
     for entries in _sources(extract_fn, deep):
         for entry in entries:
