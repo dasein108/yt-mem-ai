@@ -14,6 +14,7 @@ from .transcript import get_transcript
 from .discovery import discover as discover_videos
 from .recommend import recommend as recommend_videos
 from .compile import compile_highlights, render_markdown
+from .supercut import build_supercut
 from . import memory
 
 app = typer.Typer(help="YouTube AI CLI — download, transcribe, embed, search.")
@@ -351,6 +352,40 @@ def compile_cmd(
         typer.echo(f"wrote {out} ({len(clips)} clips)")
     else:
         typer.echo(md)
+
+
+def run_supercut(cfg, since: str | None = None, max_minutes: float = 20,
+                 out: str | None = None, db=None):
+    if db is None:
+        db = open_store(cfg)
+    since = since or date.today().isoformat()
+    out = out or f"supercuts/{since}.mp4"
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    return build_supercut(db, since, max_minutes, out, cfg=cfg)
+
+
+@app.command()
+def supercut(
+    since: str = typer.Option(None, "--since", help="Summarized videos published on/after YYYY-MM-DD (default today)"),
+    max_minutes: float = typer.Option(20, "--max-minutes"),
+    out: str = typer.Option(None, "--out"),
+    keep_clips: bool = typer.Option(False, "--keep-clips", help="Keep the per-clip work dir"),
+):
+    """Render a video supercut of highlights (re-downloads sections; needs ffmpeg)."""
+    cfg = load_config()
+    since_v = since or date.today().isoformat()
+    try:
+        res = run_supercut(cfg, since=since_v, max_minutes=max_minutes, out=out)
+    except RuntimeError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
+    if not keep_clips:
+        import shutil
+        shutil.rmtree(res.workdir, ignore_errors=True)
+    line = f"wrote {res.out_path} ({len(res.rendered)} rendered / {len(res.failed)} skipped)"
+    if not res.labeled:
+        line += " (labels skipped: ffmpeg has no drawtext)"
+    typer.echo(line)
 
 
 @app.command()
