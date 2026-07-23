@@ -192,8 +192,13 @@ def discover(
     as_json: bool = typer.Option(False, "--json"),
 ):
     """List new subscription uploads after a cutoff and store them as 'discovered'."""
+    from .discovery import DiscoverTimeout
     cfg = load_config()
-    discovered, new_count = run_discover(cfg, after=after, deep=deep, min_duration=min_duration)
+    try:
+        discovered, new_count = run_discover(cfg, after=after, deep=deep, min_duration=min_duration)
+    except DiscoverTimeout as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
     if as_json:
         typer.echo(json.dumps([
             {"video_id": v.video_id, "title": v.title, "url": v.url,

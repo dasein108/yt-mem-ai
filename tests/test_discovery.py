@@ -1,5 +1,7 @@
 # tests/test_discovery.py
+import time
 from pathlib import Path
+import pytest
 from yt_summary.config import Config
 from yt_summary import discovery
 
@@ -75,3 +77,28 @@ def test_discover_survives_fallback_extract_raising():
     out = discovery.discover(_cfg(), after="2026-07-01", extract_fn=extract_fn)
     assert [v.video_id for v in out] == ["vid"]
     assert out[0].published_at is None
+
+
+def test_run_with_timeout_returns_fast_result():
+    assert discovery._run_with_timeout(lambda: 42, 1.0) == 42
+
+
+def test_run_with_timeout_raises_on_slow():
+    with pytest.raises(discovery.DiscoverTimeout):
+        discovery._run_with_timeout(lambda: time.sleep(0.5), 0.05)
+
+
+def test_run_with_timeout_propagates_inner_error():
+    def boom():
+        raise ValueError("nope")
+    with pytest.raises(ValueError):
+        discovery._run_with_timeout(boom, 1.0)
+
+
+def test_discover_times_out_on_hanging_extract():
+    # a hanging feed extraction (e.g. blocked on a Chrome Keychain prompt) → DiscoverTimeout
+    def hang(url, flat):
+        time.sleep(0.5)
+        return {}
+    with pytest.raises(discovery.DiscoverTimeout):
+        discovery.discover(_cfg(), after="2026-07-01", extract_fn=hang, timeout_s=0.05)

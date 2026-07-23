@@ -23,6 +23,7 @@ class Config:
     openai_api_key: str | None
     hf_token: str | None = None
     log_file: Path = Path("logs/common.jsonl")
+    discover_timeout_s: float = 30.0
 
 
 def _clean(value: str | None) -> str | None:
@@ -45,6 +46,7 @@ def load_config(env_path: Path | None = None) -> Config:
         "YT_WHISPER_COMPUTE_TYPE", "OPENROUTER_API_KEY", "YT_OPENROUTER_MODEL",
         "YT_STORE_PATH", "YT_EMBEDDING_BACKEND", "YT_EMBEDDING_MODEL",
         "YT_CHUNK_TARGET_S", "OPENAI_API_KEY", "HF_TOKEN", "YT_LOG_FILE",
+        "YT_DISCOVER_TIMEOUT_S",
     ):
         if os.environ.get(key) is not None:
             data[key] = os.environ[key]
@@ -66,4 +68,5 @@ def load_config(env_path: Path | None = None) -> Config:
         openai_api_key=_clean(data.get("OPENAI_API_KEY")),
         hf_token=_clean(data.get("HF_TOKEN")),
         log_file=Path(_clean(data.get("YT_LOG_FILE")) or "logs/common.jsonl"),
+        discover_timeout_s=float(_clean(data.get("YT_DISCOVER_TIMEOUT_S")) or "30"),
     )
