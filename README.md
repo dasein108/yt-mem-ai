@@ -86,6 +86,22 @@ GET  /jobs                  # list all jobs
 `/summarize-video` skill): it calls OpenRouter using `OPENROUTER_API_KEY` and
 `YT_OPENROUTER_MODEL` (`.env`) and writes the same `summaries` table.
 
+## Desktop UI (SP4b)
+
+A browser-first React UI over the local API lives in `frontend/`:
+
+```bash
+yt-ai serve             # local API, in one terminal
+cd frontend
+npm install
+npm run dev             # Vite on http://localhost:5173, proxies /api -> 127.0.0.1:8000
+```
+
+MVP scope: Library, Detail (summary/highlights/Q&A + like/dislike/Summarize),
+Search, and a Jobs strip. Recommend/Digest views and the Electron desktop
+wrapper (SP4c) are not part of this UI yet. See `frontend/README.md` for
+details and dev scripts (`test`/`build`/`typecheck`/`lint`).
+
 ## Tests
 
 ```bash
