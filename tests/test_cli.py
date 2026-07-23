@@ -186,3 +186,22 @@ def test_run_fetch_pending_since_and_limit(tmp_path, monkeypatch):
 
     results = cli.run_fetch_pending(cfg, since="2026-07-10", limit=1, db=conn)
     assert [vid for vid, _ in results] == ["new1"]          # since excludes old, limit=1 keeps newest
+
+
+def test_run_feedback_writes_signal(tmp_path):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    cli.run_feedback(cfg, "v1", 1, db=conn)
+    cli.run_feedback(cfg, "v1", -1, db=conn)
+    rows = store.list_feedback(conn)
+    assert len(rows) == 2
+    assert {r["signal"] for r in rows} == {1, -1}
+
+
+def test_run_recommend_returns_ranked(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    monkeypatch.setattr(cli, "recommend_videos",
+                        lambda db, limit=20: [("v2", 0.9), ("v1", 0.1)])
+    ranked = cli.run_recommend(cfg, limit=20, db=conn)
+    assert ranked == [("v2", 0.9), ("v1", 0.1)]
