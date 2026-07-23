@@ -7,7 +7,7 @@ from yt_summary import discovery
 def _cfg():
     return Config(downloads_dir=Path("dl"), proxy_username=None, proxy_password=None,
                   cookies_browser=None, whisper_model="small", whisper_device="cpu",
-                  whisper_compute_type="int8", openrouter_api_key=None,
+                  whisper_compute_type="int8", openrouter_api_key=None, openrouter_model="openai/gpt-4o-mini",
                   store_path=Path("lance"), embedding_backend="local", embedding_model=None,
                   chunk_target_s=45.0, openai_api_key=None)
 

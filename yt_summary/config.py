@@ -15,6 +15,7 @@ class Config:
     whisper_device: str
     whisper_compute_type: str
     openrouter_api_key: str | None
+    openrouter_model: str
     store_path: Path
     embedding_backend: str
     embedding_model: str | None
@@ -39,7 +40,7 @@ def load_config(env_path: Path | None = None) -> Config:
     for key in (
         "WEBSHARE_PROXY_USERNAME", "WEBSHARE_PROXY_PASSWORD", "YT_COOKIES_BROWSER",
         "YT_DOWNLOADS_DIR", "YT_WHISPER_MODEL", "YT_WHISPER_DEVICE",
-        "YT_WHISPER_COMPUTE_TYPE", "OPENROUTER_API_KEY",
+        "YT_WHISPER_COMPUTE_TYPE", "OPENROUTER_API_KEY", "YT_OPENROUTER_MODEL",
         "YT_STORE_PATH", "YT_EMBEDDING_BACKEND", "YT_EMBEDDING_MODEL",
         "YT_CHUNK_TARGET_S", "OPENAI_API_KEY",
     ):
@@ -55,6 +56,7 @@ def load_config(env_path: Path | None = None) -> Config:
         whisper_device=_clean(data.get("YT_WHISPER_DEVICE")) or "cpu",
         whisper_compute_type=_clean(data.get("YT_WHISPER_COMPUTE_TYPE")) or "int8",
         openrouter_api_key=_clean(data.get("OPENROUTER_API_KEY")),
+        openrouter_model=_clean(data.get("YT_OPENROUTER_MODEL")) or "openai/gpt-4o-mini",
         store_path=Path(_clean(data.get("YT_STORE_PATH")) or "yt_lance"),
         embedding_backend=_clean(data.get("YT_EMBEDDING_BACKEND")) or "local",
         embedding_model=_clean(data.get("YT_EMBEDDING_MODEL")),
