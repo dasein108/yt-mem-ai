@@ -1,8 +1,10 @@
 import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
 import lancedb
+import pytest
 
 from yt_summary import supercut as S
 from yt_summary.config import Config
@@ -34,11 +36,16 @@ def test_label_text_includes_label_ts_source():
 
 def test_download_section_opts_range_format_proxy():
     opts = S.download_section_opts(_clip(start=10.0, end=40.0), _cfg(), "/w/v.mp4")
-    assert opts["format"] == "bestvideo[height<=720]+bestaudio/best[height<=720]"
+    assert opts["format"] == (
+        "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/"
+        "best[height<=720][ext=mp4]/best[height<=720]/best"
+    )
+    assert opts["merge_output_format"] == "mp4"
     assert opts["force_keyframes_at_cuts"] is True
     assert opts["proxy"] == "http://u:p@p.webshare.io:80"        # from build_opts
     assert opts["outtmpl"] == "/w/v.mp4"
     assert callable(opts["download_ranges"])                     # download_range_func instance
+    assert "postprocessors" not in opts                          # no audio-extract PP leaking in
 
 
 def test_normalize_label_cmd_has_scale_pad_fps_drawtext():
@@ -50,6 +57,43 @@ def test_normalize_label_cmd_has_scale_pad_fps_drawtext():
     assert "drawtext=textfile=/labels/0.txt" in joined or "textfile='/labels/0.txt'" in joined
     assert "libx264" in joined and "aac" in joined
     assert argv[-1] == "/out.mp4"
+
+
+def test_normalize_label_cmd_fontfile_appends_fontfile_option():
+    argv = S.normalize_label_cmd("/in.mp4", "/out.mp4", "/labels/0.txt",
+                                 fontfile="/fonts/Arial.ttf")
+    joined = " ".join(argv)
+    assert ":fontfile=/fonts/Arial.ttf" in joined
+
+
+def test_normalize_cmd_has_scale_pad_fps_no_drawtext():
+    argv = S.normalize_cmd("/in.mp4", "/out.mp4")
+    joined = " ".join(argv)
+    assert argv[0] == "ffmpeg"
+    assert "scale=1280:720:force_original_aspect_ratio=decrease" in joined
+    assert "pad=1280:720" in joined and "fps=30" in joined
+    assert "drawtext" not in joined
+    assert "libx264" in joined and "aac" in joined
+    assert argv[-1] == "/out.mp4"
+
+
+def test_ffmpeg_has_drawtext_true_when_probe_says_so():
+    assert S.ffmpeg_has_drawtext(lambda: True) is True
+
+
+def test_ffmpeg_has_drawtext_false_when_probe_says_so():
+    assert S.ffmpeg_has_drawtext(lambda: False) is False
+
+
+def test_ffmpeg_has_drawtext_false_on_probe_error():
+    def boom():
+        raise FileNotFoundError("no ffmpeg")
+    assert S.ffmpeg_has_drawtext(boom) is False
+
+
+def test_find_font_returns_existing_path_or_none():
+    font = S.find_font()
+    assert font is None or Path(font).exists()
 
 
 def test_concat_cmd_and_list(tmp_path):
@@ -106,6 +150,90 @@ def test_build_supercut_downloads_normalizes_concats(tmp_path):
     assert res.out_path.endswith("reel.mp4")
     assert len(res.rendered) == 2 and res.failed == []
     assert Path(str(tmp_path / "reel.mp4") + ".refs.md").exists()
+
+
+def test_build_supercut_uses_absolute_workdir_and_populates_result(tmp_path, monkeypatch):
+    conn = _db(tmp_path)
+    _seed(conn, "a", [{"start_s": 0, "label": "hi-a"}], [(0, 30)])
+
+    def fake_download(clip, cfg, out_path):
+        Path(out_path).write_text("raw")
+
+    def fake_ffmpeg(argv):
+        Path(argv[-1]).write_text("out")
+
+    monkeypatch.chdir(tmp_path)
+    rel_out = "supercuts/reel.mp4"
+    rel_workdir = "supercuts/reel.mp4.work"
+    Path("supercuts").mkdir()
+    res = S.build_supercut(conn, since="2026-07-01", max_minutes=20,
+                           out_path=rel_out, workdir=rel_workdir,
+                           download_fn=fake_download, ffmpeg_fn=fake_ffmpeg,
+                           drawtext_probe=lambda: False)
+    assert os.path.isabs(res.workdir)
+    assert res.workdir == os.path.abspath(rel_workdir)
+    assert os.path.isabs(res.out_path)
+
+
+def test_build_supercut_labels_when_drawtext_available(tmp_path):
+    conn = _db(tmp_path)
+    _seed(conn, "a", [{"start_s": 0, "label": "hi-a"}], [(0, 30)])
+    calls = {"ffmpeg": []}
+
+    def fake_download(clip, cfg, out_path):
+        Path(out_path).write_text("raw")
+
+    def fake_ffmpeg(argv):
+        calls["ffmpeg"].append(argv)
+        Path(argv[-1]).write_text("out")
+
+    res = S.build_supercut(conn, since="2026-07-01", max_minutes=20,
+                           out_path=str(tmp_path / "reel.mp4"), workdir=str(tmp_path / "work"),
+                           download_fn=fake_download, ffmpeg_fn=fake_ffmpeg,
+                           drawtext_probe=lambda: True)
+    normalize_argvs = calls["ffmpeg"][:-1]  # last call is concat
+    assert any("drawtext" in " ".join(a) for a in normalize_argvs)
+    assert res.labeled is True
+
+
+def test_build_supercut_skips_labels_when_drawtext_unavailable(tmp_path):
+    conn = _db(tmp_path)
+    _seed(conn, "a", [{"start_s": 0, "label": "hi-a"}], [(0, 30)])
+    calls = {"ffmpeg": []}
+
+    def fake_download(clip, cfg, out_path):
+        Path(out_path).write_text("raw")
+
+    def fake_ffmpeg(argv):
+        calls["ffmpeg"].append(argv)
+        Path(argv[-1]).write_text("out")
+
+    res = S.build_supercut(conn, since="2026-07-01", max_minutes=20,
+                           out_path=str(tmp_path / "reel.mp4"), workdir=str(tmp_path / "work"),
+                           download_fn=fake_download, ffmpeg_fn=fake_ffmpeg,
+                           drawtext_probe=lambda: False)
+    normalize_argvs = calls["ffmpeg"][:-1]  # last call is concat
+    assert not any("drawtext" in " ".join(a) for a in normalize_argvs)
+    assert res.labeled is False
+
+
+def test_build_supercut_wraps_concat_failure_as_runtime_error(tmp_path):
+    conn = _db(tmp_path)
+    _seed(conn, "a", [{"start_s": 0, "label": "hi-a"}], [(0, 30)])
+
+    def fake_download(clip, cfg, out_path):
+        Path(out_path).write_text("raw")
+
+    def fake_ffmpeg(argv):
+        if argv[0] == "ffmpeg" and "-f" in argv and "concat" in argv:
+            raise OSError("boom")
+        Path(argv[-1]).write_text("out")
+
+    with pytest.raises(RuntimeError, match="concat failed"):
+        S.build_supercut(conn, since="2026-07-01", max_minutes=20,
+                         out_path=str(tmp_path / "reel.mp4"), workdir=str(tmp_path / "work"),
+                         download_fn=fake_download, ffmpeg_fn=fake_ffmpeg,
+                         drawtext_probe=lambda: False)
 
 
 def test_build_supercut_skips_failed_download(tmp_path):

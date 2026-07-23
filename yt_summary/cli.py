@@ -381,8 +381,11 @@ def supercut(
         raise typer.Exit(1)
     if not keep_clips:
         import shutil
-        shutil.rmtree(res.out_path + ".work", ignore_errors=True)
-    typer.echo(f"wrote {res.out_path} ({len(res.rendered)} rendered / {len(res.failed)} skipped)")
+        shutil.rmtree(res.workdir, ignore_errors=True)
+    line = f"wrote {res.out_path} ({len(res.rendered)} rendered / {len(res.failed)} skipped)"
+    if not res.labeled:
+        line += " (labels skipped: ffmpeg has no drawtext)"
+    typer.echo(line)
 
 
 @app.command()
