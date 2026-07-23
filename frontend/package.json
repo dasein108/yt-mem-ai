@@ -11,8 +11,8 @@
     "test": "vitest run",
     "lint": "eslint . --max-warnings 0",
     "preview": "vite preview",
-    "electron:dev": "vite",
-    "electron:build": "tsc -b && vite build && electron-builder --config electron-builder.json"
+    "electron:dev": "vite --mode electron",
+    "electron:build": "tsc -b && vite build --mode electron && electron-builder --config electron-builder.json"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.21",
