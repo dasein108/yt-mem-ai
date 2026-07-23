@@ -158,3 +158,23 @@ def test_insert_discovered_video_does_not_downgrade(tmp_path):
                                               status="discovered"))
     assert store.get_video(conn, "v1").status == "transcribed"  # unchanged
     assert len(store.list_videos(conn)) == 1
+
+
+def test_list_videos_by_status_filters_and_orders(tmp_path):
+    conn = _db(tmp_path)
+    store.upsert_video(conn, Video(video_id="a", url="u", status="discovered", published_at="2026-07-20"))
+    store.upsert_video(conn, Video(video_id="b", url="u", status="discovered", published_at="2026-07-22"))
+    store.upsert_video(conn, Video(video_id="c", url="u", status="transcribed", published_at="2026-07-22"))
+    got = store.list_videos_by_status(conn, "discovered")
+    assert [v.video_id for v in got] == ["b", "a"]  # desc by published_at, status-filtered
+
+
+def test_list_videos_by_status_since_and_limit(tmp_path):
+    conn = _db(tmp_path)
+    store.upsert_video(conn, Video(video_id="a", url="u", status="discovered", published_at="2026-07-18"))
+    store.upsert_video(conn, Video(video_id="b", url="u", status="discovered", published_at="2026-07-21"))
+    store.upsert_video(conn, Video(video_id="c", url="u", status="discovered", published_at="2026-07-22"))
+    since = store.list_videos_by_status(conn, "discovered", since="2026-07-20")
+    assert [v.video_id for v in since] == ["c", "b"]        # a (07-18) excluded
+    limited = store.list_videos_by_status(conn, "discovered", limit=1)
+    assert [v.video_id for v in limited] == ["c"]           # newest only

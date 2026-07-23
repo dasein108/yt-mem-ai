@@ -186,3 +186,15 @@ def insert_discovered_video(db, v: Video) -> None:
     tbl.merge_insert("video_id") \
         .when_not_matched_insert_all() \
         .execute([_video_to_row(v)])
+
+
+def list_videos_by_status(db, status: str, since: str | None = None,
+                          limit: int | None = None) -> list[Video]:
+    tbl = db.open_table("videos")
+    rows = tbl.search().where(f"status = '{_safe(status)}'").limit(1_000_000).to_list()
+    if since is not None:
+        rows = [r for r in rows if (r.get("published_at") or "") >= since]
+    rows.sort(key=lambda d: (d.get("published_at") or ""), reverse=True)
+    if limit is not None:
+        rows = rows[:limit]
+    return [_row_to_video(d) for d in rows]

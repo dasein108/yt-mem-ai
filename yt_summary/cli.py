@@ -142,6 +142,7 @@ def run_save_summary(cfg, video_id, summary_md, highlights_json, qa_json, db=Non
         db = open_store(cfg)
     store.upsert_summary(db, video_id, summary_md, highlights_json, qa_json,
                          "claude-code-skill", datetime.now(UTC).isoformat())
+    memory.mark_status(db, video_id, "summarized")
 
 
 @app.command("save-summary")
@@ -193,6 +194,73 @@ def discover(
         dur = f"{(v.duration_s or 0) // 60}m" if v.duration_s else "live"
         typer.echo(f"{v.published_at or '????-??-??'}  {(v.title or '')[:60]:60}  {dur:>5}  {v.url}")
     typer.echo(f"\n{new_count} new / {len(discovered) - new_count} already known")
+
+
+def run_list(cfg, status: str | None = None, since: str | None = None, db=None) -> list[Video]:
+    if db is None:
+        db = open_store(cfg)
+    if status:
+        return store.list_videos_by_status(db, status, since=since)
+    videos = store.list_videos(db)
+    if since is not None:
+        videos = [v for v in videos if (v.published_at or "") >= since]
+    return videos
+
+
+@app.command("list")
+def list_videos_cmd(
+    status: str = typer.Option(None, "--status", help="Filter by status (discovered/transcribed/...)"),
+    since: str = typer.Option(None, "--since", help="Only videos published on/after YYYY-MM-DD"),
+    as_json: bool = typer.Option(False, "--json"),
+):
+    """List stored videos, optionally filtered by status/date."""
+    cfg = load_config()
+    videos = run_list(cfg, status=status, since=since)
+    if as_json:
+        typer.echo(json.dumps([
+            {"video_id": v.video_id, "title": v.title, "url": v.url, "status": v.status,
+             "published_at": v.published_at, "duration_s": v.duration_s} for v in videos]))
+        return
+    if not videos:
+        typer.echo("no videos")
+        return
+    for v in videos:
+        typer.echo(f"{v.published_at or '????-??-??'}  {v.status or '?':12}  {(v.title or '')[:50]:50}  {v.url}")
+
+
+def run_fetch_pending(cfg, since: str | None = None, limit: int | None = None,
+                      db=None) -> list[tuple[str, str]]:
+    if db is None:
+        db = open_store(cfg)
+    since = since or date.today().isoformat()
+    pending = store.list_videos_by_status(db, "discovered", since=since, limit=limit)
+    results: list[tuple[str, str]] = []
+    for v in pending:
+        try:
+            run_fetch(v.url, cfg, db=db, video_id=v.video_id)
+            results.append((v.video_id, "ok"))
+        except Exception as exc:  # noqa: BLE001 - continue-on-error is the point
+            results.append((v.video_id, f"failed: {exc}"))
+    return results
+
+
+@app.command("fetch-pending")
+def fetch_pending(
+    since: str = typer.Option(None, "--since", help="Only discovered videos published on/after YYYY-MM-DD (default today)"),
+    limit: int = typer.Option(None, "--limit", help="Process at most N videos"),
+):
+    """Batch download + transcribe + embed all pending 'discovered' videos."""
+    cfg = load_config()
+    results = run_fetch_pending(cfg, since=since, limit=limit)
+    if not results:
+        typer.echo("nothing pending")
+        return
+    ok = 0
+    for vid, outcome in results:
+        typer.echo(f"{vid}: {outcome}")
+        if outcome == "ok":
+            ok += 1
+    typer.echo(f"\n{ok} ok / {len(results) - ok} failed")
 
 
 if __name__ == "__main__":
