@@ -31,6 +31,7 @@ yt-ai save-summary <id> "<summary>" --highlights '<json>' --qa '<json>'  # persi
 yt-ai like <video_id>        # mark liked (feeds recommendations)
 yt-ai dislike <video_id>     # mark disliked
 yt-ai recommend              # rank your unrated fetched videos by taste (--limit/--json)
+yt-ai compile                 # deep-linked highlights doc, budget-bounded (--since/--max-minutes/--json/--out)
 ```
 
 ## Rate & recommend
@@ -47,7 +48,15 @@ yt-ai discover               # find new subscription uploads → 'discovered'
 yt-ai fetch-pending          # download+transcribe+embed today's batch (robust, skips failures)
 # then in Claude Code:
 /daily-digest                # per-video summaries + digests/YYYY-MM-DD.md
+yt-ai compile                # compile the day's highlights into a deep-linked markdown you can click into
 ```
+
+`yt-ai compile` builds `compilations/<DATE>.md`: each highlight from the day's
+summarized videos becomes a deep link (`watch?v=ID&t=<start>s`) that jumps
+straight to its moment, newest-video-first and budget-bounded by
+`--max-minutes` (default 20). A clickable markdown doc today — stitching the
+actual video fragments into a supercut (`yt-dlp --download-sections` + ffmpeg)
+is a future improvement.
 
 Single video on demand: `yt-ai fetch <url>` then the `/summarize-video` skill.
 
