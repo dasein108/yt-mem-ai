@@ -2,7 +2,7 @@ import type { DetailedHTMLProps, HTMLAttributes } from 'react'
 
 declare global {
   interface Window {
-    electron?: { isElectron: boolean; platform: string }
+    electron?: { isElectron: boolean; platform: string; apiBase?: string }
   }
 }
 

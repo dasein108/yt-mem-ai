@@ -11,7 +11,6 @@ export default defineConfig({
     electron({
       main: { entry: 'electron/main.ts' },
       preload: { input: 'electron/preload.ts' },
-      renderer: {},
     }),
   ],
   resolve: { alias: { '@': path.resolve(__dirname, 'src') } },

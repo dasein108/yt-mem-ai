@@ -69,7 +69,12 @@ app.whenReady().then(async () => {
   if (!ready) {
     win?.webContents.once('did-finish-load', () => {
       win?.webContents.executeJavaScript(
-        "document.title = 'API failed to start — run: uv run yt-ai serve'")
+        "document.title = 'API failed to start — run: uv run yt-ai serve';" +
+        "document.body.insertAdjacentHTML('afterbegin', " +
+        "'<div style=\"position:fixed;top:0;left:0;right:0;z-index:2147483647;" +
+        "background:#c0392b;color:#fff;font:14px/1.4 sans-serif;padding:10px 16px;" +
+        "text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.3);\">" +
+        "API failed to start — run: uv run yt-ai serve</div>')")
     })
   }
 })
