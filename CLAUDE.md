@@ -27,8 +27,20 @@ not an API) to keep it free and high-quality.
   snaps each highlight to its containing/nearest chunk, falling back to a
   fixed window), newest-video-first and budget-bounded by `--max-minutes`
   (`accumulate`). `render_markdown` emits `watch?v=ID&t=<start>s` links per
-  clip; no media rendering — the video-fragment supercut (`yt-dlp
-  --download-sections` + ffmpeg) is deferred.
+  clip; no media rendering here.
+- `supercut.py` — renders `compile_highlights`' clip selection as an actual
+  video reel instead of a doc: pure command-builders (`download_section_opts`
+  — 720p `download_range_func` section + `build_opts` proxy/cookies;
+  `normalize_label_cmd` — scale/pad/fps + `drawtext=textfile=<label_file>`,
+  which sidesteps drawtext text-escaping entirely; `concat_cmd` — concat
+  demuxer; `label_text`/`refs_markdown` — clip label/sidecar refs text) plus
+  the orchestrator `build_supercut(db, since, max_minutes, out_path, cfg=,
+  workdir=, download_fn=, ffmpeg_fn=)`, which takes injectable
+  `download_fn`/`ffmpeg_fn` so the whole flow is unit-tested offline, and
+  continues past a clip whose download/render fails (recorded in the
+  `.refs.md` sidecar's skipped list) rather than aborting the run. Real
+  rendering (actual yt-dlp downloads + ffmpeg) is manual smoke only, not in
+  the test suite.
 - `cli.py` — Typer app; thin `run_*` cores are the testable seam. `serve` runs the
   local API (below).
 - `api/` — local FastAPI server (SP4), localhost-only, backend for the future

@@ -32,6 +32,7 @@ yt-ai like <video_id>        # mark liked (feeds recommendations)
 yt-ai dislike <video_id>     # mark disliked
 yt-ai recommend              # rank your unrated fetched videos by taste (--limit/--json)
 yt-ai compile                 # deep-linked highlights doc, budget-bounded (--since/--max-minutes/--json/--out)
+yt-ai supercut                 # video reel of highlights, re-downloaded + labeled (--since/--max-minutes/--out/--keep-clips)
 ```
 
 ## Rate & recommend
@@ -54,9 +55,18 @@ yt-ai compile                # compile the day's highlights into a deep-linked m
 `yt-ai compile` builds `compilations/<DATE>.md`: each highlight from the day's
 summarized videos becomes a deep link (`watch?v=ID&t=<start>s`) that jumps
 straight to its moment, newest-video-first and budget-bounded by
-`--max-minutes` (default 20). A clickable markdown doc today — stitching the
-actual video fragments into a supercut (`yt-dlp --download-sections` + ffmpeg)
-is a future improvement.
+`--max-minutes` (default 20). Fast — no downloading, just the same
+`compile_highlights` selection rendered as markdown.
+
+`yt-ai supercut` renders that same highlight selection as an actual video
+reel instead of a doc: it **re-downloads** each highlight's section (720p,
+`yt-dlp --download-sections`), burns a label onto each clip (title/timestamp),
+and concats them into one mp4 — so it needs network access and a local
+`ffmpeg`, and is much slower than `compile`. Output is
+`supercuts/<since-or-today>.mp4` plus a sidecar `supercuts/<...>.mp4.refs.md`
+listing each rendered clip's source link (and any clips skipped because their
+download/render failed). Use `compile` for a quick clickable digest; use
+`supercut` when you want a shareable video.
 
 Single video on demand: `yt-ai fetch <url>` then the `/summarize-video` skill.
 
