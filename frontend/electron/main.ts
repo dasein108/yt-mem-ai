@@ -2,11 +2,12 @@ import { app, BrowserWindow, Tray, Menu, nativeImage } from 'electron'
 import { spawn, type ChildProcess } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { resolveApiCommand, waitForApi, needsTreeKill, treeKillArgs } from './lib'
+import { resolveApiCommand, waitForApi, needsTreeKill, treeKillArgs, logLine, logsPath } from './lib'
 import { TRAY_ICON_DATA_URL } from './tray-icon'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..', '..') // frontend/dist-electron -> repo root
+const logFile = logsPath(repoRoot)
 const port = process.env.YT_API_PORT || '8000'
 const apiUrl = `http://127.0.0.1:${port}/status`
 
@@ -17,6 +18,7 @@ let isQuitting = false
 
 function startSidecar(): void {
   const { command, args, cwd } = resolveApiCommand(process.env, repoRoot)
+  logLine(logFile, { source: 'electron', event: 'electron.sidecar.spawn', command, args })
   sidecar = spawn(command, args, { cwd, stdio: 'inherit', shell: process.platform === 'win32' })
   sidecar.on('exit', (code) => console.log(`[sidecar] exited ${code}`))
 }
@@ -33,6 +35,7 @@ function stopSidecar(): void {
 }
 
 function createWindow(): void {
+  logLine(logFile, { source: 'electron', event: 'electron.window' })
   win = new BrowserWindow({
     width: 1280, height: 820,
     webPreferences: {
@@ -48,6 +51,7 @@ function createWindow(): void {
   }
   win.on('minimize', () => { win?.hide() })
   win.on('close', (e) => { if (!isQuitting) { e.preventDefault(); win?.hide() } })
+  win.on('hide', () => { logLine(logFile, { source: 'electron', event: 'electron.tray.hide' }) })
 }
 
 function createTray(): void {
@@ -56,14 +60,21 @@ function createTray(): void {
   tray.setToolTip('yt_summary')
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Show', click: () => win?.show() },
-    { label: 'Quit', click: () => { isQuitting = true; stopSidecar(); app.quit() } },
+    { label: 'Quit', click: () => {
+      isQuitting = true
+      stopSidecar()
+      logLine(logFile, { source: 'electron', event: 'electron.quit' })
+      app.quit()
+    } },
   ]))
   tray.on('click', () => win?.show())
 }
 
 app.whenReady().then(async () => {
+  logLine(logFile, { source: 'electron', event: 'electron.start' })
   startSidecar()
   const ready = await waitForApi(apiUrl, fetch, { attempts: 60, delayMs: 500 })
+  logLine(logFile, { source: 'electron', event: 'electron.api.wait', ok: ready, attempts: 60 })
   createWindow()
   createTray()
   if (!ready) {
@@ -79,5 +90,9 @@ app.whenReady().then(async () => {
   }
 })
 
-app.on('before-quit', () => { isQuitting = true; stopSidecar() })
+app.on('before-quit', () => {
+  isQuitting = true
+  stopSidecar()
+  logLine(logFile, { source: 'electron', event: 'electron.quit' })
+})
 app.on('window-all-closed', () => { /* stay in tray; do not quit */ })

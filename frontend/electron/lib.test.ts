@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { resolveApiCommand, waitForApi, needsTreeKill, treeKillArgs } from './lib'
+import { resolveApiCommand, waitForApi, needsTreeKill, treeKillArgs, logLine, logsPath } from './lib'
+import { readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 
 describe('resolveApiCommand', () => {
   it('defaults to uv run yt-ai serve', () => {
@@ -40,5 +43,22 @@ describe('needsTreeKill', () => {
 describe('treeKillArgs', () => {
   it('builds taskkill args for a pid', () => {
     expect(treeKillArgs(123)).toEqual(['/pid', '123', '/t', '/f'])
+  })
+})
+
+describe('logLine / logsPath', () => {
+  it('logsPath builds the repo-root path', () => {
+    expect(logsPath('/repo')).toBe(path.join('/repo', 'logs', 'common.jsonl'))
+  })
+  it('logLine appends a json line with ts', () => {
+    const f = path.join(tmpdir(), `sp7-${process.pid}.jsonl`)
+    rmSync(f, { force: true })
+    logLine(f, { source: 'electron', event: 'electron.start' })
+    logLine(f, { source: 'electron', event: 'electron.quit' })
+    const lines = readFileSync(f, 'utf8').trim().split('\n').map((l) => JSON.parse(l))
+    expect(lines.length).toBe(2)
+    expect(lines[0]).toMatchObject({ source: 'electron', event: 'electron.start' })
+    expect(typeof lines[0].ts).toBe('string')
+    rmSync(f, { force: true })
   })
 })
