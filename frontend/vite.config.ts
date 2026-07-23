@@ -5,13 +5,20 @@ import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron/simple'
 import path from 'node:path'
 
-export default defineConfig({
+// The Electron plugin (launches Electron in dev; builds main/preload) is active
+// only in `--mode electron` (the electron:dev / electron:build scripts). Plain
+// `dev`/`build`/`test` stay browser-only.
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
-    electron({
-      main: { entry: 'electron/main.ts' },
-      preload: { input: 'electron/preload.ts' },
-    }),
+    ...(mode === 'electron'
+      ? [
+          electron({
+            main: { entry: 'electron/main.ts' },
+            preload: { input: 'electron/preload.ts' },
+          }),
+        ]
+      : []),
   ],
   resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
   server: {
@@ -29,4 +36,4 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
     passWithNoTests: true,
   },
-})
+}))
