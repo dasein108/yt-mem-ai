@@ -227,5 +227,40 @@ def list_videos_cmd(
         typer.echo(f"{v.published_at or '????-??-??'}  {v.status or '?':12}  {(v.title or '')[:50]:50}  {v.url}")
 
 
+def run_fetch_pending(cfg, since: str | None = None, limit: int | None = None,
+                      db=None) -> list[tuple[str, str]]:
+    if db is None:
+        db = open_store(cfg)
+    since = since or date.today().isoformat()
+    pending = store.list_videos_by_status(db, "discovered", since=since, limit=limit)
+    results: list[tuple[str, str]] = []
+    for v in pending:
+        try:
+            run_fetch(v.url, cfg, db=db, video_id=v.video_id)
+            results.append((v.video_id, "ok"))
+        except Exception as exc:  # noqa: BLE001 - continue-on-error is the point
+            results.append((v.video_id, f"failed: {exc}"))
+    return results
+
+
+@app.command("fetch-pending")
+def fetch_pending(
+    since: str = typer.Option(None, "--since", help="Only discovered videos published on/after YYYY-MM-DD (default today)"),
+    limit: int = typer.Option(None, "--limit", help="Process at most N videos"),
+):
+    """Batch download + transcribe + embed all pending 'discovered' videos."""
+    cfg = load_config()
+    results = run_fetch_pending(cfg, since=since, limit=limit)
+    if not results:
+        typer.echo("nothing pending")
+        return
+    ok = 0
+    for vid, outcome in results:
+        typer.echo(f"{vid}: {outcome}")
+        if outcome == "ok":
+            ok += 1
+    typer.echo(f"\n{ok} ok / {len(results) - ok} failed")
+
+
 if __name__ == "__main__":
     app()

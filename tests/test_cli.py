@@ -145,3 +145,35 @@ def test_run_list_all_with_since(tmp_path):
     store.upsert_video(conn, Video(video_id="b", url="u", status="transcribed", published_at="2026-07-22"))
     got = cli.run_list(cfg, since="2026-07-20", db=conn)
     assert [v.video_id for v in got] == ["b"]
+
+
+def test_run_fetch_pending_continue_on_error(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    store.upsert_video(conn, Video(video_id="ok1", url="u1", status="discovered", published_at="2026-07-22"))
+    store.upsert_video(conn, Video(video_id="bad", url="u2", status="discovered", published_at="2026-07-22"))
+    store.upsert_video(conn, Video(video_id="ok2", url="u3", status="discovered", published_at="2026-07-22"))
+
+    def fake_run_fetch(url, cfg, force=False, db=None, video_id=None):
+        if video_id == "bad":
+            raise RuntimeError("blocked")
+        return video_id
+    monkeypatch.setattr(cli, "run_fetch", fake_run_fetch)
+
+    results = cli.run_fetch_pending(cfg, since="2026-07-01", db=conn)
+    outcomes = dict(results)
+    assert outcomes["ok1"] == "ok" and outcomes["ok2"] == "ok"
+    assert outcomes["bad"].startswith("failed:")            # captured, batch continued
+    assert len(results) == 3
+
+
+def test_run_fetch_pending_since_and_limit(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    store.upsert_video(conn, Video(video_id="old", url="u", status="discovered", published_at="2026-07-01"))
+    store.upsert_video(conn, Video(video_id="new1", url="u", status="discovered", published_at="2026-07-22"))
+    store.upsert_video(conn, Video(video_id="new2", url="u", status="discovered", published_at="2026-07-21"))
+    monkeypatch.setattr(cli, "run_fetch", lambda url, cfg, force=False, db=None, video_id=None: video_id)
+
+    results = cli.run_fetch_pending(cfg, since="2026-07-10", limit=1, db=conn)
+    assert [vid for vid, _ in results] == ["new1"]          # since excludes old, limit=1 keeps newest
