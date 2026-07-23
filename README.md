@@ -98,9 +98,28 @@ npm run dev             # Vite on http://localhost:5173, proxies /api -> 127.0.0
 ```
 
 MVP scope: Library, Detail (summary/highlights/Q&A + like/dislike/Summarize),
-Search, and a Jobs strip. Recommend/Digest views and the Electron desktop
-wrapper (SP4c) are not part of this UI yet. See `frontend/README.md` for
-details and dev scripts (`test`/`build`/`typecheck`/`lint`).
+Search, and a Jobs strip. Recommend/Digest views are not part of this UI yet.
+See `frontend/README.md` for details and dev scripts
+(`test`/`build`/`typecheck`/`lint`).
+
+## Desktop app (SP4c)
+
+The frontend can also run as a native Electron app instead of a browser tab.
+The Electron shell wraps the SP4b UI above and manages the SP4a API as a
+sidecar process (auto-spawns `uv run yt-ai serve`, waits for it to come up,
+and stops it on quit); the API now allows CORS so the packaged renderer
+(loaded from `file://` / a custom scheme) can reach it. Minimizing hides to
+the system tray; a video's **Watch** button plays it in-app.
+
+```bash
+cd frontend
+npm run electron:dev     # dev: auto-starts the sidecar + opens the window
+npm run electron:build   # package a current-OS installer into frontend/release/
+```
+
+See `frontend/README.md` → "Electron desktop app" for the full env-var
+overrides, tray behavior, and the manual smoke-test checklist. Cross-platform
+installers, code signing, and bundling Python into the package are deferred.
 
 ## Tests
 

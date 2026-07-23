@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useVideo, useFeedback, useSummarize } from '@/api/hooks'
 import { Button } from './ui/button'
+import { WatchPlayer } from './WatchPlayer'
 import { fmtTs } from '@/lib/utils'
 import type { Highlight, QA } from '@/api/types'
 
@@ -14,6 +16,7 @@ export function VideoDetail() {
   const { data: v, isLoading, error } = useVideo(id)
   const feedback = useFeedback()
   const summarize = useSummarize()
+  const [watching, setWatching] = useState(false)
 
   if (!id) return <p className="text-slate-500">Select a video.</p>
   if (isLoading) return <p className="text-slate-500">loading…</p>
@@ -31,12 +34,14 @@ export function VideoDetail() {
       <div className="flex gap-2">
         <Button size="sm" variant="outline" onClick={() => feedback.mutate({ video_id: v.video_id, signal: 1 })}>👍 Like</Button>
         <Button size="sm" variant="outline" onClick={() => feedback.mutate({ video_id: v.video_id, signal: -1 })}>👎 Dislike</Button>
+        <Button size="sm" variant="outline" onClick={() => setWatching((w) => !w)}>▶ Watch</Button>
         {!v.summary && (
           <Button size="sm" disabled={summarize.isPending || summarize.isSuccess} onClick={() => summarize.mutate(v.video_id)}>
             {summarize.isPending ? 'Summarizing…' : 'Summarize'}
           </Button>
         )}
       </div>
+      {watching && <WatchPlayer videoId={v.video_id} url={v.url} onClose={() => setWatching(false)} />}
       {v.summary && (
         <section className="space-y-3">
           <div>

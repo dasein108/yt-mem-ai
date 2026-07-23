@@ -45,8 +45,16 @@ not an API) to keep it free and high-quality.
   offline tests. MVP scope: Library/Detail/Search/Jobs; Recommend/Digest are
   deferred. Vite proxies `/api` to `127.0.0.1:8000` (see
   `frontend/vite.config.ts`); `VITE_API_BASE` overrides the client's base URL.
-  Wrapping this in Electron for a native desktop app is SP4c. See
-  `frontend/README.md` for setup and scripts.
+  `frontend/electron/` (SP4c) wraps this UI in Electron: `main.ts` spawns
+  `uv run yt-ai serve` as a sidecar (via `lib.ts`'s `resolveApiCommand`/
+  `waitForApi`, overridable with `YT_API_CMD`/`YT_API_PORT`), waits for
+  `/status`, minimizes to a tray (`preload.ts`, `tray-icon.ts`), and kills the
+  sidecar tree on quit; a video's Watch view uses `<webview>`/`<iframe>`
+  (`WatchPlayer`). The API's CORS (`api/app.py`) was opened up for this
+  packaged renderer. `frontend/electron-builder.json` packages a current-OS
+  installer to `frontend/release/` via `npm run electron:build`;
+  cross-platform installers/signing and bundling Python into the package are
+  deferred. See `frontend/README.md` for setup and scripts.
 
 ## Store (LanceDB)
 
