@@ -21,6 +21,7 @@ class Config:
     embedding_model: str | None
     chunk_target_s: float
     openai_api_key: str | None
+    hf_token: str | None = None
 
 
 def _clean(value: str | None) -> str | None:
@@ -42,7 +43,7 @@ def load_config(env_path: Path | None = None) -> Config:
         "YT_DOWNLOADS_DIR", "YT_WHISPER_MODEL", "YT_WHISPER_DEVICE",
         "YT_WHISPER_COMPUTE_TYPE", "OPENROUTER_API_KEY", "YT_OPENROUTER_MODEL",
         "YT_STORE_PATH", "YT_EMBEDDING_BACKEND", "YT_EMBEDDING_MODEL",
-        "YT_CHUNK_TARGET_S", "OPENAI_API_KEY",
+        "YT_CHUNK_TARGET_S", "OPENAI_API_KEY", "HF_TOKEN",
     ):
         if os.environ.get(key) is not None:
             data[key] = os.environ[key]
@@ -62,4 +63,5 @@ def load_config(env_path: Path | None = None) -> Config:
         embedding_model=_clean(data.get("YT_EMBEDDING_MODEL")),
         chunk_target_s=float(_clean(data.get("YT_CHUNK_TARGET_S")) or "45"),
         openai_api_key=_clean(data.get("OPENAI_API_KEY")),
+        hf_token=_clean(data.get("HF_TOKEN")),
     )
