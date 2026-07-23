@@ -99,6 +99,7 @@ POST /jobs/fetch-pending    # batch-fetch pending 'discovered' videos ({since, l
 POST /jobs/summarize        # summarize a fetched video via OpenRouter ({video_id})
 GET  /jobs/{job_id}         # poll a job's status/result
 GET  /jobs                  # list all jobs
+POST /log                   # ingest a frontend log line ({event, level, msg, ctx}) -> logs/common.jsonl
 ```
 
 `POST /jobs/summarize` is the API's summarization path (distinct from the
@@ -139,6 +140,27 @@ npm run electron:build   # package a current-OS installer into frontend/release/
 See `frontend/README.md` → "Electron desktop app" for the full env-var
 overrides, tray behavior, and the manual smoke-test checklist. Cross-platform
 installers, code signing, and bundling Python into the package are deferred.
+
+## Debugging
+
+Backend (`obs.log_event`/`blog`), Electron main process (`logLine`), and the
+frontend (`log()` + an auto-capture bridge over `console.error`/`warn` and
+uncaught errors/rejections, POSTing to `POST /log`) all append to one unified,
+append-only log: **`logs/common.jsonl`** — one JSON object per line,
+`{ts, source, level, event, msg, ...ctx}` with `source ∈ backend|electron|frontend`.
+Path defaults to `logs/common.jsonl`, overridable via `YT_LOG_FILE` (backend only;
+Electron/frontend always write to the repo's `logs/common.jsonl`). It's
+gitignored — delete/rotate it manually if it grows.
+
+Use the **`yt-debugger`** skill (`skills/yt-debugger/SKILL.md`) to diagnose an
+issue end-to-end: it runs the backend, introspects `/openapi.json`, probes
+endpoints, and gives jq recipes to filter the log by source/level/event/job_id.
+Two starter one-liners:
+
+```bash
+jq -c 'select(.level=="error")' logs/common.jsonl              # every error, any runtime
+tail -f logs/common.jsonl | jq -c '{ts,source,event,msg}'       # live tail, compact
+```
 
 ## Tests
 
