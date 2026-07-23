@@ -327,7 +327,9 @@ def run_compile(cfg, since: str | None = None, max_minutes: float = 20, db=None)
 
 @app.command("compile")
 def compile_cmd(
-    since: str = typer.Option(None, "--since"),
+    since: str = typer.Option(
+        None, "--since",
+        help="Only summarized videos published on/after YYYY-MM-DD (default: today)"),
     max_minutes: float = typer.Option(20, "--max-minutes"),
     as_json: bool = typer.Option(False, "--json"),
     out: str = typer.Option(None, "--out"),

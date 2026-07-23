@@ -36,6 +36,11 @@ def test_chunk_span_containing():
     assert C.chunk_span(_chunks([(0, 10), (10, 20)]), 12.0, 45.0) == (10.0, 20.0)
 
 
+def test_chunk_span_boundary_prefers_starting_chunk():
+    # start_s == chunk0.end_s == chunk1.start_s → should attribute to chunk1 (which STARTS there)
+    assert C.chunk_span(_chunks([(0, 10), (10, 20)]), 10.0, 45.0) == (10.0, 20.0)
+
+
 def test_chunk_span_nearest_when_none_contains():
     # 8.0 is not inside [0,5] or [10,15]; nearest by start_s is (10,15)? |10-8|=2 < |0-8|=8
     assert C.chunk_span(_chunks([(0, 5), (10, 15)]), 8.0, 45.0) == (10.0, 15.0)

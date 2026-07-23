@@ -15,7 +15,7 @@ def deep_link(video_id: str, start_s: float) -> str:
 def chunk_span(chunks: list[dict], start_s: float, fallback_s: float) -> tuple[float, float]:
     for c in chunks:
         cs, ce = c.get("start_s"), c.get("end_s")
-        if cs is not None and ce is not None and float(cs) <= start_s <= float(ce):
+        if cs is not None and ce is not None and float(cs) <= start_s < float(ce):
             return float(cs), float(ce)
     with_start = [c for c in chunks if c.get("start_s") is not None]
     if with_start:
