@@ -10,6 +10,7 @@ from .store.embeddings import build_embedder, chunk_segments
 from .download import download
 from .transcript import get_transcript
 from .discovery import discover as discover_videos
+from .recommend import recommend as recommend_videos
 from . import memory
 
 app = typer.Typer(help="YouTube AI CLI — download, transcribe, embed, search.")
@@ -261,6 +262,57 @@ def fetch_pending(
         if outcome == "ok":
             ok += 1
     typer.echo(f"\n{ok} ok / {len(results) - ok} failed")
+
+
+def run_feedback(cfg, video_id: str, signal: int, db=None) -> None:
+    if db is None:
+        db = open_store(cfg)
+    store.insert_feedback(db, video_id, signal, datetime.now(UTC).isoformat())
+
+
+def run_recommend(cfg, limit: int = 20, db=None) -> list[tuple[str, float]]:
+    if db is None:
+        db = open_store(cfg)
+    return recommend_videos(db, limit=limit)
+
+
+@app.command()
+def like(video_id: str):
+    """Mark a video as liked (feeds recommendations)."""
+    cfg = load_config()
+    run_feedback(cfg, video_id, 1)
+    typer.echo(f"liked {video_id}")
+
+
+@app.command()
+def dislike(video_id: str):
+    """Mark a video as disliked (feeds recommendations)."""
+    cfg = load_config()
+    run_feedback(cfg, video_id, -1)
+    typer.echo(f"disliked {video_id}")
+
+
+@app.command()
+def recommend(limit: int = typer.Option(20, "--limit"),
+              as_json: bool = typer.Option(False, "--json")):
+    """Rank your unrated fetched videos by learned taste."""
+    cfg = load_config()
+    db = open_store(cfg)
+    ranked = run_recommend(cfg, limit=limit, db=db)
+    if not ranked:
+        typer.echo("no candidates — fetch and rate some videos first")
+        return
+    rows = [(store.get_video(db, vid), score) for vid, score in ranked]
+    if as_json:
+        typer.echo(json.dumps([
+            {"video_id": v.video_id, "title": v.title, "url": v.url,
+             "published_at": v.published_at, "score": round(score, 4)}
+            for v, score in rows if v is not None]))
+        return
+    for v, score in rows:
+        if v is None:
+            continue
+        typer.echo(f"{score:+.3f}  {v.published_at or '????-??-??'}  {(v.title or '')[:50]:50}  {v.url}")
 
 
 if __name__ == "__main__":

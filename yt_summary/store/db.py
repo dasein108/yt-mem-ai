@@ -198,3 +198,8 @@ def list_videos_by_status(db, status: str, since: str | None = None,
     if limit is not None:
         rows = rows[:limit]
     return [_row_to_video(d) for d in rows]
+
+
+def list_feedback(db) -> list[dict]:
+    tbl = db.open_table("feedback")
+    return tbl.search().limit(1_000_000).to_list()

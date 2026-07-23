@@ -21,6 +21,7 @@ not an API) to keep it free and high-quality.
 - `store/` — `models.py` (dataclasses + LanceModel schemas + `chunk_schema`),
   `embeddings.py` (`build_embedder`, `chunk_segments`), `db.py` (LanceDB CRUD + search).
 - `memory.py` — status-based `is_seen` / `mark_status`.
+- `recommend.py` — taste-centroid ranking over chunk embeddings (like − dislike).
 - `cli.py` — Typer app; thin `run_*` cores are the testable seam.
 
 ## Store (LanceDB)
@@ -42,6 +43,12 @@ transcribed → summarized`.
   network or download models — the registered `FakeEmbedder` (tests/support.py) covers
   embeddings.
 - Dates are `YYYY-MM-DD` strings; string comparison is date comparison.
+
+## Recommendations
+
+`like`/`dislike` write the `feedback` table (latest signal per video wins); `recommend`
+builds like/dislike centroids from liked/disliked videos' chunk vectors and ranks unrated
+transcribed/summarized videos.
 
 ## Skills
 
