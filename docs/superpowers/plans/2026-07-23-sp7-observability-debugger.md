@@ -260,7 +260,7 @@ git commit -m "feat: POST /log + backend workflow events (fetch/discover/job lif
 
 ## Task 3: Frontend logging (Node)
 
-**Files:** `frontend/src/lib/apiBase.ts` (extract), `frontend/src/lib/log.ts`, `frontend/src/api/client.ts` (use apiBase + log ApiError). Test: `frontend/src/lib/log.test.ts`. Gates: frontend typecheck/test/lint/build.
+**Files:** `frontend/src/lib/apiBase.ts` (extract), `frontend/src/lib/log.ts` (`log` + `installLogBridge`), `frontend/src/main.tsx` (call `installLogBridge`), `frontend/src/api/client.ts` (use apiBase + log ApiError). Test: `frontend/src/lib/log.test.ts`. Gates: frontend typecheck/test/lint/build.
 
 - [ ] **Step 1: Extract `apiBase()` → `frontend/src/lib/apiBase.ts`**
 
@@ -278,10 +278,12 @@ In `client.ts`, delete its local `apiBase()` and `import { apiBase } from '@/lib
 - [ ] **Step 2: Write the failing test — `frontend/src/lib/log.test.ts`**
 
 ```ts
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/node'
-import { log } from './log'
+import { log, installLogBridge } from './log'
+
+const sleep = (ms = 20) => new Promise((r) => setTimeout(r, ms))
 
 describe('log', () => {
   it('POSTs the event to /log', async () => {
@@ -291,13 +293,45 @@ describe('log', () => {
       return new HttpResponse(null, { status: 204 })
     }))
     log('ui.start', 'info', 'hello', { a: 1 })
-    await new Promise((r) => setTimeout(r, 20))
+    await sleep()
     expect(got).toMatchObject({ event: 'ui.start', level: 'info', ctx: { a: 1 } })
   })
   it('never throws when the endpoint fails', async () => {
     server.use(http.post('/api/log', () => new HttpResponse(null, { status: 500 })))
     expect(() => log('x')).not.toThrow()
-    await new Promise((r) => setTimeout(r, 20))
+    await sleep()
+  })
+})
+
+describe('installLogBridge', () => {
+  const origError = console.error
+  const origWarn = console.warn
+  afterEach(() => {
+    console.error = origError
+    console.warn = origWarn
+    delete (window as unknown as Record<string, unknown>).__ytLogBridge
+  })
+
+  it('forwards console.error to /log and still calls the original', async () => {
+    const posts: any[] = []
+    server.use(http.post('/api/log', async ({ request }) => {
+      posts.push(await request.json())
+      return new HttpResponse(null, { status: 204 })
+    }))
+    let origCalled = false
+    console.error = () => { origCalled = true }
+    installLogBridge()
+    console.error('boom', { x: 1 })
+    await sleep()
+    expect(origCalled).toBe(true)                                   // original preserved
+    expect(posts.some((p) => p.event === 'console.error' && p.level === 'error')).toBe(true)
+  })
+
+  it('is idempotent (second install does not re-wrap)', () => {
+    installLogBridge()
+    const wrapped = console.error
+    installLogBridge()
+    expect(console.error).toBe(wrapped)
   })
 })
 ```
@@ -307,7 +341,7 @@ describe('log', () => {
 Run: `npm --prefix frontend run test -- log.test`
 Expected: FAIL (`Cannot find module './log'`)
 
-- [ ] **Step 4: Implement `frontend/src/lib/log.ts`**
+- [ ] **Step 4: Implement `frontend/src/lib/log.ts` (explicit `log()` + auto-capture bridge)**
 
 ```ts
 import { apiBase } from './apiBase'
@@ -324,6 +358,44 @@ export function log(event: string, level = 'info', msg = '',
     /* never throw */
   }
 }
+
+function _str(a: unknown): string {
+  if (typeof a === 'string') return a
+  try { return JSON.stringify(a) } catch { return String(a) }
+}
+
+const BRIDGE_FLAG = '__ytLogBridge'
+
+/** Patch console.error/warn (keep original + forward to /log) and hook uncaught
+ *  errors + unhandled rejections. Idempotent. NOT console.log/info (too noisy). */
+export function installLogBridge(): void {
+  if (typeof window === 'undefined') return
+  const w = window as unknown as Record<string, unknown>
+  if (w[BRIDGE_FLAG]) return
+  w[BRIDGE_FLAG] = true
+
+  const wrap = (level: 'error' | 'warn', orig: (...a: unknown[]) => void) =>
+    (...args: unknown[]) => {
+      orig(...args)
+      log(`console.${level}`, level, args.map(_str).join(' ').slice(0, 2000))
+    }
+  console.error = wrap('error', console.error.bind(console))
+  console.warn = wrap('warn', console.warn.bind(console))
+
+  window.addEventListener('error', (e) =>
+    log('ui.uncaught', 'error', String(e.message), { stack: (e.error as Error | undefined)?.stack }))
+  window.addEventListener('unhandledrejection', (e) =>
+    log('ui.unhandledrejection', 'error', _str(e.reason)))
+}
+```
+No recursion risk: `log()` never calls `console.*` (its fetch failure is swallowed by `.catch`).
+
+- [ ] **Step 4b: Call `installLogBridge()` at startup in `frontend/src/main.tsx`**
+
+Import and call it once before rendering:
+```tsx
+import { installLogBridge } from './lib/log'
+installLogBridge()
 ```
 
 - [ ] **Step 5: Log `ApiError` in `client.ts`**
@@ -340,7 +412,7 @@ In `req()`'s non-2xx branch, before throwing `ApiError`, emit a log (import `log
 
 ```bash
 git add frontend/src ':!frontend/node_modules'
-git commit -m "feat(ui): frontend log() → POST /log + apiBase extraction"
+git commit -m "feat(ui): frontend log() + console/uncaught auto-capture bridge → POST /log"
 ```
 
 ---
@@ -512,5 +584,6 @@ Report SP7 done: unified `logs/common.jsonl` (backend `obs.log_event`, electron 
 - **Placeholder scan:** none — every code step is complete.
 - **Type/name consistency:** `log_event(source, event, level, msg, *, log_file, **ctx)` / `blog(...)` used by app/jobs/cli; `LogIn` fields match the `/log` handler + the frontend `log()` body (`event/level/msg/ctx`); `apiBase()` extracted to its own module so `client.ts → log.ts → apiBase.ts` has no cycle; electron `logLine(file, obj)`/`logsPath(repoRoot)` match the test + main usage.
 - **Toolchain isolation:** T1–T2 pytest/ruff; T3–T4 `npm --prefix frontend run *`; T5 both. Log path via `YT_LOG_FILE` (Python tests) / explicit temp path (electron test) keeps every test's writes in `tmp_path`/tmpdir.
+- **Auto-capture bridge:** `installLogBridge()` (T3) patches `console.error`/`warn` (keeps originals) + `window.onerror`/`unhandledrejection` so any frontend error reaches `common.jsonl` without hand-instrumenting; idempotent via a `window.__ytLogBridge` flag; NOT `console.log`/`.info` (noise). No recursion (`log()` never calls `console.*`).
 - **Never-raises discipline:** both `obs.log_event` and `logLine` swallow their own errors; `log()` is fire-and-forget — a broken log path or down endpoint can't take down the app.
 ```
