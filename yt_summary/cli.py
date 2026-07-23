@@ -315,5 +315,13 @@ def recommend(limit: int = typer.Option(20, "--limit"),
         typer.echo(f"{score:+.3f}  {v.published_at or '????-??-??'}  {(v.title or '')[:50]:50}  {v.url}")
 
 
+@app.command()
+def serve(host: str = typer.Option("127.0.0.1", "--host"), port: int = typer.Option(8000, "--port")):
+    """Run the local API server (for the desktop UI)."""
+    import uvicorn
+    from .api.app import create_app
+    uvicorn.run(create_app(load_config()), host=host, port=port)
+
+
 if __name__ == "__main__":
     app()

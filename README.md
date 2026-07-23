@@ -51,6 +51,41 @@ yt-ai fetch-pending          # download+transcribe+embed today's batch (robust, 
 
 Single video on demand: `yt-ai fetch <url>` then the `/summarize-video` skill.
 
+## Local API (SP4)
+
+```bash
+yt-ai serve [--host 127.0.0.1] [--port 8000]   # localhost-only FastAPI server
+```
+
+Backend for the future desktop UI. Wraps the same `run_*` cores as the CLI over
+an in-memory job queue (jobs run in a background thread, not persisted).
+
+Read endpoints:
+
+```
+GET /videos                # list stored videos (?status=&since=)
+GET /videos/{video_id}     # metadata + transcript + summary
+GET /status                # counts by status
+GET /search                # semantic search (?q=&mode=hybrid|fts|vector&k=10)
+GET /recommend             # ranked unrated videos (?limit=20)
+```
+
+Write / job endpoints:
+
+```
+POST /feedback              # like/dislike a video ({video_id, signal})
+POST /jobs/fetch            # download+transcribe+embed one video ({url, force})
+POST /jobs/discover         # find new subscription uploads ({after, deep, min_duration})
+POST /jobs/fetch-pending    # batch-fetch pending 'discovered' videos ({since, limit})
+POST /jobs/summarize        # summarize a fetched video via OpenRouter ({video_id})
+GET  /jobs/{job_id}         # poll a job's status/result
+GET  /jobs                  # list all jobs
+```
+
+`POST /jobs/summarize` is the API's summarization path (distinct from the
+`/summarize-video` skill): it calls OpenRouter using `OPENROUTER_API_KEY` and
+`YT_OPENROUTER_MODEL` (`.env`) and writes the same `summaries` table.
+
 ## Tests
 
 ```bash
