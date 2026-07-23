@@ -28,7 +28,17 @@ yt-ai show <video_id>        # metadata + transcript (--json)
 yt-ai status                 # counts by status
 yt-ai search "<query>"       # semantic search (--hybrid/--fts/--vector, -k N)
 yt-ai save-summary <id> "<summary>" --highlights '<json>' --qa '<json>'  # persist a summary (used by skills)
+yt-ai like <video_id>        # mark liked (feeds recommendations)
+yt-ai dislike <video_id>     # mark disliked
+yt-ai recommend              # rank your unrated fetched videos by taste (--limit/--json)
 ```
+
+## Rate & recommend
+
+Like/dislike videos you've fetched (`yt-ai like <id>` / `dislike <id>`), then
+`yt-ai recommend` ranks your other fetched-but-unrated videos by similarity to
+what you liked (minus what you disliked), using their transcript embeddings.
+Before you've liked anything, it falls back to most-recently-published.
 
 ## Daily routine
 
