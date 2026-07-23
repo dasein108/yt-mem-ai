@@ -28,7 +28,7 @@ digest file. All data access is through the `yt-ai` CLI — never touch the stor
       - `summary_md`: 2–4 sentence executive summary + key bullets.
       - `highlights`: JSON `[{"start_s": <seconds>, "label": "..."}]` (3–8, from step b).
       - `qa`: JSON `[{"q": "...", "a": "..."}]` (3–6).
-   d. Persist: `yt-ai save-summary <video_id> "<summary_md>" '<highlights_json>' '<qa_json>'`.
+   d. Persist: `yt-ai save-summary <video_id> "<summary_md>" --highlights '<highlights_json>' --qa '<qa_json>'`.
 
 3. **Compose the digest** at `digests/<DATE>.md`:
    - A top **executive digest**: what happened across the day, cross-video themes, what's

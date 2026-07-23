@@ -32,7 +32,7 @@ Generate a summary, timestamped highlights, and Q&A for an ingested video, then 
 
 4. **Persist:**
    ```bash
-   yt-ai save-summary <video_id> "<summary_md>" '<highlights_json>' '<qa_json>'
+   yt-ai save-summary <video_id> "<summary_md>" --highlights '<highlights_json>' --qa '<qa_json>'
    ```
 
 5. **Report** the summary + highlights (`MM:SS — label`) + Q&A in chat.
