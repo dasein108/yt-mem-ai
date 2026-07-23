@@ -1,7 +1,9 @@
 # yt_summary/cli.py
 from __future__ import annotations
 import json
+from dataclasses import asdict
 from datetime import date, datetime, timedelta, UTC
+from pathlib import Path
 import typer
 from .config import load_config
 from .store import db as store
@@ -11,6 +13,7 @@ from .download import download
 from .transcript import get_transcript
 from .discovery import discover as discover_videos
 from .recommend import recommend as recommend_videos
+from .compile import compile_highlights, render_markdown
 from . import memory
 
 app = typer.Typer(help="YouTube AI CLI — download, transcribe, embed, search.")
@@ -313,6 +316,41 @@ def recommend(limit: int = typer.Option(20, "--limit"),
         if v is None:
             continue
         typer.echo(f"{score:+.3f}  {v.published_at or '????-??-??'}  {(v.title or '')[:50]:50}  {v.url}")
+
+
+def run_compile(cfg, since: str | None = None, max_minutes: float = 20, db=None) -> list:
+    if db is None:
+        db = open_store(cfg)
+    since = since or date.today().isoformat()
+    return compile_highlights(db, since, max_minutes)
+
+
+@app.command("compile")
+def compile_cmd(
+    since: str = typer.Option(
+        None, "--since",
+        help="Only summarized videos published on/after YYYY-MM-DD (default: today)"),
+    max_minutes: float = typer.Option(20, "--max-minutes"),
+    as_json: bool = typer.Option(False, "--json"),
+    out: str = typer.Option(None, "--out"),
+):
+    """Compile deep-linked highlights from summarized videos (budget-bounded)."""
+    cfg = load_config()
+    since_v = since or date.today().isoformat()
+    clips = run_compile(cfg, since=since_v, max_minutes=max_minutes)
+    if not clips:
+        typer.echo("no highlights — summarize some videos first")
+        return
+    if as_json:
+        typer.echo(json.dumps([asdict(c) for c in clips]))
+        return
+    md = render_markdown(clips, since_v, max_minutes)
+    if out:
+        Path(out).parent.mkdir(parents=True, exist_ok=True)
+        Path(out).write_text(md)
+        typer.echo(f"wrote {out} ({len(clips)} clips)")
+    else:
+        typer.echo(md)
 
 
 @app.command()

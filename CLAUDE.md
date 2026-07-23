@@ -22,6 +22,13 @@ not an API) to keep it free and high-quality.
   `embeddings.py` (`build_embedder`, `chunk_segments`), `db.py` (LanceDB CRUD + search).
 - `memory.py` — status-based `is_seen` / `mark_status`.
 - `recommend.py` — taste-centroid ranking over chunk embeddings (like − dislike).
+- `compile.py` — `compile_highlights` builds a deep-linked highlights doc from
+  summarized videos' `summaries.highlights` + `chunks` spans (`chunk_span`
+  snaps each highlight to its containing/nearest chunk, falling back to a
+  fixed window), newest-video-first and budget-bounded by `--max-minutes`
+  (`accumulate`). `render_markdown` emits `watch?v=ID&t=<start>s` links per
+  clip; no media rendering — the video-fragment supercut (`yt-dlp
+  --download-sections` + ffmpeg) is deferred.
 - `cli.py` — Typer app; thin `run_*` cores are the testable seam. `serve` runs the
   local API (below).
 - `api/` — local FastAPI server (SP4), localhost-only, backend for the future
@@ -94,8 +101,8 @@ API/desktop UI). Neither is authoritative over the other — last write wins.
 
 ## Commands & daily routine
 
-See README.md. Pipeline: `discover → fetch-pending → /daily-digest`; single video:
-`fetch → /summarize-video`.
+See README.md. Pipeline: `discover → fetch-pending → /daily-digest → compile`;
+single video: `fetch → /summarize-video`.
 
 ## Dev
 

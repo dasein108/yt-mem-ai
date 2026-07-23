@@ -10,3 +10,4 @@ venv/
 :memory:/
 yt_lance/
 digests/
+compilations/

@@ -205,3 +205,13 @@ def test_run_recommend_returns_ranked(tmp_path, monkeypatch):
                         lambda db, limit=20: [("v2", 0.9), ("v1", 0.1)])
     ranked = cli.run_recommend(cfg, limit=20, db=conn)
     assert ranked == [("v2", 0.9), ("v1", 0.1)]
+
+
+def test_run_compile_returns_clips(tmp_path):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    store.upsert_video(conn, Video(video_id="v", url="u", title="V", status="summarized", published_at="2026-07-22"))
+    store.replace_chunks(conn, "v", [{"id": "v:0", "video_id": "v", "start_s": 0.0, "end_s": 30.0, "text": "c"}])
+    store.upsert_summary(conn, "v", "s", '[{"start_s": 0, "label": "hi"}]', "[]", "m", "t0")
+    clips = cli.run_compile(cfg, since="2026-07-01", db=conn)
+    assert clips and clips[0].link.endswith("watch?v=v&t=0s")
