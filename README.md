@@ -1,8 +1,9 @@
 # yt_summary — YouTube AI CLI
 
 Download YouTube audio, transcribe (captions → faster-whisper fallback), store
-everything in an embedded **LanceDB** with per-chunk embeddings, and search your
-library semantically. Summaries/highlights/Q&A are produced by a Claude Code skill.
+everything in an embedded **LanceDB** with per-chunk embeddings, discover
+subscription uploads, and search your library semantically. Summaries,
+highlights, and Q&A are produced by Claude Code skills, not an API.
 
 ## Setup
 
@@ -18,28 +19,27 @@ Config (`.env`): `YT_STORE_PATH` (LanceDB dir), `YT_EMBEDDING_BACKEND=local|open
 ## Commands
 
 ```bash
-yt-ai fetch <url>            # download + transcribe + embed + store
+yt-ai fetch <url>            # download + transcribe + embed + store one video
 yt-ai transcript <url>       # same pipeline
-yt-ai show <video_id>        # metadata + transcript ( --json for machine output )
+yt-ai discover               # list new subscription uploads (--after/--deep/--min-duration/--json)
+yt-ai fetch-pending          # batch-fetch all pending 'discovered' videos (--since/--limit)
+yt-ai list                   # list stored videos (--status/--since/--json)
+yt-ai show <video_id>        # metadata + transcript (--json)
 yt-ai status                 # counts by status
-yt-ai search "<query>"       # semantic search ( --hybrid | --fts | --vector, -k N )
-yt-ai save-summary <id> ...  # used by the summarize-video skill
-yt-ai discover               # list new subscription uploads (daily routine)
-                             #   --after YYYY-MM-DD | --deep | --min-duration N | --json
+yt-ai search "<query>"       # semantic search (--hybrid/--fts/--vector, -k N)
+yt-ai save-summary <id> ...  # persist a summary (used by skills)
 ```
 
 ## Daily routine
 
-`yt-ai discover` lists subscription uploads published since your last run
-(first run defaults to the last 7 days), storing them as `discovered`. It never
-downloads or re-touches videos you've already fetched. Pipe `--json` into your
-own loop to batch-`fetch` the ones you want.
+```bash
+yt-ai discover               # find new subscription uploads → 'discovered'
+yt-ai fetch-pending          # download+transcribe+embed today's batch (robust, skips failures)
+# then in Claude Code:
+/daily-digest                # per-video summaries + digests/YYYY-MM-DD.md
+```
 
-## Summaries
-
-After `fetch`, invoke the **summarize-video** Claude Code skill with a `video_id`;
-it reads the transcript via `yt-ai show --json`, anchors highlights with
-`yt-ai search`, and writes results back with `yt-ai save-summary`.
+Single video on demand: `yt-ai fetch <url>` then the `/summarize-video` skill.
 
 ## Tests
 
