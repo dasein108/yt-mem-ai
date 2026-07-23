@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveApiCommand, waitForApi } from './lib'
+import { resolveApiCommand, waitForApi, needsTreeKill, treeKillArgs } from './lib'
 
 describe('resolveApiCommand', () => {
   it('defaults to uv run yt-ai serve', () => {
@@ -25,5 +25,20 @@ describe('waitForApi', () => {
     const fail = (async () => { calls++; throw new Error('down') }) as unknown as typeof fetch
     expect(await waitForApi('u', fail, { attempts: 3, delayMs: 0 })).toBe(false)
     expect(calls).toBe(3)
+  })
+})
+
+describe('needsTreeKill', () => {
+  it('is true on win32', () => {
+    expect(needsTreeKill('win32')).toBe(true)
+  })
+  it('is false on darwin', () => {
+    expect(needsTreeKill('darwin')).toBe(false)
+  })
+})
+
+describe('treeKillArgs', () => {
+  it('builds taskkill args for a pid', () => {
+    expect(treeKillArgs(123)).toEqual(['/pid', '123', '/t', '/f'])
   })
 })

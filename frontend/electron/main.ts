@@ -2,7 +2,8 @@ import { app, BrowserWindow, Tray, Menu, nativeImage } from 'electron'
 import { spawn, type ChildProcess } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { resolveApiCommand, waitForApi } from './lib'
+import { resolveApiCommand, waitForApi, needsTreeKill, treeKillArgs } from './lib'
+import { TRAY_ICON_DATA_URL } from './tray-icon'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..', '..') // frontend/dist-electron -> repo root
@@ -21,7 +22,13 @@ function startSidecar(): void {
 }
 
 function stopSidecar(): void {
-  if (sidecar && !sidecar.killed) sidecar.kill()
+  if (sidecar && !sidecar.killed) {
+    if (sidecar.pid && needsTreeKill(process.platform)) {
+      spawn('taskkill', treeKillArgs(sidecar.pid))
+    } else {
+      sidecar.kill()
+    }
+  }
   sidecar = null
 }
 
@@ -44,7 +51,8 @@ function createWindow(): void {
 }
 
 function createTray(): void {
-  tray = new Tray(nativeImage.createEmpty())
+  const icon = nativeImage.createFromDataURL(TRAY_ICON_DATA_URL)
+  tray = new Tray(icon)
   tray.setToolTip('yt_summary')
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Show', click: () => win?.show() },

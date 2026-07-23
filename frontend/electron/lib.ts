@@ -9,6 +9,14 @@ export function resolveApiCommand(env: Record<string, string | undefined>, repoR
   return { command: 'uv', args: ['run', 'yt-ai', 'serve', '--port', port], cwd: repoRoot }
 }
 
+export function needsTreeKill(platform: string): boolean {
+  return platform === 'win32'
+}
+
+export function treeKillArgs(pid: number): string[] {
+  return ['/pid', String(pid), '/t', '/f']
+}
+
 export interface WaitOpts { attempts?: number; delayMs?: number }
 
 export async function waitForApi(
