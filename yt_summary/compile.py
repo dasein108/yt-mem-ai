@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
+from .store import db as store
+
 DEFAULT_FALLBACK_S = 45.0
 
 
@@ -90,3 +92,16 @@ def render_markdown(clips: list[Clip], since: str | None, max_minutes: float) ->
             lines.append(f"- [{_fmt_ts(c.start_s)}] {c.label} — {c.link}")
         lines.append("")
     return "\n".join(lines)
+
+
+def compile_highlights(db, since: str, max_minutes: float = 20,
+                       fallback_s: float = DEFAULT_FALLBACK_S) -> list[Clip]:
+    videos = store.list_videos_by_status(db, "summarized", since=since)  # newest-first
+    all_clips: list[Clip] = []
+    for v in videos:
+        summary = store.get_summary(db, v.video_id)
+        if not summary:
+            continue
+        chunks = store.list_chunks(db, v.video_id)
+        all_clips.extend(video_clips(v, summary, chunks, fallback_s))
+    return accumulate(all_clips, max_minutes * 60)
