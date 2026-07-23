@@ -30,4 +30,5 @@ export const handlers = [
   http.get('/api/jobs/:id', ({ params }) => HttpResponse.json({
     id: String(params.id), kind: 'fetch', status: 'done', progress: null,
     result: { video_id: 'vX' }, error: null, created_at: 't0' })),
+  http.post('/api/log', () => new HttpResponse(null, { status: 204 })),
 ]

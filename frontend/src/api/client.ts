@@ -1,15 +1,6 @@
 import type { VideoOut, VideoDetail, SearchHit, Job, StatusCounts } from './types'
-
-// Resolved per-request (not module load) so the Electron preload's runtime
-// `window.electron.apiBase` — set after the page loads — is honored, and so
-// tests can inject it before calling the client.
-function apiBase(): string {
-  return (
-    (typeof window !== 'undefined' && window.electron?.apiBase) ||
-    (import.meta.env.VITE_API_BASE as string | undefined) ||
-    '/api'
-  )
-}
+import { apiBase } from '@/lib/apiBase'
+import { log } from '@/lib/log'
 
 export class ApiError extends Error {
   status: number
@@ -31,6 +22,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
       const body = await res.json()
       detail = (body as { detail?: string }).detail ?? detail
     } catch { /* non-json */ }
+    log('ui.api_error', 'error', detail, { status: res.status, path })
     throw new ApiError(res.status, detail)
   }
   if (res.status === 204) return undefined as T
