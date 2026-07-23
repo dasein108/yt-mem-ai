@@ -48,8 +48,9 @@ def summarize_video(cfg: Config, db, video_id: str, client=None) -> dict:
 
     starts = sorted(float(c["start_s"]) for c in chunks if c.get("start_s") is not None)
     for h in data.get("highlights", []):
-        if "start_s" in h:
-            h["start_s"] = _nearest(starts, float(h["start_s"]))
+        s = h.get("start_s")
+        if isinstance(s, (int, float)):
+            h["start_s"] = _nearest(starts, float(s))
 
     store.upsert_summary(
         db, video_id, data.get("summary_md", ""),

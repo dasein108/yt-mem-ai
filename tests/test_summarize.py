@@ -62,6 +62,28 @@ def test_summarize_persists_and_snaps(tmp_path):
     assert store.get_video(conn, "v1").status == "summarized"
 
 
+def test_summarize_malformed_highlight_start_s_does_not_crash(tmp_path):
+    conn = _db(tmp_path)
+    _seed(conn)
+    content = json.dumps({
+        "summary_md": "A summary.",
+        "highlights": [
+            {"start_s": None, "label": "x"},
+            {"start_s": 11.7, "label": "the world part"},  # 11.7 → nearest 10.0
+        ],
+        "qa": [{"q": "what?", "a": "world"}]})
+    out = summarize.summarize_video(_cfg(), conn, "v1", client=_FakeClient(content))
+    assert out["summary_md"] == "A summary."
+    assert out["highlights"][0]["start_s"] is None  # untouched
+    assert out["highlights"][1]["start_s"] == 10.0  # snapped
+    saved = store.get_summary(conn, "v1")
+    assert saved["summary_md"] == "A summary."
+    saved_highlights = json.loads(saved["highlights"])
+    assert saved_highlights[0]["start_s"] is None
+    assert saved_highlights[1]["start_s"] == 10.0
+    assert store.get_video(conn, "v1").status == "summarized"
+
+
 def test_summarize_no_transcript_errors(tmp_path):
     conn = _db(tmp_path)
     store.upsert_video(conn, Video(video_id="x", url="u", status="downloaded"))

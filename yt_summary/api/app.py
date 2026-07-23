@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException, Response
 from ..cli import (open_store, run_list, run_search, run_recommend, run_feedback)
 from ..store import db as store
 from . import schemas
+from .app_jobs import register_jobs
 from .jobs import JobRegistry, Worker
 
 
@@ -50,7 +51,10 @@ def create_app(cfg, *, store_opener=None, summarize_client=None, start_worker: b
 
     @app.get("/search", response_model=list[schemas.SearchHit])
     def search(q: str, mode: str = "hybrid", k: int = 10):
-        return run_search(cfg, q, mode=mode, k=k, db=app.state.db)
+        try:
+            return run_search(cfg, q, mode=mode, k=k, db=app.state.db)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
 
     @app.get("/recommend", response_model=list[schemas.RecommendItem])
     def recommend(limit: int = 20):
@@ -67,7 +71,5 @@ def create_app(cfg, *, store_opener=None, summarize_client=None, start_worker: b
         return Response(status_code=204)
 
     # job routes are added in Task 4 via register_jobs(app, cfg)
-    from .app_jobs import register_jobs  # noqa: E402
-
     register_jobs(app, cfg)
     return app

@@ -50,3 +50,10 @@ def test_status_and_feedback(tmp_path):
         r = client.post("/feedback", json={"video_id": "v1", "signal": 1})
         assert r.status_code == 204
     assert len(store.list_feedback(conn)) == 1
+
+
+def test_search_invalid_mode_returns_422(tmp_path):
+    client, _ = _client(tmp_path)
+    with client:
+        r = client.get("/search", params={"q": "x", "mode": "bogus"})
+        assert r.status_code == 422

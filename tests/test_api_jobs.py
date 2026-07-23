@@ -1,3 +1,4 @@
+import time
 import lancedb
 from fastapi.testclient import TestClient
 from tests.support import fake_embedder
@@ -44,3 +45,25 @@ def test_jobs_list_and_404(tmp_path):
         client.post("/jobs/discover", json={})
         assert len(client.get("/jobs").json()) == 1
         assert client.get("/jobs/nope").status_code == 404
+
+
+def test_fetch_job_runs_on_real_worker_thread(tmp_path, monkeypatch):
+    conn = lancedb.connect(str(tmp_path / "lance"))
+    store.init_db(conn, fake_embedder())
+    monkeypatch.setattr("yt_summary.api.app_jobs.run_fetch",
+                        lambda url, cfg, force=False, db=None, video_id=None: "vid123")
+    app = create_app(_cfg(tmp_path), store_opener=lambda: conn, start_worker=True)
+    client = TestClient(app)
+    with client:
+        r = client.post("/jobs/fetch", json={"url": "https://y/abc"})
+        assert r.status_code == 200
+        jid = r.json()["id"]
+
+        deadline = time.monotonic() + 2.0
+        got = client.get(f"/jobs/{jid}").json()
+        while got["status"] not in ("done", "error") and time.monotonic() < deadline:
+            time.sleep(0.02)
+            got = client.get(f"/jobs/{jid}").json()
+
+        assert got["status"] == "done"
+        assert got["result"] == {"video_id": "vid123"}
