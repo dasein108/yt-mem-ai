@@ -9,3 +9,4 @@ venv/
 .superpowers/
 :memory:/
 yt_lance/
+digests/
