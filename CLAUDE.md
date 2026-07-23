@@ -13,6 +13,11 @@ not an API) to keep it free and high-quality.
 ## Architecture (module map)
 
 - `config.py` — `.env` loading (`Config`). Secrets only from `.env` (gitignored).
+- `obs.py` — unified logging. `log_event(source, event, level="info", msg="", *,
+  log_file=None, **ctx)` never raises (append fails silently); `blog(...)` is the
+  `source="backend"` shorthand used across `cli.py`/`api/`. Writes one JSON line
+  (`{ts, source, level, event, msg, ...ctx}`) to `Config.log_file`
+  (`YT_LOG_FILE` env, default `logs/common.jsonl`; gitignored).
 - `proxy.py` / `cookies.py` — Webshare rotating proxy + Chrome cookies for yt-dlp.
 - `download.py` — yt-dlp download + metadata; `build_opts(cfg, download_audio)`.
 - `transcript/` — `captions.py` (youtube-transcript-api) → `whisper.py` (faster-whisper)
@@ -47,8 +52,10 @@ not an API) to keep it free and high-quality.
   desktop UI:
   - `app.py` — `create_app(cfg, *, store_opener, summarize_client, start_worker)`
     factory + read routes (`/videos`, `/videos/{id}`, `/status`, `/search`,
-    `/recommend`, `POST /feedback`); wires up the in-memory job registry/worker
-    via `lifespan` and delegates job routes to `app_jobs.register_jobs`.
+    `/recommend`, `POST /feedback`, `POST /log`); wires up the in-memory job
+    registry/worker via `lifespan` and delegates job routes to
+    `app_jobs.register_jobs`. `POST /log` forwards the frontend's `log()` calls
+    into `obs.log_event("frontend", ...)` — see "Logging" below.
   - `app_jobs.py` — `POST /jobs/{fetch,discover,fetch-pending,summarize}` +
     `GET /jobs/{id}`, `GET /jobs`; each job closure reopens the store via
     `app.state.store_opener()` and runs on `jobs.py`'s in-memory `Worker`
@@ -94,6 +101,16 @@ transcribed → summarized`.
   network or download models — the registered `FakeEmbedder` (tests/support.py) covers
   embeddings.
 - Dates are `YYYY-MM-DD` strings; string comparison is date comparison.
+- **Logging convention** — every runtime writes to the same file,
+  `logs/common.jsonl` (one JSON object per line, gitignored, never edit by
+  hand): backend via `obs.log_event`/`blog`, the frontend via
+  `frontend/src/lib/log.ts`'s `log()` (fire-and-forget `POST /log`, plus
+  `installLogBridge()` auto-forwarding `console.error`/`warn` and uncaught
+  errors/rejections), and Electron's main process via
+  `frontend/electron/lib.ts`'s `logLine()`/`logsPath()`. Every line has
+  `{ts, source, level, event, msg, ...ctx}` with `source ∈
+  backend|electron|frontend`; logging never raises. Use the `yt-debugger`
+  skill to trace an issue across all three.
 
 ## Recommendations
 
@@ -105,6 +122,9 @@ transcribed/summarized videos.
 
 - `summarize-video` — one ingested video → summary/highlights/Q&A (`summaries` table).
 - `daily-digest` — a day's transcribed videos → per-video summaries + `digests/<DATE>.md`.
+- `yt-debugger` — diagnose the app end-to-end: run `yt-ai serve`, introspect
+  `/openapi.json`, probe endpoints, and jq-filter `logs/common.jsonl` by
+  source/level/event/job_id to correlate a failure across backend/electron/frontend.
 
 There are two independent summarization paths, both writing the same `summaries`
 table via `store.upsert_summary`: the skills-primary path above (free, via Claude

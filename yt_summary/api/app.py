@@ -23,6 +23,8 @@ def create_app(cfg, *, store_opener=None, summarize_client=None, start_worker: b
         app.state.worker = Worker(app.state.registry)
         if start_worker:
             app.state.worker.start()
+        from ..obs import blog
+        blog("api.start", msg="server ready")
         yield
         app.state.worker.stop()
 
@@ -72,6 +74,14 @@ def create_app(cfg, *, store_opener=None, summarize_client=None, start_worker: b
     @app.post("/feedback", status_code=204)
     def feedback(body: schemas.FeedbackIn):
         run_feedback(cfg, body.video_id, body.signal, db=app.state.db)
+        return Response(status_code=204)
+
+    @app.post("/log", status_code=204)
+    def post_log(body: schemas.LogIn):
+        from ..obs import log_event
+        safe_ctx = {k: v for k, v in (body.ctx or {}).items()
+                    if k not in {"source", "event", "level", "msg", "log_file", "ts"}}
+        log_event("frontend", body.event, body.level or "info", body.msg or "", **safe_ctx)
         return Response(status_code=204)
 
     # job routes are added in Task 4 via register_jobs(app, cfg)

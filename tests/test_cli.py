@@ -215,3 +215,17 @@ def test_run_compile_returns_clips(tmp_path):
     store.upsert_summary(conn, "v", "s", '[{"start_s": 0, "label": "hi"}]', "[]", "m", "t0")
     clips = cli.run_compile(cfg, since="2026-07-01", db=conn)
     assert clips and clips[0].link.endswith("watch?v=v&t=0s")
+
+
+def test_run_fetch_emits_workflow_events(tmp_path, monkeypatch):
+    import json
+    monkeypatch.setenv("YT_LOG_FILE", str(tmp_path / "c.jsonl"))
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    monkeypatch.setattr(cli, "download",
+        lambda url, c: (Video(video_id="abc", url=url, status="downloaded"), "/a.mp3"))
+    monkeypatch.setattr(cli, "get_transcript",
+        lambda v, audio, c: T.TranscriptResult("captions", "en", "hello", [Segment("abc", 0.0, 1.0, "hello")]))
+    cli.run_fetch("https://y/abc", cfg, db=conn)
+    events = {json.loads(x)["event"] for x in (tmp_path / "c.jsonl").read_text().splitlines()}
+    assert "fetch.done" in events

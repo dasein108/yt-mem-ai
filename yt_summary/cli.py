@@ -16,6 +16,7 @@ from .recommend import recommend as recommend_videos
 from .compile import compile_highlights, render_markdown
 from .supercut import build_supercut
 from . import memory
+from .obs import blog
 
 app = typer.Typer(help="YouTube AI CLI — download, transcribe, embed, search.")
 
@@ -39,19 +40,24 @@ def run_fetch(url: str, cfg, force: bool = False, db=None, video_id: str | None 
         db = open_store(cfg)
     vid = video_id or _extract_video_id(url)
     if vid and not force and memory.is_seen(db, vid):
+        blog("fetch.skip", video_id=vid)
         return vid
 
     video, audio = download(url, cfg)
     if not force and memory.is_seen(db, video.video_id):
+        blog("fetch.skip", video_id=video.video_id)
         return video.video_id
     store.upsert_video(db, video)
+    blog("fetch.download", video_id=video.video_id, audio_path=audio)
     result = get_transcript(video, audio, cfg)
+    blog("fetch.transcribe", video_id=video.video_id, source_kind=result.source)
     store.insert_transcript(db, TranscriptRow(
         video_id=video.video_id, source=result.source, lang=result.lang,
         full_text=result.full_text, created_at=datetime.now(UTC).isoformat()))
     chunks = chunk_segments(video.video_id, result.segments, cfg.chunk_target_s)
     store.replace_chunks(db, video.video_id, chunks)
     memory.mark_status(db, video.video_id, "transcribed")
+    blog("fetch.done", video_id=video.video_id, status="transcribed")
     return video.video_id
 
 
@@ -164,6 +170,7 @@ def run_discover(cfg, after: str | None = None, deep: bool = False,
         db = open_store(cfg)
     cutoff = after or store.get_state(db, "last_discover_at") \
         or (date.today() - timedelta(days=7)).isoformat()
+    blog("discover.start", after=cutoff, deep=deep)
     discovered = discover_videos(cfg, cutoff, deep=deep, min_duration=min_duration)
     new_count = 0
     for v in discovered:
@@ -173,6 +180,7 @@ def run_discover(cfg, after: str | None = None, deep: bool = False,
             store.upsert_channel(db, v.channel_id, None, 1)
         store.insert_discovered_video(db, v)
     store.set_state(db, "last_discover_at", date.today().isoformat())
+    blog("discover.done", new=new_count, found=len(discovered))
     return discovered, new_count
 
 
