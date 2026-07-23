@@ -64,3 +64,10 @@ class FetchPendingIn(BaseModel):
 
 class SummarizeIn(BaseModel):
     video_id: str
+
+
+class LogIn(BaseModel):
+    event: str
+    level: str | None = None
+    msg: str | None = None
+    ctx: dict | None = None

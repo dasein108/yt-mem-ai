@@ -1,10 +1,13 @@
 from __future__ import annotations
 import queue
 import threading
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, UTC
 from typing import Callable
+
+from ..obs import blog
 
 
 @dataclass
@@ -62,12 +65,17 @@ class Worker:
             return False
         job, fn = item
         job.status = "running"
+        blog("job.running", job_id=job.id, kind=job.kind)
+        start = time.monotonic()
         try:
             job.result = fn(job)
             job.status = "done"
+            blog("job.done", job_id=job.id, kind=job.kind,
+                 duration_ms=round((time.monotonic() - start) * 1000))
         except Exception as exc:  # noqa: BLE001 - jobs must never kill the worker
             job.error = str(exc)
             job.status = "error"
+            blog("job.error", level="error", msg=str(exc), job_id=job.id, kind=job.kind)
         finally:
             self._q.task_done()
         return True
