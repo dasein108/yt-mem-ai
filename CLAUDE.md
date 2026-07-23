@@ -40,6 +40,13 @@ not an API) to keep it free and high-quality.
     summarization path, calling OpenRouter (`OPENROUTER_API_KEY` +
     `YT_OPENROUTER_MODEL`) and snapping highlight timestamps to chunk anchors.
   - `schemas.py` — pydantic request/response models for the above.
+- `frontend/` — SP4b desktop UI: browser-first React (Vite+React+TS) over the
+  SP4a local API, built with TanStack Query for data fetching and MSW for
+  offline tests. MVP scope: Library/Detail/Search/Jobs; Recommend/Digest are
+  deferred. Vite proxies `/api` to `127.0.0.1:8000` (see
+  `frontend/vite.config.ts`); `VITE_API_BASE` overrides the client's base URL.
+  Wrapping this in Electron for a native desktop app is SP4c. See
+  `frontend/README.md` for setup and scripts.
 
 ## Store (LanceDB)
 

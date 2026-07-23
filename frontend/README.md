@@ -1,32 +1,58 @@
-# React + TypeScript + Vite
+# yt_summary — Desktop UI (SP4b)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A browser-first React UI for the `yt_summary` local API. It's the MVP web
+frontend for `yt-ai serve`, and the foundation for the Electron desktop app
+planned in SP4c.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Vite + React + TypeScript, TanStack Query for data fetching/caching, Tailwind
++ a few shadcn-style primitives (`src/components/ui`) for layout, and MSW for
+offline component/hook tests.
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+This starts Vite on **http://localhost:5173**. The dev server proxies
+`/api/*` to `http://127.0.0.1:8000` (see `vite.config.ts`), stripping the
+`/api` prefix before forwarding — so the app always talks to `/api/...` and
+never needs to know the backend's real host/port.
+
+For live data, run the backend first, in the repo root:
+
+```bash
+yt-ai serve   # localhost-only FastAPI server, defaults to 127.0.0.1:8000
+```
+
+Without it running, the UI loads but requests fail (no mock fallback outside
+of tests).
+
+If you need to point at a different API origin (e.g. no Vite proxy, or a
+non-default port), set `VITE_API_BASE` — it defaults to `/api`.
+
+## Scripts
+
+```bash
+npm run dev         # Vite dev server on :5173, proxying /api -> 127.0.0.1:8000
+npm run test        # vitest, offline via MSW (no backend needed)
+npm run build       # tsc -b && vite build
+npm run typecheck   # tsc -b (no emit check)
+npm run lint        # eslint . --max-warnings 0
+```
+
+## Scope
+
+This is an MVP: **Library** (list + status filter), **Detail** (summary,
+highlights, Q&A, like/dislike, trigger Summarize), **Search** (replaces the
+library pane), and a **Jobs** strip (fetch/discover/fetch-pending/summarize,
+with polling). It talks to the read/write/job endpoints exposed by the SP4a
+API (`/videos`, `/status`, `/search`, `/feedback`, `/jobs/*`).
+
+**Deferred** (not in this UI yet):
+
+- Recommend and Daily Digest views
+- The Electron desktop wrapper (SP4c) — this app is currently browser-only
