@@ -79,7 +79,9 @@ def create_app(cfg, *, store_opener=None, summarize_client=None, start_worker: b
     @app.post("/log", status_code=204)
     def post_log(body: schemas.LogIn):
         from ..obs import log_event
-        log_event("frontend", body.event, body.level or "info", body.msg or "", **(body.ctx or {}))
+        safe_ctx = {k: v for k, v in (body.ctx or {}).items()
+                    if k not in {"source", "event", "level", "msg", "log_file", "ts"}}
+        log_event("frontend", body.event, body.level or "info", body.msg or "", **safe_ctx)
         return Response(status_code=204)
 
     # job routes are added in Task 4 via register_jobs(app, cfg)

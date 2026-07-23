@@ -20,7 +20,15 @@ function startSidecar(): void {
   const { command, args, cwd } = resolveApiCommand(process.env, repoRoot)
   logLine(logFile, { source: 'electron', event: 'electron.sidecar.spawn', command, args })
   sidecar = spawn(command, args, { cwd, stdio: 'inherit', shell: process.platform === 'win32' })
-  sidecar.on('exit', (code) => console.log(`[sidecar] exited ${code}`))
+  sidecar.on('exit', (code) => {
+    console.log(`[sidecar] exited ${code}`)
+    if (code !== 0 && code !== null) {
+      logLine(logFile, {
+        source: 'electron', event: 'electron.sidecar.exit', level: 'error',
+        msg: 'sidecar exited with non-zero code', code,
+      })
+    }
+  })
 }
 
 function stopSidecar(): void {
@@ -74,7 +82,14 @@ app.whenReady().then(async () => {
   logLine(logFile, { source: 'electron', event: 'electron.start' })
   startSidecar()
   const ready = await waitForApi(apiUrl, fetch, { attempts: 60, delayMs: 500 })
-  logLine(logFile, { source: 'electron', event: 'electron.api.wait', ok: ready, attempts: 60 })
+  if (ready) {
+    logLine(logFile, { source: 'electron', event: 'electron.api.wait', ok: ready, attempts: 60 })
+  } else {
+    logLine(logFile, {
+      source: 'electron', event: 'electron.api.wait', level: 'error',
+      msg: 'API did not become ready', ok: ready, attempts: 60,
+    })
+  }
   createWindow()
   createTray()
   if (!ready) {

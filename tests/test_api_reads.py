@@ -76,3 +76,16 @@ def test_post_log_appends_frontend_line(tmp_path, monkeypatch):
     import json
     lines = [json.loads(x) for x in (tmp_path / "c.jsonl").read_text().splitlines()]
     assert any(entry["source"] == "frontend" and entry["event"] == "ui.start" and entry["a"] == 1 for entry in lines)
+
+
+def test_post_log_reserved_ctx_key_does_not_500(tmp_path, monkeypatch):
+    monkeypatch.setenv("YT_LOG_FILE", str(tmp_path / "c.jsonl"))
+    client, _ = _client(tmp_path)
+    with client:
+        r = client.post("/log", json={"event": "ui.x", "ctx": {"level": "debug", "a": 1}})
+        assert r.status_code == 204
+    import json
+    lines = [json.loads(x) for x in (tmp_path / "c.jsonl").read_text().splitlines()]
+    entry = next(e for e in lines if e["event"] == "ui.x")
+    assert entry["a"] == 1
+    assert entry["level"] == "info"

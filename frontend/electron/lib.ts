@@ -46,7 +46,10 @@ export function logsPath(repoRoot: string): string {
 export function logLine(file: string, obj: Record<string, unknown>): void {
   try {
     fs.mkdirSync(path.dirname(file), { recursive: true })
-    fs.appendFileSync(file, JSON.stringify({ ts: new Date().toISOString(), ...obj }) + '\n')
+    fs.appendFileSync(
+      file,
+      JSON.stringify({ ts: new Date().toISOString(), level: 'info', msg: '', ...obj }) + '\n',
+    )
   } catch {
     /* never throw */
   }
