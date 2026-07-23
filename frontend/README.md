@@ -55,4 +55,51 @@ API (`/videos`, `/status`, `/search`, `/feedback`, `/jobs/*`).
 **Deferred** (not in this UI yet):
 
 - Recommend and Daily Digest views
-- The Electron desktop wrapper (SP4c) — this app is currently browser-only
+
+## Electron desktop app (SP4c)
+
+`frontend/electron/` wraps this UI in an Electron shell that manages the
+local API as a sidecar process, so there's nothing to start by hand.
+
+```bash
+npm run electron:dev     # dev: Vite + Electron, auto-spawns the sidecar
+npm run electron:build   # package a current-OS installer into release/
+```
+
+- **`electron:dev`** starts the Vite dev server and an Electron window
+  pointed at it. On launch, the main process spawns `uv run yt-ai serve`
+  (from the repo root) as a child process and polls `GET /status` until the
+  API answers (or times out), then loads the UI. You do not need to run
+  `yt-ai serve` yourself in this mode.
+- **Tray behavior**: minimizing the window hides it to the system tray
+  instead of closing it. The tray icon's **Show** menu item restores the
+  window; **Quit** tears down the sidecar process (tree-killed on Windows so
+  no orphaned Python process is left behind) and exits the app. Closing the
+  window (the OS close button) also just hides to tray — only **Quit**
+  fully exits.
+- **Watch** plays a video's YouTube page in-app (`<webview>` in Electron,
+  falls back to an `<iframe>` in the plain browser build) instead of
+  opening a new tab.
+- **Sidecar overrides**: set `YT_API_CMD` to override the spawned command
+  (default resolves `uv run yt-ai serve` against the repo root) and
+  `YT_API_PORT` to change the port the app spawns/polls (default `8000`).
+- **`electron:build`** runs `vite build` then `electron-builder --config
+  electron-builder.json`, producing a **current-OS-only** package (dmg on
+  macOS, nsis on Windows, AppImage on Linux) under `frontend/release/`.
+  Cross-platform installer generation, code signing/notarization, and
+  bundling the Python backend into the package (so end users don't need
+  `uv`/Python installed) are all deferred — today the packaged app still
+  shells out to `uv run yt-ai serve` on the host machine.
+
+### Manual smoke test
+
+Not automated — after any change to `frontend/electron/*`, a human should
+verify:
+
+1. `npm run electron:dev` → the window loads the UI and the sidecar starts
+   automatically (no manual `yt-ai serve`).
+2. Open a video and click **Watch** → it plays in-app.
+3. Minimize the window → it disappears to the tray, not the taskbar/dock.
+4. Click **Show** on the tray menu → the window is restored.
+5. Click **Quit** on the tray menu → the app exits and no sidecar process
+   is left running: `pgrep -f "yt-ai serve"` should print nothing.

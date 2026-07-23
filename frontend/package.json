@@ -12,7 +12,7 @@
     "lint": "eslint . --max-warnings 0",
     "preview": "vite preview",
     "electron:dev": "vite",
-    "electron:build": "vite build && electron-builder"
+    "electron:build": "vite build && electron-builder --config electron-builder.json"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.21",
