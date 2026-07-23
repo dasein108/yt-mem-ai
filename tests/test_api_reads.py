@@ -57,3 +57,11 @@ def test_search_invalid_mode_returns_422(tmp_path):
     with client:
         r = client.get("/search", params={"q": "x", "mode": "bogus"})
         assert r.status_code == 422
+
+
+def test_cors_header_present(tmp_path):
+    client, _ = _client(tmp_path)
+    with client:
+        r = client.get("/status", headers={"Origin": "http://localhost:5173"})
+        assert r.status_code == 200
+        assert r.headers.get("access-control-allow-origin") == "*"

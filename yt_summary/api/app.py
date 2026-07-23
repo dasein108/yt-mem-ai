@@ -2,6 +2,7 @@
 from __future__ import annotations
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Response
+from fastapi.middleware.cors import CORSMiddleware
 from ..cli import (open_store, run_list, run_search, run_recommend, run_feedback)
 from ..store import db as store
 from . import schemas
@@ -26,6 +27,9 @@ def create_app(cfg, *, store_opener=None, summarize_client=None, start_worker: b
         app.state.worker.stop()
 
     app = FastAPI(lifespan=lifespan)
+    app.add_middleware(
+        CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+    )
 
     def _video_out(v) -> dict:
         return {"video_id": v.video_id, "title": v.title, "url": v.url,
