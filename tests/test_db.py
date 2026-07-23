@@ -178,3 +178,13 @@ def test_list_videos_by_status_since_and_limit(tmp_path):
     assert [v.video_id for v in since] == ["c", "b"]        # a (07-18) excluded
     limited = store.list_videos_by_status(conn, "discovered", limit=1)
     assert [v.video_id for v in limited] == ["c"]           # newest only
+
+
+def test_list_feedback_returns_rows(tmp_path):
+    conn = _db(tmp_path)
+    store.insert_feedback(conn, "v1", 1, "2026-07-23T00:00:00+00:00")
+    store.insert_feedback(conn, "v1", -1, "2026-07-23T01:00:00+00:00")
+    store.insert_feedback(conn, "v2", 1, "2026-07-23T00:00:00+00:00")
+    rows = store.list_feedback(conn)
+    assert len(rows) == 3
+    assert {r["signal"] for r in rows if r["video_id"] == "v1"} == {1, -1}

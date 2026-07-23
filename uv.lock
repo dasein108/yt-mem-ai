@@ -2006,6 +2006,8 @@ source = { editable = "." }
 dependencies = [
     { name = "faster-whisper" },
     { name = "lancedb" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "openai" },
     { name = "python-dotenv" },
     { name = "sentence-transformers" },
@@ -2024,6 +2026,7 @@ dev = [
 requires-dist = [
     { name = "faster-whisper", specifier = ">=1.0" },
     { name = "lancedb", specifier = ">=0.15" },
+    { name = "numpy", specifier = ">=1.26" },
     { name = "openai", specifier = ">=1.40" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "python-dotenv", specifier = ">=1.0" },
