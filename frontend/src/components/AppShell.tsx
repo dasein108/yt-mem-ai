@@ -7,11 +7,13 @@ import { SearchView } from './SearchView'
 import { JobStrip } from './JobStrip'
 import { AddDialog } from './AddDialog'
 import { DiscoverDialog } from './DiscoverDialog'
+import { useStartFetchPending } from '@/api/hooks'
 
 export function AppShell() {
   const [query, setQuery] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [discoverOpen, setDiscoverOpen] = useState(false)
+  const fetchPending = useStartFetchPending()
   return (
     <div className="flex h-screen flex-col">
       <header className="flex items-center gap-2 border-b px-4 py-2">
@@ -20,6 +22,7 @@ export function AppShell() {
           onChange={(e) => setQuery(e.target.value)} className="max-w-md" />
         <Button variant="outline" onClick={() => setAddOpen(true)}>+ Add</Button>
         <Button variant="outline" onClick={() => setDiscoverOpen(true)}>Discover</Button>
+        <Button variant="outline" onClick={() => fetchPending.mutate({})}>Fetch pending</Button>
       </header>
       <div className="flex min-h-0 flex-1">
         <aside className="w-80 overflow-y-auto border-r">

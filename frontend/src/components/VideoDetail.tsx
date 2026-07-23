@@ -32,7 +32,7 @@ export function VideoDetail() {
         <Button size="sm" variant="outline" onClick={() => feedback.mutate({ video_id: v.video_id, signal: 1 })}>👍 Like</Button>
         <Button size="sm" variant="outline" onClick={() => feedback.mutate({ video_id: v.video_id, signal: -1 })}>👎 Dislike</Button>
         {!v.summary && (
-          <Button size="sm" disabled={summarize.isPending} onClick={() => summarize.mutate(v.video_id)}>
+          <Button size="sm" disabled={summarize.isPending || summarize.isSuccess} onClick={() => summarize.mutate(v.video_id)}>
             {summarize.isPending ? 'Summarizing…' : 'Summarize'}
           </Button>
         )}

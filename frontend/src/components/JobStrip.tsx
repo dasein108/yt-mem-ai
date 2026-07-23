@@ -13,6 +13,7 @@ export function JobStrip() {
     if (doneCount > prevDone.current) {
       qc.invalidateQueries({ queryKey: ['videos'] })
       qc.invalidateQueries({ queryKey: ['status'] })
+      qc.invalidateQueries({ queryKey: ['video'] })
     }
     prevDone.current = doneCount
   }, [doneCount, qc])

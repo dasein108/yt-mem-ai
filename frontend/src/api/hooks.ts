@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
 import type { Job } from './types'
+import { useDebounce } from '@/lib/useDebounce'
 
 export function useVideos(filters: { status?: string; since?: string } = {}) {
   return useQuery({ queryKey: ['videos', filters], queryFn: () => api.listVideos(filters) })
@@ -12,10 +13,11 @@ export function useStatus() {
   return useQuery({ queryKey: ['status'], queryFn: api.getStatus })
 }
 export function useSearch(q: string, mode = 'hybrid') {
+  const debouncedQ = useDebounce(q, 300)
   return useQuery({
-    queryKey: ['search', q, mode],
-    queryFn: () => api.search(q, mode),
-    enabled: q.trim().length > 0,
+    queryKey: ['search', debouncedQ, mode],
+    queryFn: () => api.search(debouncedQ, mode),
+    enabled: debouncedQ.trim().length > 0,
   })
 }
 const active = (j: Job) => j.status === 'queued' || j.status === 'running'

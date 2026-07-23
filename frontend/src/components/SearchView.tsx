@@ -9,6 +9,7 @@ export function SearchView({ query }: { query: string }) {
     <div>
       <p className="border-b p-2 text-xs text-slate-500">Search: “{query}”</p>
       {isLoading && <p className="p-3 text-sm text-slate-500">searching…</p>}
+      {!isLoading && data?.length === 0 && <p className="p-3 text-sm text-slate-500">No results.</p>}
       <ul>
         {data?.map((h, i) => (
           <li key={i}>
