@@ -1,5 +1,9 @@
 # yt_summary/supercut.py
 from __future__ import annotations
+import os
+from dataclasses import dataclass, field
+
+from .compile import compile_highlights
 from .download import build_opts
 
 _FORMAT = "bestvideo[height<=720]+bestaudio/best[height<=720]"
@@ -60,3 +64,57 @@ def refs_markdown(rendered, failed) -> str:
         for c in failed:
             lines.append(f"- {c.video_id}: {c.label}")
     return "\n".join(lines)
+
+
+@dataclass
+class Result:
+    out_path: str
+    rendered: list = field(default_factory=list)
+    failed: list = field(default_factory=list)
+
+
+def _default_download(clip, cfg, out_path: str) -> None:
+    from yt_dlp import YoutubeDL
+    opts = download_section_opts(clip, cfg, out_path)
+    with YoutubeDL(opts) as ydl:
+        ydl.download([f"https://www.youtube.com/watch?v={clip.video_id}"])
+
+
+def _default_ffmpeg(argv: list[str]) -> None:
+    import subprocess
+    subprocess.run(argv, check=True)
+
+
+def build_supercut(db, since: str, max_minutes: float, out_path: str, cfg=None,
+                   workdir: str | None = None, download_fn=None, ffmpeg_fn=None) -> Result:
+    download_fn = download_fn or _default_download
+    ffmpeg_fn = ffmpeg_fn or _default_ffmpeg
+    workdir = workdir or (out_path + ".work")
+    os.makedirs(workdir, exist_ok=True)
+
+    clips = compile_highlights(db, since, max_minutes)
+    rendered, failed, normalized_paths = [], [], []
+    for i, clip in enumerate(clips):
+        raw = os.path.join(workdir, f"{i:03d}_raw.mp4")
+        norm = os.path.join(workdir, f"{i:03d}.mp4")
+        label_file = os.path.join(workdir, f"{i:03d}.txt")
+        try:
+            download_fn(clip, cfg, raw)
+            with open(label_file, "w") as f:
+                f.write(label_text(clip))
+            ffmpeg_fn(normalize_label_cmd(raw, norm, label_file))
+            normalized_paths.append(norm)
+            rendered.append(clip)
+        except Exception:  # noqa: BLE001 - continue-on-error per clip
+            failed.append(clip)
+
+    if not rendered:
+        raise RuntimeError("no clips rendered (all downloads/renders failed or no highlights)")
+
+    list_file = os.path.join(workdir, "concat.txt")
+    write_concat_list(list_file, normalized_paths)
+    ffmpeg_fn(concat_cmd(list_file, out_path))
+
+    with open(out_path + ".refs.md", "w") as f:
+        f.write(refs_markdown(rendered, failed))
+    return Result(out_path=out_path, rendered=rendered, failed=failed)

@@ -1,7 +1,14 @@
+import json
 from pathlib import Path
 from types import SimpleNamespace
+
+import lancedb
+
 from yt_summary import supercut as S
 from yt_summary.config import Config
+from tests.support import fake_embedder
+from yt_summary.store import db as store
+from yt_summary.store.models import Video
 
 
 def _cfg(**over):
@@ -59,3 +66,63 @@ def test_refs_markdown_lists_rendered_and_failed():
                          [_clip(video_id="bad", label="nope", title="V2")])
     assert "hi" in md and "watch?v=v&t=10s" in md
     assert "Skipped" in md and "bad" in md
+
+
+def _db(tmp_path):
+    conn = lancedb.connect(str(tmp_path / "lance"))
+    store.init_db(conn, fake_embedder())
+    return conn
+
+
+def _seed(conn, vid, highlights, spans):
+    store.upsert_video(conn, Video(video_id=vid, url=f"https://y/{vid}", title=vid.upper(),
+                                   status="summarized", published_at="2026-07-22"))
+    store.replace_chunks(conn, vid, [
+        {"id": f"{vid}:{i}", "video_id": vid, "start_s": s, "end_s": e, "text": f"c{i}"}
+        for i, (s, e) in enumerate(spans)])
+    store.upsert_summary(conn, vid, "s", json.dumps(highlights), "[]", "m", "t0")
+
+
+def test_build_supercut_downloads_normalizes_concats(tmp_path):
+    conn = _db(tmp_path)
+    _seed(conn, "a", [{"start_s": 0, "label": "hi-a"}], [(0, 30)])
+    _seed(conn, "b", [{"start_s": 0, "label": "hi-b"}], [(0, 30)])
+    calls = {"download": [], "ffmpeg": []}
+
+    def fake_download(clip, cfg, out_path):
+        calls["download"].append(clip.video_id)
+        Path(out_path).write_text("raw")            # fake downloaded section
+
+    def fake_ffmpeg(argv):
+        calls["ffmpeg"].append(argv)
+        Path(argv[-1]).write_text("out")            # fake ffmpeg output
+
+    res = S.build_supercut(conn, since="2026-07-01", max_minutes=20,
+                           out_path=str(tmp_path / "reel.mp4"), workdir=str(tmp_path / "work"),
+                           download_fn=fake_download, ffmpeg_fn=fake_ffmpeg)
+    assert set(calls["download"]) == {"a", "b"}     # both downloaded
+    # one normalize per clip + one concat
+    assert len(calls["ffmpeg"]) == 3
+    assert res.out_path.endswith("reel.mp4")
+    assert len(res.rendered) == 2 and res.failed == []
+    assert Path(str(tmp_path / "reel.mp4") + ".refs.md").exists()
+
+
+def test_build_supercut_skips_failed_download(tmp_path):
+    conn = _db(tmp_path)
+    _seed(conn, "ok", [{"start_s": 0, "label": "ok"}], [(0, 30)])
+    _seed(conn, "bad", [{"start_s": 0, "label": "bad"}], [(0, 30)])
+
+    def fake_download(clip, cfg, out_path):
+        if clip.video_id == "bad":
+            raise RuntimeError("blocked")
+        Path(out_path).write_text("raw")
+
+    def fake_ffmpeg(argv):
+        Path(argv[-1]).write_text("out")
+
+    res = S.build_supercut(conn, since="2026-07-01", max_minutes=20,
+                           out_path=str(tmp_path / "r.mp4"), workdir=str(tmp_path / "w"),
+                           download_fn=fake_download, ffmpeg_fn=fake_ffmpeg)
+    assert [c.video_id for c in res.rendered] == ["ok"]
+    assert [c.video_id for c in res.failed] == ["bad"]
