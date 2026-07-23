@@ -60,3 +60,15 @@ def test_load_config_lance_defaults(tmp_path):
     assert cfg.embedding_model is None
     assert cfg.chunk_target_s == 45.0
     assert cfg.openai_api_key is None
+
+
+def test_load_config_hf_token(tmp_path):
+    from yt_summary.config import load_config
+    env = tmp_path / ".env"
+    env.write_text("HF_TOKEN=hf_abc123\n")
+    assert load_config(env).hf_token == "hf_abc123"
+
+
+def test_load_config_hf_token_default_none(tmp_path):
+    from yt_summary.config import load_config
+    assert load_config(tmp_path / "none.env").hf_token is None

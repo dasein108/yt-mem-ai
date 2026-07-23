@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 from lancedb.embeddings import get_registry
 from ..config import Config
 from .models import Segment
@@ -7,6 +8,10 @@ from .models import Segment
 def build_embedder(cfg: Config):
     backend = cfg.embedding_backend
     if backend == "local":
+        # Surface HF_TOKEN to huggingface_hub/sentence-transformers (higher rate
+        # limits, no unauthenticated-request warning). Don't override an env token.
+        if cfg.hf_token:
+            os.environ.setdefault("HF_TOKEN", cfg.hf_token)
         name = cfg.embedding_model or "all-MiniLM-L6-v2"
         return get_registry().get("sentence-transformers").create(name=name)
     if backend == "openai":
