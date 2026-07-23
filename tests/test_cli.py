@@ -75,6 +75,15 @@ def test_save_summary(tmp_path, monkeypatch):
     assert s["summary_md"] == "the summary" and s["model"] == "claude-code-skill"
 
 
+def test_save_summary_marks_video_summarized(tmp_path):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    store.upsert_video(conn, Video(video_id="vid", url="u", status="transcribed"))
+    cli.run_save_summary(cfg, "vid", "sum", "[]", "[]", db=conn)
+    assert store.get_video(conn, "vid").status == "summarized"
+    assert store.get_summary(conn, "vid")["summary_md"] == "sum"
+
+
 def test_run_discover_writes_and_advances_state(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     conn = _db(tmp_path)

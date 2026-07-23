@@ -142,6 +142,7 @@ def run_save_summary(cfg, video_id, summary_md, highlights_json, qa_json, db=Non
         db = open_store(cfg)
     store.upsert_summary(db, video_id, summary_md, highlights_json, qa_json,
                          "claude-code-skill", datetime.now(UTC).isoformat())
+    memory.mark_status(db, video_id, "summarized")
 
 
 @app.command("save-summary")

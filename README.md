@@ -22,12 +22,12 @@ Config (`.env`): `YT_STORE_PATH` (LanceDB dir), `YT_EMBEDDING_BACKEND=local|open
 yt-ai fetch <url>            # download + transcribe + embed + store one video
 yt-ai transcript <url>       # same pipeline
 yt-ai discover               # list new subscription uploads (--after/--deep/--min-duration/--json)
-yt-ai fetch-pending          # batch-fetch all pending 'discovered' videos (--since/--limit)
+yt-ai fetch-pending          # batch-fetch pending 'discovered' videos (since --since, default today; --limit)
 yt-ai list                   # list stored videos (--status/--since/--json)
 yt-ai show <video_id>        # metadata + transcript (--json)
 yt-ai status                 # counts by status
 yt-ai search "<query>"       # semantic search (--hybrid/--fts/--vector, -k N)
-yt-ai save-summary <id> ...  # persist a summary (used by skills)
+yt-ai save-summary <id> "<summary>" --highlights '<json>' --qa '<json>'  # persist a summary (used by skills)
 ```
 
 ## Daily routine
