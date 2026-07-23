@@ -47,7 +47,7 @@ def test_hybrid_search_runs(tmp_path):
 def _cfg(tmp_path):
     return Config(downloads_dir=tmp_path / "dl", proxy_username=None, proxy_password=None,
                   cookies_browser=None, whisper_model="small", whisper_device="cpu",
-                  whisper_compute_type="int8", openrouter_api_key=None,
+                  whisper_compute_type="int8", openrouter_api_key=None, openrouter_model="openai/gpt-4o-mini",
                   store_path=tmp_path / "lance", embedding_backend="local",
                   embedding_model=None, chunk_target_s=45.0, openai_api_key=None)
 

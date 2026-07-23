@@ -22,7 +22,24 @@ not an API) to keep it free and high-quality.
   `embeddings.py` (`build_embedder`, `chunk_segments`), `db.py` (LanceDB CRUD + search).
 - `memory.py` — status-based `is_seen` / `mark_status`.
 - `recommend.py` — taste-centroid ranking over chunk embeddings (like − dislike).
-- `cli.py` — Typer app; thin `run_*` cores are the testable seam.
+- `cli.py` — Typer app; thin `run_*` cores are the testable seam. `serve` runs the
+  local API (below).
+- `api/` — local FastAPI server (SP4), localhost-only, backend for the future
+  desktop UI:
+  - `app.py` — `create_app(cfg, *, store_opener, summarize_client, start_worker)`
+    factory + read routes (`/videos`, `/videos/{id}`, `/status`, `/search`,
+    `/recommend`, `POST /feedback`); wires up the in-memory job registry/worker
+    via `lifespan` and delegates job routes to `app_jobs.register_jobs`.
+  - `app_jobs.py` — `POST /jobs/{fetch,discover,fetch-pending,summarize}` +
+    `GET /jobs/{id}`, `GET /jobs`; each job closure reopens the store via
+    `app.state.store_opener()` and runs on `jobs.py`'s in-memory `Worker`
+    (jobs live in a process-local dict — nothing persisted across restarts).
+  - `jobs.py` — `JobRegistry`/`Job`/`Worker`, a queue + background thread with
+    an injectable `run_one()` seam for offline tests.
+  - `summarize.py` — `summarize_video(cfg, db, video_id, client)`: the API's
+    summarization path, calling OpenRouter (`OPENROUTER_API_KEY` +
+    `YT_OPENROUTER_MODEL`) and snapping highlight timestamps to chunk anchors.
+  - `schemas.py` — pydantic request/response models for the above.
 
 ## Store (LanceDB)
 
@@ -54,6 +71,11 @@ transcribed/summarized videos.
 
 - `summarize-video` — one ingested video → summary/highlights/Q&A (`summaries` table).
 - `daily-digest` — a day's transcribed videos → per-video summaries + `digests/<DATE>.md`.
+
+There are two independent summarization paths, both writing the same `summaries`
+table via `store.upsert_summary`: the skills-primary path above (free, via Claude
+Code) and `POST /jobs/summarize` in `api/summarize.py` (OpenRouter, for the local
+API/desktop UI). Neither is authoritative over the other — last write wins.
 
 ## Commands & daily routine
 
