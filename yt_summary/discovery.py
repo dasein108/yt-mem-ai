@@ -52,28 +52,58 @@ def _default_extract_fn(cfg: Config):
         opts = dict(base)
         opts["skip_download"] = True
         opts["extract_flat"] = "in_playlist" if flat else False
+        # subscriptions/channels tabs require auth; skip yt-dlp's authcheck so a
+        # first-account-only cookie jar still extracts the feed. approximate_date
+        # makes the flat feed carry a per-entry `timestamp` (from YouTube's "N
+        # hours ago"), so we get dates in the single feed call — no per-video
+        # lookups. Approximate to the hour, which is fine for date filtering.
+        opts["extractor_args"] = {"youtubetab": {"skip": ["authcheck"],
+                                                 "approximate_date": ["true"]}}
+        # Bound pagination + network: the subscriptions feed is newest-first, so
+        # the newest `discover_feed_limit` entries are what a daily run needs;
+        # without playlistend yt-dlp walks the entire history (minutes).
+        opts["playlistend"] = cfg.discover_feed_limit
+        opts["socket_timeout"] = 20
+        opts["retries"] = 1
+        opts["extractor_retries"] = 1
+        # Flat playlist extraction must be processed to yield entries. Per-video
+        # date lookups use process=False: format selection (which needs the JS
+        # challenge solver and fails without it) is skipped, but upload_date /
+        # timestamp are still present in the raw info.
         with YoutubeDL(opts) as ydl:
-            return ydl.extract_info(url, download=False) or {}
+            return ydl.extract_info(url, download=False, process=bool(flat)) or {}
 
     return extract_fn
 
 
-def _to_date(value) -> str | None:
-    """Convert a yt-dlp timestamp (epoch) or upload_date (YYYYMMDD) to YYYY-MM-DD."""
+def _to_ts(value) -> float | None:
+    """Convert a yt-dlp timestamp (epoch) or upload_date (YYYYMMDD) to an epoch
+    float (seconds, UTC). Dates map to that day's 00:00 UTC."""
     if value is None:
         return None
     if isinstance(value, (int, float)):
-        return datetime.fromtimestamp(value, UTC).strftime("%Y-%m-%d")
+        return float(value)
     text = str(value)
     if len(text) == 8 and text.isdigit():
-        return datetime.strptime(text, "%Y%m%d").strftime("%Y-%m-%d")
+        return datetime.strptime(text, "%Y%m%d").replace(tzinfo=UTC).timestamp()
     return None
 
 
-def _published_date(entry: dict, extract_fn) -> str | None:
-    pub = _to_date(entry.get("timestamp")) or _to_date(entry.get("upload_date"))
-    if pub:
-        return pub
+def _ts_to_date(ts: float | None) -> str | None:
+    return datetime.fromtimestamp(ts, UTC).strftime("%Y-%m-%d") if ts is not None else None
+
+
+def _day_epoch(date_str: str) -> float:
+    """Start-of-day epoch (00:00 UTC) for a YYYY-MM-DD cutoff string."""
+    return datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=UTC).timestamp()
+
+
+def _published_ts(entry: dict, extract_fn) -> float | None:
+    ts = _to_ts(entry.get("timestamp"))
+    if ts is None:
+        ts = _to_ts(entry.get("upload_date"))
+    if ts is not None:
+        return ts
     vid = entry.get("id")
     url = entry.get("url") or entry.get("webpage_url") or (
         f"https://www.youtube.com/watch?v={vid}" if vid else None
@@ -84,10 +114,10 @@ def _published_date(entry: dict, extract_fn) -> str | None:
         info = extract_fn(url, False) or {}
     except Exception:
         return None
-    return _to_date(info.get("timestamp")) or _to_date(info.get("upload_date"))
+    return _to_ts(info.get("timestamp")) or _to_ts(info.get("upload_date"))
 
 
-def _entry_to_video(entry: dict, published_at: str | None) -> Video:
+def _entry_to_video(entry: dict, published_ts: float | None) -> Video:
     vid = entry["id"]
     url = entry.get("url") or entry.get("webpage_url") or f"https://www.youtube.com/watch?v={vid}"
     return Video(
@@ -96,7 +126,8 @@ def _entry_to_video(entry: dict, published_at: str | None) -> Video:
         channel_id=entry.get("channel_id"),
         title=entry.get("title"),
         duration_s=entry.get("duration"),
-        published_at=published_at,
+        published_at=_ts_to_date(published_ts),
+        published_ts=published_ts,
         fetched_at=datetime.now(UTC).isoformat(),
         status="discovered",
     )
@@ -121,9 +152,22 @@ def _sources(extract_fn, deep: bool) -> list[list[dict]]:
     return sources
 
 
-def discover(cfg: Config, after: str, deep: bool = False,
+def _keep_duration(entry: dict, min_duration: int) -> bool:
+    dur = entry.get("duration")
+    return dur is None or dur >= min_duration  # keep live/unknown-duration entries
+
+
+def discover(cfg: Config, after: str | None = None, deep: bool = False,
              min_duration: int = 120, extract_fn=None,
-             timeout_s: float | None = None) -> list[Video]:
+             timeout_s: float | None = None,
+             after_ts: float | None = None, overlap_s: float = 0.0) -> list[Video]:
+    """Discover subscription uploads newer than a cutoff.
+
+    Cutoff precedence: `after_ts` (an exact epoch, from the incremental
+    high-water mark) wins over `after` (a YYYY-MM-DD string). `overlap_s` is
+    subtracted from whichever cutoff so hour-rounded approximate dates near the
+    boundary aren't missed — the DB dedupes the re-seen videos.
+    """
     if extract_fn is None:
         extract_fn = _default_extract_fn(cfg)
     timeout_s = timeout_s if timeout_s is not None else cfg.discover_timeout_s
@@ -131,7 +175,7 @@ def discover(cfg: Config, after: str, deep: bool = False,
         # Bound EACH extraction call by timeout_s. The feed/channel-list call is
         # where the Chrome-cookie Keychain hang bites and fails fast to the CLI;
         # per-video fallback lookups are also bounded but their DiscoverTimeout is
-        # caught by _published_date's best-effort handler (kept, date -> None).
+        # caught by _published_ts's best-effort handler (kept, ts -> None).
         _raw = extract_fn
 
         def timed_extract_fn(url: str, flat: bool) -> dict:
@@ -143,14 +187,24 @@ def discover(cfg: Config, after: str, deep: bool = False,
                 raise
 
         extract_fn = timed_extract_fn
+
+    if after_ts is not None:
+        cutoff_ts = after_ts - overlap_s
+    elif after:
+        cutoff_ts = _day_epoch(after) - overlap_s
+    else:
+        cutoff_ts = None  # no lower bound
+
     out: list[Video] = []
     for entries in _sources(extract_fn, deep):
         for entry in entries:
-            pub = _published_date(entry, extract_fn)
-            if pub is not None and pub < after:
+            # approximate_date puts a `timestamp` on each flat entry, so this
+            # resolves inline with no network. The per-video fallback only fires
+            # for the rare entry that still lacks a date.
+            ts = _published_ts(entry, extract_fn)
+            if cutoff_ts is not None and ts is not None and ts < cutoff_ts:
                 break  # source is newest-first: the rest are older
-            dur = entry.get("duration")
-            if dur is not None and dur < min_duration:
+            if not _keep_duration(entry, min_duration):
                 continue
-            out.append(_entry_to_video(entry, pub))
+            out.append(_entry_to_video(entry, ts))
     return out

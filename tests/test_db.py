@@ -19,11 +19,29 @@ def test_dataclasses_still_present():
 
 def test_lance_schemas_have_expected_fields():
     assert set(models.VideoSchema.model_fields) == {
-        "video_id", "channel_id", "title", "url", "duration_s",
-        "published_at", "fetched_at", "audio_path", "status"}
+        "video_id", "channel_id", "channel", "title", "url", "duration_s",
+        "published_at", "description", "tags", "fetched_at", "audio_path", "status"}
     assert set(models.TranscriptSchema.model_fields) == {
         "video_id", "source", "lang", "full_text", "created_at"}
     assert set(models.StateSchema.model_fields) == {"key", "value"}
+
+
+def test_ensure_columns_migrates_old_table(tmp_path):
+    import lancedb
+    from lancedb.pydantic import LanceModel
+    from yt_summary.store.db import _ensure_columns
+
+    class OldVideo(LanceModel):
+        video_id: str
+        title: str | None = None
+
+    db = lancedb.connect(str(tmp_path / "l"))
+    tbl = db.create_table("videos", schema=OldVideo)
+    tbl.add([{"video_id": "x", "title": "T"}])
+    _ensure_columns(tbl, models.VideoSchema)
+    assert {"channel", "description", "tags"} <= set(tbl.schema.names)
+    row = tbl.search().where("video_id = 'x'").limit(1).to_list()[0]
+    assert row.get("description") is None  # existing row backfilled NULL
 
 
 def test_chunk_schema_carries_vector():

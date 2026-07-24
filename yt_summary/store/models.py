@@ -9,12 +9,19 @@ class Video:
     video_id: str
     url: str
     channel_id: str | None = None
+    channel: str | None = None
     title: str | None = None
     duration_s: int | None = None
     published_at: str | None = None
+    description: str | None = None
+    tags: str | None = None  # comma-joined
     fetched_at: str | None = None
     audio_path: str | None = None
     status: str = "discovered"
+    # Approximate publish epoch (seconds, UTC) carried through discovery for the
+    # incremental high-water mark. NOT in VideoSchema, so it is never persisted —
+    # `_VIDEO_FIELDS` (schema-derived) skips it on read/write.
+    published_ts: float | None = None
 
 
 @dataclass
@@ -38,10 +45,13 @@ class TranscriptRow:
 class VideoSchema(LanceModel):
     video_id: str
     channel_id: str | None = None
+    channel: str | None = None
     title: str | None = None
     url: str | None = None
     duration_s: int | None = None
     published_at: str | None = None
+    description: str | None = None
+    tags: str | None = None
     fetched_at: str | None = None
     audio_path: str | None = None
     status: str = "discovered"

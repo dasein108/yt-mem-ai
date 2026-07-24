@@ -16,12 +16,21 @@ Config (`.env`): `YT_STORE_PATH` (LanceDB dir), `YT_EMBEDDING_BACKEND=local|open
 `YT_EMBEDDING_MODEL`, `YT_CHUNK_TARGET_S`, `OPENAI_API_KEY` (openai backend),
 `WEBSHARE_PROXY_*`, `YT_COOKIES_BROWSER`.
 
+**Proxy / VLESS:** `YT_USE_WEBSHARE` defaults **off**. If you already run a
+system-level proxy/VPN (VLESS/Xray etc.), leave it off — traffic rides that
+tunnel. Stacking the Webshare proxy on top breaks the authenticated
+subscription feed (its CONNECT tunnel returns `405`). Only set
+`YT_USE_WEBSHARE=true` if you have no other proxy and YouTube rate-limits your
+raw IP. Discover tuning: `YT_DISCOVER_FEED_LIMIT` (newest-N cap, default 60),
+`YT_DISCOVER_OVERLAP_S` (incremental overlap, default 3600), `YT_DISCOVER_TIMEOUT_S`.
+
 ## Commands
 
 ```bash
 yt-ai fetch <url>            # download + transcribe + embed + store one video
+yt-ai fetch <url> --captions-only  # captions only: no audio download / no whisper (fails if none)
 yt-ai transcript <url>       # same pipeline
-yt-ai discover               # list new subscription uploads (--after/--deep/--min-duration/--json)
+yt-ai discover               # new subscription uploads (--after/--deep/--min-duration/--json); incremental by default
 yt-ai fetch-pending          # batch-fetch pending 'discovered' videos (since --since, default today; --limit)
 yt-ai list                   # list stored videos (--status/--since/--json)
 yt-ai show <video_id>        # metadata + transcript (--json)
@@ -51,6 +60,15 @@ yt-ai fetch-pending          # download+transcribe+embed today's batch (robust, 
 /daily-digest                # per-video summaries + digests/YYYY-MM-DD.md
 yt-ai compile                # compile the day's highlights into a deep-linked markdown you can click into
 ```
+
+`yt-ai discover` is **incremental**: it pulls the newest feed entries (one flat
+call, capped by `YT_DISCOVER_FEED_LIMIT`), stamps each with an approximate
+`timestamp` (yt-dlp `youtubetab:approximate_date`), and keeps only those newer
+than the last run's stored high-water mark minus a 1h overlap
+(`YT_DISCOVER_OVERLAP_S`) — so hour-rounded dates never miss a boundary video,
+and already-processed videos (`is_seen`) are filtered out. Pass `--after
+YYYY-MM-DD` to override the cutoff manually. Full per-video metadata
+(description, tags, exact time) is fetched later at ingest, not during discover.
 
 `yt-ai compile` builds `compilations/<DATE>.md`: each highlight from the day's
 summarized videos becomes a deep link (`watch?v=ID&t=<start>s`) that jumps

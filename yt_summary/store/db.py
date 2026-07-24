@@ -29,8 +29,22 @@ def connect(store_path: str | Path) -> lancedb.DBConnection:
     return lancedb.connect(str(store_path))
 
 
+def _ensure_columns(tbl, schema) -> None:
+    """Add any schema columns missing from an existing table (nullable strings).
+    Idempotent — new string fields added to VideoSchema land on older stores
+    without a manual migration; existing rows get NULL."""
+    have = set(tbl.schema.names)
+    missing = [name for name in schema.model_fields if name not in have]
+    if missing:
+        tbl.add_columns({name: "CAST(NULL AS STRING)" for name in missing})
+
+
 def init_db(db: lancedb.DBConnection, embedder) -> None:
-    db.create_table("videos", schema=VideoSchema, exist_ok=True)
+    # create_table(exist_ok=True) rejects a *changed* schema, so for videos we
+    # create only when absent, then evolve columns on the existing table.
+    if "videos" not in db.table_names():
+        db.create_table("videos", schema=VideoSchema)
+    _ensure_columns(db.open_table("videos"), VideoSchema)
     db.create_table("channels", schema=ChannelSchema, exist_ok=True)
     db.create_table("transcripts", schema=TranscriptSchema, exist_ok=True)
     db.create_table("summaries", schema=SummarySchema, exist_ok=True)

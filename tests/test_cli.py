@@ -39,6 +39,38 @@ def test_run_fetch_stores_video_transcript_chunks(tmp_path, monkeypatch):
     assert len(store.list_chunks(conn, "abc")) >= 1
 
 
+def test_run_fetch_captions_only_skips_audio_download(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+
+    def _no_audio_download(*a, **k):
+        raise AssertionError("captions_only must NOT download audio")
+    monkeypatch.setattr(cli, "download", _no_audio_download)
+    monkeypatch.setattr(cli, "download_metadata",
+        lambda url, c: Video(video_id="cap", url=url, status="downloaded"))
+    monkeypatch.setattr(cli, "get_transcript",
+        lambda v, audio, c: T.TranscriptResult("captions", "en", "hi there",
+            [Segment("cap", 0.0, 5.0, "hi"), Segment("cap", 5.0, 10.0, "there")]))
+    vid = cli.run_fetch("https://y/cap", cfg, db=conn, captions_only=True)
+    assert vid == "cap"
+    assert store.get_video(conn, "cap").status == "transcribed"
+    assert store.get_transcript_text(conn, "cap") == "hi there"
+
+
+def test_run_fetch_captions_only_raises_when_no_captions(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    monkeypatch.setattr(cli, "download_metadata",
+        lambda url, c: Video(video_id="cap", url=url, status="downloaded"))
+
+    def _unavailable(v, audio, c):
+        raise T.TranscriptUnavailable("no captions and no audio")
+    monkeypatch.setattr(cli, "get_transcript", _unavailable)
+    import pytest
+    with pytest.raises(T.TranscriptUnavailable):
+        cli.run_fetch("https://y/cap", cfg, db=conn, captions_only=True)
+
+
 def test_run_fetch_skips_when_seen(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     conn = _db(tmp_path)
@@ -88,7 +120,7 @@ def test_run_discover_writes_and_advances_state(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     conn = _db(tmp_path)
     monkeypatch.setattr(cli, "discover_videos",
-        lambda cfg, after, deep=False, min_duration=120: [
+        lambda cfg, after=None, deep=False, min_duration=120, after_ts=None, overlap_s=0.0: [
             Video(video_id="v1", url="u1", channel_id="c1", title="A", status="discovered", published_at="2026-07-21"),
             Video(video_id="v2", url="u2", channel_id="c1", title="B", status="discovered", published_at="2026-07-20"),
         ])
@@ -103,12 +135,13 @@ def test_run_discover_reports_known_and_no_downgrade(tmp_path, monkeypatch):
     conn = _db(tmp_path)
     store.upsert_video(conn, Video(video_id="v1", url="u1", status="transcribed"))
     monkeypatch.setattr(cli, "discover_videos",
-        lambda cfg, after, deep=False, min_duration=120: [
+        lambda cfg, after=None, deep=False, min_duration=120, after_ts=None, overlap_s=0.0: [
             Video(video_id="v1", url="u1", channel_id="c1", status="discovered"),
             Video(video_id="v2", url="u2", channel_id="c1", status="discovered", published_at="2026-07-20"),
         ])
     discovered, new = cli.run_discover(cfg, after="2026-07-01", db=conn)
     assert new == 1                                   # only v2 is new
+    assert [v.video_id for v in discovered] == ["v2"]  # v1 already processed → filtered out
     assert store.get_video(conn, "v1").status == "transcribed"  # not downgraded
 
 
@@ -117,25 +150,65 @@ def test_run_discover_cutoff_precedence(tmp_path, monkeypatch):
     conn = _db(tmp_path)
     store.set_state(conn, "last_discover_at", "2026-07-10")
     captured = {}
-    def fake(cfg, after, deep=False, min_duration=120):
-        captured["after"] = after
+    def fake(cfg, after=None, deep=False, min_duration=120, after_ts=None, overlap_s=0.0):
+        captured["after"], captured["after_ts"] = after, after_ts
         return []
     monkeypatch.setattr(cli, "discover_videos", fake)
-    cli.run_discover(cfg, after=None, db=conn)       # no --after → use stored state
+    cli.run_discover(cfg, after=None, db=conn)       # no --after, no ts → legacy date state
     assert captured["after"] == "2026-07-10"
+    assert captured["after_ts"] is None
+
+
+def test_run_discover_uses_stored_epoch_high_water(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    store.set_state(conn, "last_discover_ts", "1784592000.0")  # takes precedence over date
+    store.set_state(conn, "last_discover_at", "2026-07-10")
+    captured = {}
+    def fake(cfg, after=None, deep=False, min_duration=120, after_ts=None, overlap_s=0.0):
+        captured["after"], captured["after_ts"], captured["overlap"] = after, after_ts, overlap_s
+        return []
+    monkeypatch.setattr(cli, "discover_videos", fake)
+    cli.run_discover(cfg, after=None, db=conn)
+    assert captured["after"] is None
+    assert captured["after_ts"] == 1784592000.0      # epoch high-water wins
+    assert captured["overlap"] == cfg.discover_overlap_s
+
+
+def test_run_discover_advances_epoch_high_water(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    store.set_state(conn, "last_discover_ts", "1000.0")
+    monkeypatch.setattr(cli, "discover_videos",
+        lambda cfg, after=None, deep=False, min_duration=120, after_ts=None, overlap_s=0.0: [
+            Video(video_id="v1", url="u1", channel_id="c1", status="discovered",
+                  published_at="2026-07-21", published_ts=1784592000.0),
+        ])
+    cli.run_discover(cfg, after=None, db=conn)
+    assert store.get_state(conn, "last_discover_ts") == repr(1784592000.0)  # advanced
 
 
 def test_run_discover_defaults_to_7_days_when_no_after_or_state(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     conn = _db(tmp_path)  # fresh store, no last_discover_at set
     captured = {}
-    def fake(cfg, after, deep=False, min_duration=120):
+    def fake(cfg, after=None, deep=False, min_duration=120, after_ts=None, overlap_s=0.0):
         captured["after"] = after
         return []
     monkeypatch.setattr(cli, "discover_videos", fake)
     cli.run_discover(cfg, after=None, db=conn)
     expected = (datetime.date.today() - datetime.timedelta(days=7)).isoformat()
     assert captured["after"] == expected
+
+
+def test_run_list_limit_and_channel(tmp_path):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    store.upsert_video(conn, Video(video_id="a", url="ua", channel_id="c1", published_at="2026-07-23", status="discovered"))
+    store.upsert_video(conn, Video(video_id="b", url="ub", channel_id="c2", published_at="2026-07-22", status="discovered"))
+    store.upsert_video(conn, Video(video_id="c", url="uc", channel_id="c1", published_at="2026-07-21", status="discovered"))
+    assert {v.video_id for v in cli.run_list(cfg, channel="c1", db=conn)} == {"a", "c"}
+    assert [v.video_id for v in cli.run_list(cfg, limit=2, db=conn)] == ["a", "b"]  # newest-first
 
 
 def test_run_list_by_status(tmp_path):

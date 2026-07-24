@@ -24,6 +24,19 @@ class Config:
     hf_token: str | None = None
     log_file: Path = Path("logs/common.jsonl")
     discover_timeout_s: float = 30.0
+    # Cap how many newest subscription-feed entries discover pulls. The feed is
+    # newest-first; without a cap yt-dlp paginates the entire history (minutes).
+    discover_feed_limit: int = 60
+    # Incremental discover re-fetches this many seconds before the last high-water
+    # mark. approximate_date timestamps are hour-rounded, so a 1h overlap ensures
+    # no boundary video is missed; the DB dedupes the re-seen ones.
+    discover_overlap_s: float = 3600.0
+    # Route yt-dlp / youtube-transcript-api through the Webshare rotating proxy.
+    # Default off: a system-level VLESS/VPN proxy already provides the IP, and
+    # stacking Webshare on top breaks the authenticated subscription feed (its
+    # CONNECT tunnel returns 405). Turn on only if you have no other proxy and
+    # YouTube is rate-limiting your raw IP.
+    use_webshare: bool = False
 
 
 def _clean(value: str | None) -> str | None:
@@ -31,6 +44,10 @@ def _clean(value: str | None) -> str | None:
         return None
     value = value.strip()
     return value or None
+
+
+def _truthy(value: str | None) -> bool:
+    return _clean(value) is not None and _clean(value).lower() in ("1", "true", "yes", "on")
 
 
 def load_config(env_path: Path | None = None) -> Config:
@@ -46,7 +63,8 @@ def load_config(env_path: Path | None = None) -> Config:
         "YT_WHISPER_COMPUTE_TYPE", "OPENROUTER_API_KEY", "YT_OPENROUTER_MODEL",
         "YT_STORE_PATH", "YT_EMBEDDING_BACKEND", "YT_EMBEDDING_MODEL",
         "YT_CHUNK_TARGET_S", "OPENAI_API_KEY", "HF_TOKEN", "YT_LOG_FILE",
-        "YT_DISCOVER_TIMEOUT_S",
+        "YT_DISCOVER_TIMEOUT_S", "YT_USE_WEBSHARE", "YT_DISCOVER_FEED_LIMIT",
+        "YT_DISCOVER_OVERLAP_S",
     ):
         if os.environ.get(key) is not None:
             data[key] = os.environ[key]
@@ -69,4 +87,7 @@ def load_config(env_path: Path | None = None) -> Config:
         hf_token=_clean(data.get("HF_TOKEN")),
         log_file=Path(_clean(data.get("YT_LOG_FILE")) or "logs/common.jsonl"),
         discover_timeout_s=float(_clean(data.get("YT_DISCOVER_TIMEOUT_S")) or "30"),
+        use_webshare=_truthy(data.get("YT_USE_WEBSHARE")),
+        discover_feed_limit=int(_clean(data.get("YT_DISCOVER_FEED_LIMIT")) or "60"),
+        discover_overlap_s=float(_clean(data.get("YT_DISCOVER_OVERLAP_S")) or "3600"),
     )

@@ -9,13 +9,13 @@ if TYPE_CHECKING:
 
 
 def ytdlp_proxy_url(cfg: Config) -> str | None:
-    if cfg.proxy_username and cfg.proxy_password:
+    if cfg.use_webshare and cfg.proxy_username and cfg.proxy_password:
         return f"http://{cfg.proxy_username}:{cfg.proxy_password}@p.webshare.io:80"
     return None
 
 
 def webshare_config(cfg: Config) -> "WebshareProxyConfig | None":
-    if cfg.proxy_username and cfg.proxy_password:
+    if cfg.use_webshare and cfg.proxy_username and cfg.proxy_password:
         from youtube_transcript_api.proxies import WebshareProxyConfig
         return WebshareProxyConfig(
             proxy_username=cfg.proxy_username,

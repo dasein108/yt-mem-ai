@@ -9,8 +9,8 @@ from .config import load_config
 from .store import db as store
 from .store.models import TranscriptRow, Video
 from .store.embeddings import build_embedder, chunk_segments
-from .download import download
-from .transcript import get_transcript
+from .download import download, download_metadata
+from .transcript import get_transcript, TranscriptUnavailable
 from .discovery import discover as discover_videos
 from .recommend import recommend as recommend_videos
 from .compile import compile_highlights, render_markdown
@@ -35,7 +35,8 @@ def open_store(cfg):
     return db
 
 
-def run_fetch(url: str, cfg, force: bool = False, db=None, video_id: str | None = None) -> str:
+def run_fetch(url: str, cfg, force: bool = False, db=None, video_id: str | None = None,
+              captions_only: bool = False) -> str:
     if db is None:
         db = open_store(cfg)
     vid = video_id or _extract_video_id(url)
@@ -43,7 +44,12 @@ def run_fetch(url: str, cfg, force: bool = False, db=None, video_id: str | None 
         blog("fetch.skip", video_id=vid)
         return vid
 
-    video, audio = download(url, cfg)
+    # captions_only: metadata only (no audio download) → captions with no whisper
+    # fallback. get_transcript raises TranscriptUnavailable if the video has none.
+    if captions_only:
+        video, audio = download_metadata(url, cfg), None
+    else:
+        video, audio = download(url, cfg)
     if not force and memory.is_seen(db, video.video_id):
         blog("fetch.skip", video_id=video.video_id)
         return video.video_id
@@ -62,10 +68,18 @@ def run_fetch(url: str, cfg, force: bool = False, db=None, video_id: str | None 
 
 
 @app.command()
-def fetch(url: str, force: bool = typer.Option(False, "--force")):
+def fetch(url: str, force: bool = typer.Option(False, "--force"),
+          captions_only: bool = typer.Option(
+              False, "--captions-only",
+              help="Fetch captions directly (no audio download, no whisper). "
+                   "Fails if the video has no captions.")):
     """Download + transcribe + embed + store a video."""
     cfg = load_config()
-    vid = run_fetch(url, cfg, force=force)
+    try:
+        vid = run_fetch(url, cfg, force=force, captions_only=captions_only)
+    except TranscriptUnavailable as exc:
+        typer.echo(f"no captions available: {exc}")
+        raise typer.Exit(1)
     typer.echo(f"stored {vid}")
 
 
@@ -90,13 +104,19 @@ def show(video_id: str, as_json: bool = typer.Option(False, "--json")):
     if as_json:
         typer.echo(json.dumps({
             "video_id": v.video_id, "title": v.title, "url": v.url,
-            "status": v.status, "published_at": v.published_at,
-            "duration_s": v.duration_s, "transcript": text,
+            "status": v.status, "channel_id": v.channel_id, "channel": v.channel,
+            "published_at": v.published_at, "duration_s": v.duration_s,
+            "tags": v.tags, "description": v.description, "transcript": text,
         }))
         return
-    typer.echo(f"{v.title or '(no title)'}  [{v.status}]  {v.url}")
+    ch = f"  {v.channel}" if v.channel else ""
+    typer.echo(f"{v.title or '(no title)'}  [{v.status}]{ch}  {v.url}")
+    if v.tags:
+        typer.echo(f"tags: {v.tags}")
+    if v.description:
+        typer.echo(f"\n{v.description[:500]}")
     if text:
-        typer.echo(text[:500])
+        typer.echo(f"\n--- transcript ---\n{text[:500]}")
 
 
 @app.command()
@@ -168,20 +188,42 @@ def run_discover(cfg, after: str | None = None, deep: bool = False,
                  min_duration: int = 120, db=None) -> tuple[list[Video], int]:
     if db is None:
         db = open_store(cfg)
-    cutoff = after or store.get_state(db, "last_discover_at") \
-        or (date.today() - timedelta(days=7)).isoformat()
-    blog("discover.start", after=cutoff, deep=deep)
-    discovered = discover_videos(cfg, cutoff, deep=deep, min_duration=min_duration)
+    # Cutoff precedence: explicit --after (date) > stored epoch high-water
+    # (incremental, hour-precise) > legacy last_discover_at date > 7-day default.
+    # The epoch path applies a 1h overlap so hour-rounded approximate dates near
+    # a boundary aren't missed; is_seen dedupe below drops the re-seen ones.
+    last_ts = store.get_state(db, "last_discover_ts")
+    cutoff_date: str | None
+    after_ts: float | None
+    if after:
+        cutoff_date, after_ts = after, None
+    elif last_ts:
+        cutoff_date, after_ts = None, float(last_ts)
+    else:
+        cutoff_date = store.get_state(db, "last_discover_at") \
+            or (date.today() - timedelta(days=7)).isoformat()
+        after_ts = None
+    blog("discover.start", after=cutoff_date, after_ts=after_ts, deep=deep)
+    discovered = discover_videos(cfg, cutoff_date, deep=deep, min_duration=min_duration,
+                                 after_ts=after_ts, overlap_s=cfg.discover_overlap_s)
+    # Drop already-processed videos (transcribed/summarized); discovered-but-pending
+    # ones are kept so fetch-pending still picks them up.
+    fresh = [v for v in discovered if not memory.is_seen(db, v.video_id)]
     new_count = 0
-    for v in discovered:
+    for v in fresh:
         if store.get_video(db, v.video_id) is None:
             new_count += 1
         if v.channel_id:
             store.upsert_channel(db, v.channel_id, None, 1)
         store.insert_discovered_video(db, v)
+    # Advance the high-water mark (never regress, even on an empty/older run).
+    seen_ts = [v.published_ts for v in discovered if v.published_ts]
+    if seen_ts:
+        prev = float(last_ts) if last_ts else 0.0
+        store.set_state(db, "last_discover_ts", repr(max(max(seen_ts), prev)))
     store.set_state(db, "last_discover_at", date.today().isoformat())
-    blog("discover.done", new=new_count, found=len(discovered))
-    return discovered, new_count
+    blog("discover.done", new=new_count, found=len(discovered), fresh=len(fresh))
+    return fresh, new_count
 
 
 @app.command()
@@ -214,14 +256,20 @@ def discover(
     typer.echo(f"\n{new_count} new / {len(discovered) - new_count} already known")
 
 
-def run_list(cfg, status: str | None = None, since: str | None = None, db=None) -> list[Video]:
+def run_list(cfg, status: str | None = None, since: str | None = None,
+             channel: str | None = None, limit: int | None = None, db=None) -> list[Video]:
     if db is None:
         db = open_store(cfg)
     if status:
-        return store.list_videos_by_status(db, status, since=since)
-    videos = store.list_videos(db)
-    if since is not None:
-        videos = [v for v in videos if (v.published_at or "") >= since]
+        videos = store.list_videos_by_status(db, status, since=since)
+    else:
+        videos = store.list_videos(db)
+        if since is not None:
+            videos = [v for v in videos if (v.published_at or "") >= since]
+    if channel:
+        videos = [v for v in videos if v.channel_id == channel or v.channel == channel]
+    if limit is not None:
+        videos = videos[:limit]
     return videos
 
 
@@ -229,21 +277,26 @@ def run_list(cfg, status: str | None = None, since: str | None = None, db=None) 
 def list_videos_cmd(
     status: str = typer.Option(None, "--status", help="Filter by status (discovered/transcribed/...)"),
     since: str = typer.Option(None, "--since", help="Only videos published on/after YYYY-MM-DD"),
+    channel: str = typer.Option(None, "--channel", help="Filter by channel_id or channel name"),
+    limit: int = typer.Option(None, "--limit", "-n", help="Return at most N (newest-first)"),
     as_json: bool = typer.Option(False, "--json"),
 ):
-    """List stored videos, optionally filtered by status/date."""
+    """List stored videos, optionally filtered by status/date/channel, capped by --limit."""
     cfg = load_config()
-    videos = run_list(cfg, status=status, since=since)
+    videos = run_list(cfg, status=status, since=since, channel=channel, limit=limit)
     if as_json:
         typer.echo(json.dumps([
             {"video_id": v.video_id, "title": v.title, "url": v.url, "status": v.status,
-             "published_at": v.published_at, "duration_s": v.duration_s} for v in videos]))
+             "channel_id": v.channel_id, "channel": v.channel,
+             "published_at": v.published_at, "duration_s": v.duration_s,
+             "tags": v.tags, "description": v.description} for v in videos]))
         return
     if not videos:
         typer.echo("no videos")
         return
     for v in videos:
-        typer.echo(f"{v.published_at or '????-??-??'}  {v.status or '?':12}  {(v.title or '')[:50]:50}  {v.url}")
+        ch = (v.channel or v.channel_id or "")[:18]
+        typer.echo(f"{v.published_at or '????-??-??'}  {v.status or '?':11}  {ch:18}  {(v.title or '')[:44]:44}  {v.url}")
 
 
 def run_fetch_pending(cfg, since: str | None = None, limit: int | None = None,

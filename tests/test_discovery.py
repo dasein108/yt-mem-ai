@@ -1,9 +1,14 @@
 # tests/test_discovery.py
 import time
+from datetime import datetime, UTC
 from pathlib import Path
 import pytest
 from yt_summary.config import Config
 from yt_summary import discovery
+
+
+def _epoch(y, mo, d, h=0):
+    return datetime(y, mo, d, h, tzinfo=UTC).timestamp()
 
 
 def _cfg():
@@ -77,6 +82,35 @@ def test_discover_survives_fallback_extract_raising():
     out = discovery.discover(_cfg(), after="2026-07-01", extract_fn=extract_fn)
     assert [v.video_id for v in out] == ["vid"]
     assert out[0].published_at is None
+
+
+def test_discover_uses_inline_timestamp_without_fallback():
+    # approximate_date puts an epoch `timestamp` on each flat entry, so discover
+    # resolves the date inline and never calls the per-video fallback.
+    entries = [{"id": "vid", "title": "T", "duration": 600, "channel_id": "c",
+                "timestamp": _epoch(2026, 7, 21, 14)}]
+    def extract_fn(url, flat):
+        if url == discovery.FEED_URL:
+            return {"entries": entries}
+        raise AssertionError("inline timestamp present → no per-video fallback")
+    out = discovery.discover(_cfg(), after="2026-07-01", extract_fn=extract_fn)
+    assert out and out[0].published_at == "2026-07-21"
+    assert out[0].published_ts == _epoch(2026, 7, 21, 14)  # epoch carried through
+
+
+def test_discover_overlap_keeps_boundary_video():
+    # after_ts cutoff = start of 2026-07-23; a video timestamped 23:30 the prior
+    # day would be dropped by an exact cutoff, but the 1h overlap keeps it.
+    cutoff = _epoch(2026, 7, 23)
+    entries = [{"id": "boundary", "title": "B", "duration": 600, "channel_id": "c",
+                "timestamp": _epoch(2026, 7, 22, 23)}]  # 23:00 prev day
+    out = discovery.discover(_cfg(), after_ts=cutoff, overlap_s=3600,
+                             extract_fn=_feed(entries))
+    assert [v.video_id for v in out] == ["boundary"]
+    # …and without the overlap it is correctly excluded (breaks newest-first).
+    out2 = discovery.discover(_cfg(), after_ts=cutoff, overlap_s=0,
+                              extract_fn=_feed(entries))
+    assert out2 == []
 
 
 def test_run_with_timeout_returns_fast_result():
