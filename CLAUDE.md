@@ -13,16 +13,32 @@ not an API) to keep it free and high-quality.
 ## Architecture (module map)
 
 - `config.py` — `.env` loading (`Config`). Secrets only from `.env` (gitignored).
+  `use_webshare` (`YT_USE_WEBSHARE`, default **off**) gates the Webshare proxy;
+  `discover_feed_limit`/`discover_overlap_s` tune incremental discovery.
 - `obs.py` — unified logging. `log_event(source, event, level="info", msg="", *,
   log_file=None, **ctx)` never raises (append fails silently); `blog(...)` is the
   `source="backend"` shorthand used across `cli.py`/`api/`. Writes one JSON line
   (`{ts, source, level, event, msg, ...ctx}`) to `Config.log_file`
   (`YT_LOG_FILE` env, default `logs/common.jsonl`; gitignored).
 - `proxy.py` / `cookies.py` — Webshare rotating proxy + Chrome cookies for yt-dlp.
+  Both `ytdlp_proxy_url` and `webshare_config` return `None` unless
+  `cfg.use_webshare` **and** creds are set — so a system-level VLESS/VPN carries
+  traffic by default (stacking Webshare on the authed subscription feed 405s).
 - `download.py` — yt-dlp download + metadata; `build_opts(cfg, download_audio)`.
+  `download_metadata(url, cfg)` fetches metadata only (no audio) for the
+  captions-only path; uses `process=False` so meta survives the missing JS
+  challenge solver (which otherwise fails format selection).
 - `transcript/` — `captions.py` (youtube-transcript-api) → `whisper.py` (faster-whisper)
   fallback, orchestrated by `get_transcript`.
 - `discovery.py` — subscription feed extraction (`discover`), injectable `extract_fn` seam.
+  Flat feed pull is capped (`playlistend=discover_feed_limit`) and stamped with
+  approximate per-entry `timestamp` via `youtubetab:approximate_date` — dates in
+  one call, no per-video N+1. Cutoff is epoch-based: `after_ts` (incremental
+  high-water) beats `after` (YYYY-MM-DD), minus `overlap_s`; newest-first with an
+  early break. `Video.published_ts` (epoch, **not** persisted — absent from
+  `VideoSchema`) carries the high-water back to `run_discover`. Per-video date
+  fallback (`_published_ts`, `process=False`) only fires for entries lacking an
+  inline timestamp (e.g. live premieres).
 - `store/` — `models.py` (dataclasses + LanceModel schemas + `chunk_schema`),
   `embeddings.py` (`build_embedder`, `chunk_segments`), `db.py` (LanceDB CRUD + search).
 - `memory.py` — status-based `is_seen` / `mark_status`.
@@ -47,7 +63,11 @@ not an API) to keep it free and high-quality.
   rendering (actual yt-dlp downloads + ffmpeg) is manual smoke only, not in
   the test suite.
 - `cli.py` — Typer app; thin `run_*` cores are the testable seam. `serve` runs the
-  local API (below).
+  local API (below). `fetch --captions-only` runs the metadata+captions path
+  (no audio/whisper). `run_discover` is incremental: cutoff precedence is
+  explicit `--after` > stored epoch `last_discover_ts` (−`overlap_s`) > legacy
+  `last_discover_at` date > 7-day default; it drops `is_seen` videos and advances
+  `last_discover_ts` (never regressing) from the discovered `published_ts`.
 - `api/` — local FastAPI server (SP4), localhost-only, backend for the future
   desktop UI:
   - `app.py` — `create_app(cfg, *, store_opener, summarize_client, start_worker)`
@@ -120,6 +140,12 @@ transcribed/summarized videos.
 
 ## Skills
 
+Canonical skills live in `skills/<name>/SKILL.md` (checked in, any-LLM usable).
+Claude Code only discovers skills under `.claude/skills/`, so each is surfaced
+via a symlink `.claude/skills/<name> -> ../../skills/<name>` (thin ref, no drift).
+
+- `yt-manager` — umbrella entry point for any `yt-ai` CLI op + both pipelines;
+  delegates deep per-video analysis to `summarize-video` / `daily-digest`.
 - `summarize-video` — one ingested video → summary/highlights/Q&A (`summaries` table).
 - `daily-digest` — a day's transcribed videos → per-video summaries + `digests/<DATE>.md`.
 - `yt-debugger` — diagnose the app end-to-end: run `yt-ai serve`, introspect
