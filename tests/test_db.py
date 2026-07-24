@@ -206,3 +206,22 @@ def test_list_feedback_returns_rows(tmp_path):
     rows = store.list_feedback(conn)
     assert len(rows) == 3
     assert {r["signal"] for r in rows if r["video_id"] == "v1"} == {1, -1}
+
+
+def test_job_crud_roundtrip(tmp_path):
+    import lancedb
+    from tests.support import fake_embedder
+    conn = lancedb.connect(str(tmp_path / "l"))
+    store.init_db(conn, fake_embedder())
+    store.insert_job(conn, {"id": "j1", "kind": "summarize", "video_id": "abc",
+                            "status": "queued", "progress": None, "error": None,
+                            "created_at": "2026-07-24T00:00:00Z", "updated_at": "2026-07-24T00:00:00Z"})
+    assert store.get_job(conn, "j1")["status"] == "queued"
+    store.update_job(conn, "j1", status="running", progress=0.5)
+    j = store.get_job(conn, "j1")
+    assert j["status"] == "running" and j["progress"] == 0.5
+    store.insert_job(conn, {"id": "j2", "kind": "discover", "video_id": None,
+                            "status": "done", "progress": None, "error": None,
+                            "created_at": "2026-07-24T00:01:00Z", "updated_at": "2026-07-24T00:01:00Z"})
+    assert {r["id"] for r in store.list_jobs(conn, status="running")} == {"j1"}
+    assert len(store.list_jobs(conn)) == 2

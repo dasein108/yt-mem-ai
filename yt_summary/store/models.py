@@ -91,6 +91,17 @@ class StateSchema(LanceModel):
     value: str | None = None
 
 
+class JobSchema(LanceModel):
+    id: str
+    kind: str
+    video_id: str | None = None
+    status: str = "queued"
+    progress: float | None = None
+    error: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
 def chunk_schema(embedder) -> type[LanceModel]:
     class ChunkSchema(LanceModel):
         id: str
