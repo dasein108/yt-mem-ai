@@ -29,7 +29,25 @@ def test_list_videos(tmp_path):
     with client:
         r = client.get("/videos", params={"status": "transcribed"})
         assert r.status_code == 200
-        assert [v["video_id"] for v in r.json()] == ["v1"]
+        body = r.json()
+        assert [v["video_id"] for v in body["items"]] == ["v1"]
+        assert body["total"] == 1
+
+
+def test_videos_paginated_envelope(tmp_path):
+    client, conn = _client(tmp_path)
+    store.upsert_video(conn, Video(video_id="v2", url="u2", title="Second",
+                                    status="transcribed", published_at="2026-07-23"))
+    store.upsert_video(conn, Video(video_id="v3", url="u3", title="Third",
+                                    status="transcribed", published_at="2026-07-24"))
+    with client:
+        r = client.get("/videos", params={"limit": 2, "offset": 0})
+        body = r.json()
+        assert set(body) == {"items", "total"}
+        assert len(body["items"]) == 2
+        assert body["total"] >= 3
+        r2 = client.get("/videos", params={"limit": 2, "offset": 2})
+        assert body["items"][0]["video_id"] != r2.json()["items"][0]["video_id"]
 
 
 def test_video_detail(tmp_path):

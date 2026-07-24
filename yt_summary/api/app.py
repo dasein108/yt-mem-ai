@@ -85,9 +85,13 @@ def create_app(cfg, *, store_opener=None, summarize_client=None, start_worker: b
         return {"video_id": v.video_id, "title": v.title, "url": v.url,
                 "status": v.status, "published_at": v.published_at, "duration_s": v.duration_s}
 
-    @app.get("/videos", response_model=list[schemas.VideoOut])
-    def list_videos(status: str | None = None, since: str | None = None):
-        return [_video_out(v) for v in run_list(cfg, status=status, since=since, db=app.state.db)]
+    @app.get("/videos", response_model=schemas.VideoPageOut)
+    def list_videos(status: str | None = None, since: str | None = None,
+                    limit: int = 30, offset: int = 0):
+        vids = run_list(cfg, status=status, since=since, db=app.state.db)
+        total = len(vids)
+        page = vids[offset:offset + limit]
+        return {"items": [_video_out(v) for v in page], "total": total}
 
     @app.get("/videos/{video_id}", response_model=schemas.VideoDetailOut)
     def video_detail(video_id: str):
