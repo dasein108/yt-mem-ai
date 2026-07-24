@@ -18,7 +18,7 @@ def _cfg(**over):
                 cookies_browser="chrome", whisper_model="small", whisper_device="cpu",
                 whisper_compute_type="int8", openrouter_api_key=None, openrouter_model="m",
                 store_path=Path("s"), embedding_backend="local", embedding_model=None,
-                chunk_target_s=45.0, openai_api_key=None)
+                chunk_target_s=45.0, openai_api_key=None, use_webshare=True)
     base.update(over)
     return Config(**base)
 

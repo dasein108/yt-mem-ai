@@ -23,6 +23,15 @@ def test_load_config_defaults_when_missing(tmp_path):
     cfg = load_config(tmp_path / "nope.env")
     assert cfg.proxy_username is None
     assert cfg.whisper_device == "cpu"
+    assert cfg.use_webshare is False
+
+
+def test_load_config_use_webshare_toggle(tmp_path):
+    env = tmp_path / ".env"
+    env.write_text("YT_USE_WEBSHARE=true\n")
+    assert load_config(env).use_webshare is True
+    env.write_text("YT_USE_WEBSHARE=0\n")
+    assert load_config(env).use_webshare is False
 
 def test_load_config_defaults_to_dotenv_in_cwd(tmp_path, monkeypatch):
     env = tmp_path / ".env"
