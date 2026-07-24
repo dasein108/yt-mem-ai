@@ -6,7 +6,8 @@ import { api, ApiError } from './client'
 describe('api client', () => {
   it('lists videos', async () => {
     const vids = await api.listVideos()
-    expect(vids.map((v) => v.video_id)).toEqual(['v1', 'v2'])
+    expect(vids.items.map((v) => v.video_id)).toEqual(['v1', 'v2'])
+    expect(vids.total).toBe(2)
   })
   it('throws ApiError with detail on non-2xx', async () => {
     server.use(http.get('/api/status', () =>

@@ -1,4 +1,4 @@
-import type { VideoOut, VideoDetail, SearchHit, Job, StatusCounts } from './types'
+import type { VideoDetail, VideoPage, SearchHit, Job, StatusCounts } from './types'
 import { apiBase } from '@/lib/apiBase'
 import { log } from '@/lib/log'
 
@@ -37,8 +37,8 @@ const qs = (params: Record<string, string | number | undefined>) => {
 }
 
 export const api = {
-  listVideos: (f: { status?: string; since?: string } = {}) =>
-    req<VideoOut[]>(`/videos${qs(f)}`),
+  listVideos: (f: { status?: string; since?: string; limit?: number; offset?: number } = {}) =>
+    req<VideoPage>(`/videos${qs(f)}`),
   getVideo: (id: string) => req<VideoDetail>(`/videos/${id}`),
   getStatus: () => req<StatusCounts>('/status'),
   search: (q: string, mode = 'hybrid', k = 10) =>

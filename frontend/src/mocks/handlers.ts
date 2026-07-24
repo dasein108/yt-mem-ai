@@ -8,7 +8,8 @@ export const videosFixture = [
 ]
 
 export const handlers = [
-  http.get('/api/videos', () => HttpResponse.json(videosFixture)),
+  http.get('/api/videos', () =>
+    HttpResponse.json({ items: videosFixture, total: videosFixture.length })),
   http.get('/api/videos/:id', ({ params }) => {
     const v = videosFixture.find((x) => x.video_id === params.id)
     if (!v) return new HttpResponse(null, { status: 404 })
@@ -26,9 +27,9 @@ export const handlers = [
   http.get('/api/jobs', () => HttpResponse.json([])),
   http.post('/api/jobs/:kind', ({ params }) => HttpResponse.json({
     id: 'job1', kind: String(params.kind), status: 'queued', progress: null,
-    result: null, error: null, created_at: 't0' })),
+    result: null, error: null, created_at: 't0', video_id: null })),
   http.get('/api/jobs/:id', ({ params }) => HttpResponse.json({
     id: String(params.id), kind: 'fetch', status: 'done', progress: null,
-    result: { video_id: 'vX' }, error: null, created_at: 't0' })),
+    result: { video_id: 'vX' }, error: null, created_at: 't0', video_id: 'vX' })),
   http.post('/api/log', () => new HttpResponse(null, { status: 204 })),
 ]

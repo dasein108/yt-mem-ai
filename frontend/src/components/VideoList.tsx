@@ -23,7 +23,7 @@ export function VideoList() {
       {isLoading && <p className="p-3 text-sm text-slate-500">loading…</p>}
       {error && <p className="p-3 text-sm text-red-600">API not reachable — run `yt-ai serve`</p>}
       <ul>
-        {data?.map((v) => (
+        {data?.items.map((v) => (
           <li key={v.video_id}>
             <button
               onClick={() => navigate(`/videos/${v.video_id}`)}
