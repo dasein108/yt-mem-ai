@@ -27,8 +27,9 @@ class JobRegistry:
         self._jobs: dict[str, Job] = {}
         self._lock = threading.Lock()
 
-    def create(self, kind: str) -> Job:
-        job = Job(id=uuid.uuid4().hex, kind=kind, created_at=datetime.now(UTC).isoformat())
+    def create(self, kind: str, job_id: str | None = None, created_at: str | None = None) -> Job:
+        job = Job(id=job_id or uuid.uuid4().hex, kind=kind,
+                  created_at=created_at or datetime.now(UTC).isoformat())
         with self._lock:
             self._jobs[job.id] = job
         return job
@@ -60,8 +61,9 @@ class Worker:
         job.updated_at = datetime.now(UTC).isoformat()
         self._persist(job)
 
-    def submit(self, kind: str, fn, video_id: str | None = None) -> Job:
-        job = self.registry.create(kind)
+    def submit(self, kind: str, fn, video_id: str | None = None,
+               job_id: str | None = None, created_at: str | None = None) -> Job:
+        job = self.registry.create(kind, job_id=job_id, created_at=created_at)
         job.video_id = video_id
         self._mark(job, "queued")
         self._q.put((job, fn))
