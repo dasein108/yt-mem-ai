@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useVideo, useFeedback, useSummarize } from '@/api/hooks'
 import { Button } from './ui/button'
@@ -17,6 +17,7 @@ export function VideoDetail() {
   const feedback = useFeedback()
   const summarize = useSummarize()
   const [watching, setWatching] = useState(false)
+  const seekRef = useRef<((s: number) => void) | null>(null)
 
   if (!id) return <p className="text-slate-500">Select a video.</p>
   if (isLoading) return <p className="text-slate-500">loading…</p>
@@ -41,7 +42,10 @@ export function VideoDetail() {
           </Button>
         )}
       </div>
-      {watching && <WatchPlayer videoId={v.video_id} url={v.url} onClose={() => setWatching(false)} />}
+      {watching && (
+        <WatchPlayer videoId={v.video_id} url={v.url} onClose={() => setWatching(false)}
+          onReady={(s) => (seekRef.current = s)} />
+      )}
       {v.summary && (
         <section className="space-y-3">
           <div>
@@ -53,7 +57,12 @@ export function VideoDetail() {
               <h2 className="font-medium">Highlights</h2>
               <ul className="text-sm">
                 {highlights.map((h, i) => (
-                  <li key={i}><span className="font-mono text-slate-500">{fmtTs(h.start_s)}</span> — {h.label}</li>
+                  <li key={i}>
+                    <button type="button" className="text-left hover:underline"
+                      onClick={() => seekRef.current?.(h.start_s)}>
+                      <span className="font-mono text-slate-500">{fmtTs(h.start_s)}</span> — {h.label}
+                    </button>
+                  </li>
                 ))}
               </ul>
             </div>

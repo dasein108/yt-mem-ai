@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { WatchPlayer } from './WatchPlayer'
 
 afterEach(() => { delete (window as { electron?: unknown }).electron })
@@ -22,5 +22,13 @@ describe('WatchPlayer', () => {
     render(<WatchPlayer videoId="abc" url="u" onClose={() => { closed = true }} />)
     screen.getByLabelText('close player').click()
     expect(closed).toBe(true)
+  })
+  it('exposes a seek callback that maps to iframe start param (non-electron fallback)', () => {
+    let seek: ((s: number) => void) | undefined
+    render(<WatchPlayer videoId="abc" url={null} onClose={() => {}} onReady={(s) => { seek = s }} />)
+    expect(typeof seek).toBe('function')
+    act(() => seek!(90))
+    const iframe = screen.getByTitle('player') as HTMLIFrameElement
+    expect(iframe.src).toContain('start=90')
   })
 })
