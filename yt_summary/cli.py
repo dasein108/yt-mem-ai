@@ -36,7 +36,7 @@ def open_store(cfg):
 
 
 def run_fetch(url: str, cfg, force: bool = False, db=None, video_id: str | None = None,
-              captions_only: bool = False) -> str:
+              captions_only: bool = False, force_whisper: bool = False) -> str:
     if db is None:
         db = open_store(cfg)
     vid = video_id or _extract_video_id(url)
@@ -55,7 +55,7 @@ def run_fetch(url: str, cfg, force: bool = False, db=None, video_id: str | None 
         return video.video_id
     store.upsert_video(db, video)
     blog("fetch.download", video_id=video.video_id, audio_path=audio)
-    result = get_transcript(video, audio, cfg)
+    result = get_transcript(video, audio, cfg, force_whisper=force_whisper)
     blog("fetch.transcribe", video_id=video.video_id, source_kind=result.source)
     store.insert_transcript(db, TranscriptRow(
         video_id=video.video_id, source=result.source, lang=result.lang,
@@ -72,11 +72,18 @@ def fetch(url: str, force: bool = typer.Option(False, "--force"),
           captions_only: bool = typer.Option(
               False, "--captions-only",
               help="Fetch captions directly (no audio download, no whisper). "
-                   "Fails if the video has no captions.")):
+                   "Fails if the video has no captions."),
+          whisper: bool = typer.Option(
+              False, "--whisper",
+              help="Skip captions, download audio and transcribe with whisper.")):
     """Download + transcribe + embed + store a video."""
+    if captions_only and whisper:
+        typer.echo("--captions-only and --whisper are mutually exclusive")
+        raise typer.Exit(2)
     cfg = load_config()
     try:
-        vid = run_fetch(url, cfg, force=force, captions_only=captions_only)
+        vid = run_fetch(url, cfg, force=force, captions_only=captions_only,
+                        force_whisper=whisper)
     except TranscriptUnavailable as exc:
         typer.echo(f"no captions available: {exc}")
         raise typer.Exit(1)

@@ -22,6 +22,11 @@ def build_opts(cfg: Config, download_audio: bool) -> dict:
             "key": "FFmpegExtractAudio",
             "preferredcodec": "mp3",
         }]
+        # Resolving audio stream URLs needs YouTube's n-challenge/signature
+        # solved, which requires a JS runtime (deno) + the EJS solver script.
+        # Enable the remote solver so real audio formats appear (otherwise only
+        # image formats are offered → "Requested format is not available").
+        opts["remote_components"] = ["ejs:github"]
     return opts
 
 

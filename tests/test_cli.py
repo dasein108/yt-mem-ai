@@ -30,7 +30,7 @@ def test_run_fetch_stores_video_transcript_chunks(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "download",
         lambda url, c: (Video(video_id="abc", url=url, status="downloaded"), "/a.mp3"))
     monkeypatch.setattr(cli, "get_transcript",
-        lambda v, audio, c: T.TranscriptResult("captions", "en", "hello world",
+        lambda v, audio, c, force_whisper=False: T.TranscriptResult("captions", "en", "hello world",
             [Segment("abc", 0.0, 10.0, "hello"), Segment("abc", 10.0, 20.0, "world")]))
     vid = cli.run_fetch("https://y/abc", cfg, db=conn)
     assert vid == "abc"
@@ -49,7 +49,7 @@ def test_run_fetch_captions_only_skips_audio_download(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "download_metadata",
         lambda url, c: Video(video_id="cap", url=url, status="downloaded"))
     monkeypatch.setattr(cli, "get_transcript",
-        lambda v, audio, c: T.TranscriptResult("captions", "en", "hi there",
+        lambda v, audio, c, force_whisper=False: T.TranscriptResult("captions", "en", "hi there",
             [Segment("cap", 0.0, 5.0, "hi"), Segment("cap", 5.0, 10.0, "there")]))
     vid = cli.run_fetch("https://y/cap", cfg, db=conn, captions_only=True)
     assert vid == "cap"
@@ -63,7 +63,7 @@ def test_run_fetch_captions_only_raises_when_no_captions(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "download_metadata",
         lambda url, c: Video(video_id="cap", url=url, status="downloaded"))
 
-    def _unavailable(v, audio, c):
+    def _unavailable(v, audio, c, force_whisper=False):
         raise T.TranscriptUnavailable("no captions and no audio")
     monkeypatch.setattr(cli, "get_transcript", _unavailable)
     import pytest
@@ -298,7 +298,7 @@ def test_run_fetch_emits_workflow_events(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "download",
         lambda url, c: (Video(video_id="abc", url=url, status="downloaded"), "/a.mp3"))
     monkeypatch.setattr(cli, "get_transcript",
-        lambda v, audio, c: T.TranscriptResult("captions", "en", "hello", [Segment("abc", 0.0, 1.0, "hello")]))
+        lambda v, audio, c, force_whisper=False: T.TranscriptResult("captions", "en", "hello", [Segment("abc", 0.0, 1.0, "hello")]))
     cli.run_fetch("https://y/abc", cfg, db=conn)
     events = {json.loads(x)["event"] for x in (tmp_path / "c.jsonl").read_text().splitlines()}
     assert "fetch.done" in events

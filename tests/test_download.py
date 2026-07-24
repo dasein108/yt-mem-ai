@@ -15,6 +15,13 @@ def test_build_opts_merges_proxy_and_cookies(tmp_path):
     assert opts["proxy"] == "http://u:p@p.webshare.io:80"
     assert opts["cookiesfrombrowser"] == ("chrome",)
     assert opts["format"] == "bestaudio/best"
+    assert opts["remote_components"] == ["ejs:github"]  # EJS solver for audio
+
+
+def test_build_opts_no_ejs_when_not_downloading_audio(tmp_path):
+    opts = download.build_opts(_cfg(tmp_path), download_audio=False)
+    assert "remote_components" not in opts  # metadata/discovery need no solver
+    assert "format" not in opts
 
 def test_build_opts_no_proxy_when_webshare_disabled(tmp_path):
     opts = download.build_opts(_cfg(tmp_path, use_webshare=False), download_audio=True)

@@ -29,6 +29,15 @@ def test_falls_back_to_whisper():
                            whisper_fn=lambda p, vid, cfg: _res("whisper"))
     assert out.source == "whisper"
 
+def test_force_whisper_skips_captions():
+    v = Video(video_id="abc", url="u")
+    out = T.get_transcript(v, "/a.mp3", _cfg(),
+                           captions_fn=lambda vid, cfg: pytest.fail("captions must be skipped"),
+                           whisper_fn=lambda p, vid, cfg: _res("whisper"),
+                           force_whisper=True)
+    assert out.source == "whisper"
+
+
 def test_raises_when_no_captions_and_no_audio():
     v = Video(video_id="abc", url="u")
     with pytest.raises(T.TranscriptUnavailable):
