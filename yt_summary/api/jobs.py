@@ -5,7 +5,6 @@ import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, UTC
-from typing import Callable
 
 from ..obs import blog
 
@@ -106,6 +105,6 @@ class Worker:
 
     def stop(self) -> None:
         self._running = False
-        for _ in range(max(1, len(self._threads))):
+        for _ in range(len(self._threads)):
             self._q.put(_STOP)
         self._threads = []
