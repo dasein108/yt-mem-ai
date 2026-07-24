@@ -70,13 +70,17 @@ JobSchema: id: str, kind: str, video_id: str | None,
 - Re-submit each to the pool. Safe because job fns are idempotent:
   summarize=`upsert_summary`, fetch=`is_seen` retry-safe, discover=insert-only +
   high-water. "Resume" == "re-run", which is correct and cheap here.
+- **Retry policy:** retries happen **only at startup** (the recovery above).
+  There is **no runtime auto-retry**. Jobs that ended in `error` are **left as
+  `error`** (not re-enqueued on start — a genuinely failing summarize would just
+  loop/cost); the user clicks **Retry** to re-submit one.
 
 **4. Auto-sync scheduler (`lifespan`).**
-- A daemon timer thread runs `discover` every `YT_DISCOVER_INTERVAL_S`
-  (default 3600; `0` disables). Uses the incremental discover (cheap: one feed
-  call + high-water). Submitted as a normal `discover` job so it shows in `/jobs`
-  and is deduped against a manual refresh (skip if a discover job is already
-  active).
+- **On by default.** A daemon timer thread runs `discover` **once on startup**,
+  then every `YT_DISCOVER_INTERVAL_S` (default 3600; `0` disables). Uses the
+  incremental discover (cheap: one feed call + high-water). Submitted as a normal
+  `discover` job so it shows in `/jobs` and is deduped against a manual refresh
+  (skip if a discover job is already active).
 
 **5. API changes (`api/app.py`, `app_jobs.py`, `schemas.py`).**
 - `GET /videos` gains `limit`, `offset`, `since` (newest-first already). Response
@@ -92,7 +96,7 @@ JobSchema: id: str, kind: str, video_id: str | None,
 **1. First page — `HistoryView` (route `/`).**
 - Replaces the current list root. Fetches `GET /videos?limit=&offset=` via
   TanStack Query; renders **date-grouped** sections (Today first), newest-first.
-- **Pager** (prev/next + page size), not infinite scroll.
+- **Pager** (prev/next), **page size 30** (default; `limit=30`), not infinite scroll.
 - Header: **Refresh** button (`POST /jobs/discover`, then invalidate `/videos`)
   and a "last synced / next sync" hint.
 - Each row (extend `VideoList`/card): thumbnail, title, channel, duration,
