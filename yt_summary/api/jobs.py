@@ -19,6 +19,8 @@ class Job:
     result: dict | None = None
     error: str | None = None
     created_at: str = ""
+    video_id: str | None = None
+    updated_at: str = ""
 
 
 class JobRegistry:
@@ -45,13 +47,24 @@ _STOP = object()
 
 
 class Worker:
-    def __init__(self, registry: JobRegistry) -> None:
+    def __init__(self, registry: JobRegistry, *, concurrency: int = 1,
+                 persist=None) -> None:
         self.registry = registry
+        self.concurrency = max(1, concurrency)
+        self._persist = persist or (lambda job: None)
         self._q: queue.Queue = queue.Queue()
-        self._thread: threading.Thread | None = None
+        self._threads: list[threading.Thread] = []
+        self._running = False
 
-    def submit(self, kind: str, fn: Callable[[Job], dict]) -> Job:
+    def _mark(self, job: Job, status: str) -> None:
+        job.status = status
+        job.updated_at = datetime.now(UTC).isoformat()
+        self._persist(job)
+
+    def submit(self, kind: str, fn, video_id: str | None = None) -> Job:
         job = self.registry.create(kind)
+        job.video_id = video_id
+        self._mark(job, "queued")
         self._q.put((job, fn))
         return job
 
@@ -64,31 +77,35 @@ class Worker:
             self._q.task_done()
             return False
         job, fn = item
-        job.status = "running"
+        self._mark(job, "running")
         blog("job.running", job_id=job.id, kind=job.kind)
         start = time.monotonic()
         try:
             job.result = fn(job)
-            job.status = "done"
+            self._mark(job, "done")
             blog("job.done", job_id=job.id, kind=job.kind,
                  duration_ms=round((time.monotonic() - start) * 1000))
         except Exception as exc:  # noqa: BLE001 - jobs must never kill the worker
             job.error = str(exc)
-            job.status = "error"
+            self._mark(job, "error")
             blog("job.error", level="error", msg=str(exc), job_id=job.id, kind=job.kind)
         finally:
             self._q.task_done()
         return True
 
     def start(self) -> None:
+        self._running = True
         def loop() -> None:
-            while True:
+            while self._running:
                 if not self.run_one(block=True):
-                    if self._thread is None:
-                        break
-        self._thread = threading.Thread(target=loop, daemon=True)
-        self._thread.start()
+                    break
+        for _ in range(self.concurrency):
+            t = threading.Thread(target=loop, daemon=True)
+            t.start()
+            self._threads.append(t)
 
     def stop(self) -> None:
-        self._thread = None
-        self._q.put(_STOP)
+        self._running = False
+        for _ in range(max(1, len(self._threads))):
+            self._q.put(_STOP)
+        self._threads = []
