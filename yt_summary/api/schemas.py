@@ -40,6 +40,13 @@ class JobOut(BaseModel):
     result: dict | None = None
     error: str | None = None
     created_at: str
+    video_id: str | None = None
+    updated_at: str | None = None
+
+
+class VideoPageOut(BaseModel):
+    items: list[VideoOut]
+    total: int
 
 
 class StatusOut(BaseModel):

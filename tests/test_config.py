@@ -81,3 +81,16 @@ def test_load_config_hf_token(tmp_path):
 def test_load_config_hf_token_default_none(tmp_path):
     from yt_summary.config import load_config
     assert load_config(tmp_path / "none.env").hf_token is None
+
+
+def test_load_config_job_and_interval_knobs(tmp_path):
+    env = tmp_path / ".env"
+    env.write_text("YT_JOB_CONCURRENCY=5\nYT_DISCOVER_INTERVAL_S=120\n")
+    cfg = load_config(env)
+    assert cfg.job_concurrency == 5
+    assert cfg.discover_interval_s == 120.0
+
+def test_load_config_job_defaults(tmp_path):
+    cfg = load_config(tmp_path / "none.env")
+    assert cfg.job_concurrency == 3
+    assert cfg.discover_interval_s == 3600.0

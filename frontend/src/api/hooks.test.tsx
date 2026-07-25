@@ -15,7 +15,13 @@ describe('hooks', () => {
   it('useVideos returns fixture data', async () => {
     const { result } = renderHook(() => useVideos(), { wrapper: wrap() })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.data?.length).toBe(2)
+    expect(result.current.data?.items.length).toBe(2)
+  })
+  it('useVideos returns a paginated page', async () => {
+    const { result } = renderHook(() => useVideos({ limit: 30, offset: 0 }), { wrapper: wrap() })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(Array.isArray(result.current.data!.items)).toBe(true)
+    expect(typeof result.current.data!.total).toBe('number')
   })
   it('useSearch is disabled for empty query', () => {
     const { result } = renderHook(() => useSearch(''), { wrapper: wrap() })

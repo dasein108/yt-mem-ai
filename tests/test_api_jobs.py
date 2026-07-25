@@ -47,6 +47,33 @@ def test_jobs_list_and_404(tmp_path):
         assert client.get("/jobs/nope").status_code == 404
 
 
+def test_recovery_requeues_and_resets_running(tmp_path, monkeypatch):
+    from yt_summary.config import load_config
+
+    cfg = load_config(tmp_path / "none.env")
+    object.__setattr__(cfg, "discover_interval_s", 0.0)  # disable auto-sync in this test
+    conn = lancedb.connect(str(tmp_path / "l"))
+    store.init_db(conn, fake_embedder())
+    # a leftover 'running' (interrupted) + a 'queued' job persisted before restart
+    store.insert_job(conn, {"id": "r1", "kind": "discover", "video_id": None,
+                            "status": "running", "progress": None, "error": None,
+                            "created_at": "t", "updated_at": "t"})
+    store.insert_job(conn, {"id": "q1", "kind": "summarize", "video_id": "abc",
+                            "status": "queued", "progress": None, "error": None,
+                            "created_at": "t", "updated_at": "t"})
+    monkeypatch.setattr("yt_summary.api.app_jobs.run_discover",
+                        lambda *a, **k: ([], 0))
+    monkeypatch.setattr("yt_summary.api.app_jobs.summarize_video",
+                        lambda *a, **k: {"video_id": "abc"})
+    app = create_app(cfg, store_opener=lambda: conn, start_worker=False)
+    with TestClient(app):  # triggers lifespan
+        # recovery drained into the worker; run them synchronously
+        while app.state.worker.run_one(block=False):
+            pass
+    assert store.get_job(conn, "r1")["status"] == "done"   # requeued + ran
+    assert store.get_job(conn, "q1")["status"] == "done"
+
+
 def test_fetch_job_runs_on_real_worker_thread(tmp_path, monkeypatch):
     conn = lancedb.connect(str(tmp_path / "lance"))
     store.init_db(conn, fake_embedder())

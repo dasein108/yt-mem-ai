@@ -3,7 +3,9 @@ import { api } from './client'
 import type { Job } from './types'
 import { useDebounce } from '@/lib/useDebounce'
 
-export function useVideos(filters: { status?: string; since?: string } = {}) {
+export function useVideos(
+  filters: { status?: string; since?: string; limit?: number; offset?: number } = {},
+) {
   return useQuery({ queryKey: ['videos', filters], queryFn: () => api.listVideos(filters) })
 }
 export function useVideo(id: string | undefined) {

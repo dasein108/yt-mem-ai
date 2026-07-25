@@ -32,7 +32,10 @@ export interface Job {
   result: Record<string, unknown> | null
   error: string | null
   created_at: string
+  video_id: string | null
+  updated_at?: string
 }
+export interface VideoPage { items: VideoOut[]; total: number }
 export interface StatusCounts { counts: Record<string, number> }
 export interface Highlight { start_s: number; label: string }
 export interface QA { q: string; a: string }

@@ -37,6 +37,8 @@ class Config:
     # CONNECT tunnel returns 405). Turn on only if you have no other proxy and
     # YouTube is rate-limiting your raw IP.
     use_webshare: bool = False
+    job_concurrency: int = 3
+    discover_interval_s: float = 3600.0
 
 
 def _clean(value: str | None) -> str | None:
@@ -65,6 +67,7 @@ def load_config(env_path: Path | None = None) -> Config:
         "YT_CHUNK_TARGET_S", "OPENAI_API_KEY", "HF_TOKEN", "YT_LOG_FILE",
         "YT_DISCOVER_TIMEOUT_S", "YT_USE_WEBSHARE", "YT_DISCOVER_FEED_LIMIT",
         "YT_DISCOVER_OVERLAP_S",
+        "YT_JOB_CONCURRENCY", "YT_DISCOVER_INTERVAL_S",
     ):
         if os.environ.get(key) is not None:
             data[key] = os.environ[key]
@@ -90,4 +93,6 @@ def load_config(env_path: Path | None = None) -> Config:
         use_webshare=_truthy(data.get("YT_USE_WEBSHARE")),
         discover_feed_limit=int(_clean(data.get("YT_DISCOVER_FEED_LIMIT")) or "60"),
         discover_overlap_s=float(_clean(data.get("YT_DISCOVER_OVERLAP_S")) or "3600"),
+        job_concurrency=int(_clean(data.get("YT_JOB_CONCURRENCY")) or "3"),
+        discover_interval_s=float(_clean(data.get("YT_DISCOVER_INTERVAL_S")) or "3600"),
     )

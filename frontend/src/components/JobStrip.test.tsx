@@ -10,6 +10,7 @@ import type { Job } from '../api/types'
 
 const job = (overrides: Partial<Job>): Job => ({
   id: 'j1', kind: 'fetch', status: 'running', progress: null, result: null, error: null, created_at: 't0',
+  video_id: null,
   ...overrides,
 })
 

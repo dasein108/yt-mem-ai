@@ -8,7 +8,7 @@ import lancedb
 from pathlib import Path
 from .models import (
     Video, VideoSchema, ChannelSchema, TranscriptSchema,
-    SummarySchema, FeedbackSchema, StateSchema, chunk_schema,
+    SummarySchema, FeedbackSchema, StateSchema, JobSchema, chunk_schema,
 )
 
 _log = logging.getLogger(__name__)
@@ -51,6 +51,7 @@ def init_db(db: lancedb.DBConnection, embedder) -> None:
     db.create_table("feedback", schema=FeedbackSchema, exist_ok=True)
     db.create_table("app_state", schema=StateSchema, exist_ok=True)
     db.create_table("chunks", schema=chunk_schema(embedder), exist_ok=True)
+    db.create_table("jobs", schema=JobSchema, exist_ok=True)
 
 
 def _video_to_row(v: Video) -> dict:
@@ -217,3 +218,38 @@ def list_videos_by_status(db, status: str, since: str | None = None,
 def list_feedback(db) -> list[dict]:
     tbl = db.open_table("feedback")
     return tbl.search().limit(1_000_000).to_list()
+
+
+_JOB_FIELDS = list(JobSchema.model_fields)
+
+
+def insert_job(db, row: dict) -> None:
+    tbl = db.open_table("jobs")
+    tbl.merge_insert("id").when_matched_update_all().when_not_matched_insert_all() \
+        .execute([{k: row.get(k) for k in _JOB_FIELDS}])
+
+
+def update_job(db, job_id: str, **fields) -> None:
+    existing = get_job(db, job_id)
+    if existing is None:
+        return
+    existing.update(fields)
+    insert_job(db, existing)
+
+
+def get_job(db, job_id: str) -> dict | None:
+    tbl = db.open_table("jobs")
+    rows = tbl.search().where(f"id = '{_safe(job_id)}'").limit(1).to_list()
+    return {k: rows[0].get(k) for k in _JOB_FIELDS} if rows else None
+
+
+def list_jobs(db, status: str | None = None, limit: int | None = None) -> list[dict]:
+    tbl = db.open_table("jobs")
+    q = tbl.search()
+    if status is not None:
+        q = q.where(f"status = '{_safe(status)}'")
+    rows = q.limit(1_000_000).to_list()
+    rows.sort(key=lambda d: (d.get("created_at") or ""), reverse=True)
+    if limit is not None:
+        rows = rows[:limit]
+    return [{k: r.get(k) for k in _JOB_FIELDS} for r in rows]
