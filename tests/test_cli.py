@@ -98,6 +98,21 @@ def test_run_fetch_skips_after_download_when_real_id_seen(tmp_path, monkeypatch)
     assert vid == "abc"
 
 
+def test_show_json_includes_summary(tmp_path, monkeypatch, capsys):
+    import json as _json
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    store.upsert_video(conn, Video(video_id="s1", url="u", status="summarized"))
+    cli.run_save_summary(cfg, "s1", "sum md", '[{"start_s":1,"label":"x"}]',
+                         '[{"q":"a","a":"b"}]', db=conn)
+    monkeypatch.setattr(cli, "load_config", lambda: cfg)
+    monkeypatch.setattr(cli, "open_store", lambda c: conn)
+    cli.show("s1", as_json=True)
+    out = _json.loads(capsys.readouterr().out)
+    assert out["summary"]["summary_md"] == "sum md"
+    assert _json.loads(out["summary"]["highlights"])[0]["label"] == "x"
+
+
 def test_save_summary(tmp_path, monkeypatch):
     from yt_summary import cli
     cfg = _cfg(tmp_path)

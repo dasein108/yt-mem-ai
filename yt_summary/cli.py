@@ -114,6 +114,7 @@ def show(video_id: str, as_json: bool = typer.Option(False, "--json")):
             "status": v.status, "channel_id": v.channel_id, "channel": v.channel,
             "published_at": v.published_at, "duration_s": v.duration_s,
             "tags": v.tags, "description": v.description, "transcript": text,
+            "summary": store.get_summary(db, video_id),
         }))
         return
     ch = f"  {v.channel}" if v.channel else ""
