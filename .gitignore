@@ -13,3 +13,5 @@ digests/
 compilations/
 supercuts/
 logs/
+dist/
+*.egg-info/
