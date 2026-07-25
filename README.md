@@ -148,40 +148,13 @@ POST /log                   # ingest a frontend log line ({event, level, msg, ct
 `/summarize-video` skill): it calls OpenRouter using `OPENROUTER_API_KEY` and
 `YT_OPENROUTER_MODEL` (`.env`) and writes the same `summaries` table.
 
-## Desktop UI (SP4b)
+## Desktop UI
 
-A browser-first React UI over the local API lives in `frontend/`:
-
-```bash
-yt-ai serve             # local API, in one terminal
-cd frontend
-npm install
-npm run dev             # Vite on http://localhost:5173, proxies /api -> 127.0.0.1:8000
-```
-
-MVP scope: Library, Detail (summary/highlights/Q&A + like/dislike/Summarize),
-Search, and a Jobs strip. Recommend/Digest views are not part of this UI yet.
-See `frontend/README.md` for details and dev scripts
-(`test`/`build`/`typecheck`/`lint`).
-
-## Desktop app (SP4c)
-
-The frontend can also run as a native Electron app instead of a browser tab.
-The Electron shell wraps the SP4b UI above and manages the SP4a API as a
-sidecar process (auto-spawns `uv run yt-ai serve`, waits for it to come up,
-and stops it on quit); the API now allows CORS so the packaged renderer
-(loaded from `file://` / a custom scheme) can reach it. Minimizing hides to
-the system tray; a video's **Watch** button plays it in-app.
-
-```bash
-cd frontend
-npm run electron:dev     # dev: auto-starts the sidecar + opens the window
-npm run electron:build   # package a current-OS installer into frontend/release/
-```
-
-See `frontend/README.md` → "Electron desktop app" for the full env-var
-overrides, tray behavior, and the manual smoke-test checklist. Cross-platform
-installers, code signing, and bundling Python into the package are deferred.
+The browser + Electron desktop UI lives in its own repo:
+**[yt-ai-desktop](https://github.com/dasein108/yt-ai-desktop)**. It talks to this
+engine over the local API — start the API here with `yt-ai serve`, then run the
+UI from that repo (or let its packaged Electron app launch `uvx yt-ai serve` as a
+sidecar). See that repo's README for setup, dev scripts, and Electron packaging.
 
 ## Debugging
 

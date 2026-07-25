@@ -115,10 +115,10 @@ transcribed → summarized`.
 - **Logging convention** — every runtime writes to the same file,
   `logs/common.jsonl` (one JSON object per line, gitignored, never edit by
   hand): backend via `obs.log_event`/`blog`, the frontend via
-  `frontend/src/lib/log.ts`'s `log()` (fire-and-forget `POST /log`, plus
+  yt-ai-desktop's `src/lib/log.ts`'s `log()` (fire-and-forget `POST /log`, plus
   `installLogBridge()` auto-forwarding `console.error`/`warn` and uncaught
   errors/rejections), and Electron's main process via
-  `frontend/electron/lib.ts`'s `logLine()`/`logsPath()`. Every line has
+  yt-ai-desktop's `electron/lib.ts`'s `logLine()`/`logsPath()`. Every line has
   `{ts, source, level, event, msg, ...ctx}` with `source ∈
   backend|electron|frontend`; logging never raises. Use the `yt-debugger`
   skill to trace an issue across all three.
