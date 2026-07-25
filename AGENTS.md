@@ -1,7 +1,7 @@
-# Repository Instructions — yt-ai (engine)
+# Repository Instructions — yt-mem-ai (engine)
 
-This repo is the Python engine published to PyPI as `yt-ai`. The companion
-`yt-ai-desktop` repo depends on it: its React/Electron UI talks to the engine
+This repo is the Python engine published to PyPI as `yt-mem-ai`. The companion
+`yt-mem-ai-desktop` repo depends on it: its React/Electron UI talks to the engine
 over the local HTTP API, and its Python backend imports this package and reuses
 `cli.py`'s CLI cores.
 
@@ -12,7 +12,7 @@ in sync in the same change:
 
 - Core logic in `yt_summary/` (single source of truth).
 - CLI in `yt_summary/cli.py` (thin `run_*` cores over the same core).
-- The REST API lives in the `yt-ai-desktop` repo's backend (it imports this
+- The REST API lives in the `yt-mem-ai-desktop` repo's backend (it imports this
   package). When you change a CLI core (`run_*`, `open_store`) that the API
   consumes, keep that repo's backend in sync.
 - Canonical skills in `skills/<name>/SKILL.md` (the `.claude/skills/<name>`
@@ -33,4 +33,4 @@ either surface.
 
 - `yt_summary/server.py` MCP server + `yt_summary/installer/` cross-agent
   config writer. When added, they become additional surfaces under "Surface
-  parity" above and get their own `yt-ai-mcp` / `yt-ai-install` console scripts.
+  parity" above and get their own `yt-mem-ai-mcp` / `yt-mem-ai-install` console scripts.

@@ -1,8 +1,8 @@
 import pytest
 from pathlib import Path
-from yt_summary.config import Config
-from yt_summary.store.models import Video, Segment
-from yt_summary import transcript as T
+from yt_mem_ai.config import Config
+from yt_mem_ai.store.models import Video, Segment
+from yt_mem_ai import transcript as T
 
 def _cfg():
     return Config(downloads_dir=Path("d"), proxy_username=None,

@@ -1,5 +1,5 @@
 import json
-from yt_summary import obs
+from yt_mem_ai import obs
 
 
 def test_log_event_writes_jsonl(tmp_path):
@@ -31,7 +31,7 @@ def test_blog_is_backend_source(tmp_path):
 
 
 def test_config_log_file_default_and_env(tmp_path):
-    from yt_summary.config import load_config
+    from yt_mem_ai.config import load_config
     assert load_config(tmp_path / "none.env").log_file.name == "common.jsonl"
     env = tmp_path / ".env"
     env.write_text("YT_LOG_FILE=/x/y.jsonl\n")

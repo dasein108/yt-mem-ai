@@ -1,8 +1,8 @@
 import lancedb
 from tests.support import fake_embedder
-from yt_summary.config import Config
-from yt_summary import cli
-from yt_summary.store import db as store
+from yt_mem_ai.config import Config
+from yt_mem_ai import cli
+from yt_mem_ai.store import db as store
 
 
 def _db(tmp_path):

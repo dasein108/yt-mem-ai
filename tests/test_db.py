@@ -2,10 +2,10 @@ import lancedb
 import pytest
 
 from tests.support import fake_embedder
-from yt_summary.store import db as store
-from yt_summary.store import models
-from yt_summary.store.models import Video, Segment, TranscriptRow
-from yt_summary.store.embeddings import chunk_segments
+from yt_mem_ai.store import db as store
+from yt_mem_ai.store import models
+from yt_mem_ai.store.models import Video, Segment, TranscriptRow
+from yt_mem_ai.store.embeddings import chunk_segments
 
 
 def test_dataclasses_still_present():
@@ -29,7 +29,7 @@ def test_lance_schemas_have_expected_fields():
 def test_ensure_columns_migrates_old_table(tmp_path):
     import lancedb
     from lancedb.pydantic import LanceModel
-    from yt_summary.store.db import _ensure_columns
+    from yt_mem_ai.store.db import _ensure_columns
 
     class OldVideo(LanceModel):
         video_id: str

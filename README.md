@@ -1,17 +1,17 @@
-# yt_summary — YouTube AI CLI
+# yt-mem-ai — YouTube AI CLI
 
 ## Install
 
 ```bash
 # zero-install run (recommended)
-uvx yt-ai --help
+uvx yt-mem-ai --help
 
 # or bootstrap uv + warm the cache
-curl -LsSf https://raw.githubusercontent.com/dasein108/yt-ai/main/install.sh | sh
+curl -LsSf https://raw.githubusercontent.com/dasein108/yt-mem-ai/main/install.sh | sh
 ```
 
-The desktop UI lives in a separate repo: **[yt-ai-desktop](https://github.com/dasein108/yt-ai-desktop)**.
-It depends on this `yt-ai` package and runs its own local REST API.
+The desktop UI lives in a separate repo: **[yt-mem-ai-desktop](https://github.com/dasein108/yt-mem-ai-desktop)**.
+It depends on this `yt-mem-ai` package and runs its own local REST API.
 
 Download YouTube audio, transcribe (captions → faster-whisper fallback), store
 everything in an embedded **LanceDB** with per-chunk embeddings, discover
@@ -104,9 +104,9 @@ Single video on demand: `yt-ai fetch <url>` then the `/summarize-video` skill.
 ## REST API & desktop app
 
 The local REST API and the desktop UI live in the companion repo
-**[yt-ai-desktop](https://github.com/dasein108/yt-ai-desktop)** — a full-stack app
-(FastAPI backend + React/Electron UI) that depends on this `yt-ai` package and
-reuses its CLI cores. Install `yt-ai` (`uvx yt-ai` / `pip install yt-ai`) and see
+**[yt-mem-ai-desktop](https://github.com/dasein108/yt-mem-ai-desktop)** — a full-stack app
+(FastAPI backend + React/Electron UI) that depends on this `yt-mem-ai` package and
+reuses its CLI cores. Install `yt-mem-ai` (`uvx yt-mem-ai` / `pip install yt-mem-ai`) and see
 that repo to run the API and UI.
 
 ## Debugging
@@ -122,7 +122,7 @@ gitignored — delete/rotate it manually if it grows.
 
 The **`yt-debugger`** skill (end-to-end backend/electron/frontend log
 correlation) moved with the REST API to the
-[yt-ai-desktop](https://github.com/dasein108/yt-ai-desktop) repo. Two starter
+[yt-mem-ai-desktop](https://github.com/dasein108/yt-mem-ai-desktop) repo. Two starter
 one-liners for filtering the log directly:
 
 ```bash

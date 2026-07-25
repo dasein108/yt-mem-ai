@@ -1,4 +1,4 @@
-# yt_summary/discovery.py
+# yt_mem_ai/discovery.py
 from __future__ import annotations
 import threading
 from datetime import datetime, UTC

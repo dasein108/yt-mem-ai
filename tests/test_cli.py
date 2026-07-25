@@ -2,10 +2,10 @@ import datetime
 
 import lancedb
 from tests.support import fake_embedder
-from yt_summary.config import Config
-from yt_summary.store import db as store
-from yt_summary.store.models import Video, Segment
-from yt_summary import cli, transcript as T
+from yt_mem_ai.config import Config
+from yt_mem_ai.store import db as store
+from yt_mem_ai.store.models import Video, Segment
+from yt_mem_ai import cli, transcript as T
 
 
 def _cfg(tmp_path, **over):
@@ -114,7 +114,7 @@ def test_show_json_includes_summary(tmp_path, monkeypatch, capsys):
 
 
 def test_save_summary(tmp_path, monkeypatch):
-    from yt_summary import cli
+    from yt_mem_ai import cli
     cfg = _cfg(tmp_path)
     conn = _db(tmp_path)
     cli.run_save_summary(cfg, "abc", "the summary", "[]", "[]", db=conn)

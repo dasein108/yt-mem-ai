@@ -1,4 +1,4 @@
-# yt_summary/recommend.py
+# yt_mem_ai/recommend.py
 from __future__ import annotations
 import numpy as np
 from .store import db as store

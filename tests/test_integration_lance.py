@@ -1,9 +1,9 @@
 import os
 import lancedb
 import pytest
-from yt_summary.config import Config
-from yt_summary.store import db as store
-from yt_summary.store.embeddings import build_embedder
+from yt_mem_ai.config import Config
+from yt_mem_ai.store import db as store
+from yt_mem_ai.store.embeddings import build_embedder
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("YT_RUN_INTEGRATION") != "1",

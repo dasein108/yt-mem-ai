@@ -3,8 +3,8 @@ import time
 from datetime import datetime, UTC
 from pathlib import Path
 import pytest
-from yt_summary.config import Config
-from yt_summary import discovery
+from yt_mem_ai.config import Config
+from yt_mem_ai import discovery
 
 
 def _epoch(y, mo, d, h=0):

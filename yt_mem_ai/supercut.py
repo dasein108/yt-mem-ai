@@ -1,4 +1,4 @@
-# yt_summary/supercut.py
+# yt_mem_ai/supercut.py
 from __future__ import annotations
 import os
 from dataclasses import dataclass, field

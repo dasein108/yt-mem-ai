@@ -4,9 +4,9 @@ import json
 import lancedb
 
 from tests.support import fake_embedder
-from yt_summary import compile as C
-from yt_summary.store import db as store
-from yt_summary.store.models import Video
+from yt_mem_ai import compile as C
+from yt_mem_ai.store import db as store
+from yt_mem_ai.store.models import Video
 
 
 def _chunks(spans):

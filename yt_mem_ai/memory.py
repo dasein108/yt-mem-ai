@@ -1,4 +1,4 @@
-# yt_summary/memory.py
+# yt_mem_ai/memory.py
 from __future__ import annotations
 from .store import db as store
 

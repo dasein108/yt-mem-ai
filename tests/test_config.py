@@ -1,5 +1,5 @@
 from pathlib import Path
-from yt_summary.config import load_config
+from yt_mem_ai.config import load_config
 
 def test_load_config_reads_env(tmp_path):
     env = tmp_path / ".env"
@@ -50,7 +50,7 @@ def test_load_config_lance_fields(tmp_path, monkeypatch):
         "YT_CHUNK_TARGET_S=30\n"
         "OPENAI_API_KEY=sk-test\n"
     )
-    from yt_summary.config import load_config
+    from yt_mem_ai.config import load_config
     from pathlib import Path
     cfg = load_config(env)
     assert cfg.store_path == Path("mylance")
@@ -61,7 +61,7 @@ def test_load_config_lance_fields(tmp_path, monkeypatch):
 
 
 def test_load_config_lance_defaults(tmp_path):
-    from yt_summary.config import load_config
+    from yt_mem_ai.config import load_config
     from pathlib import Path
     cfg = load_config(tmp_path / "none.env")
     assert cfg.store_path == Path("yt_lance")
@@ -72,14 +72,14 @@ def test_load_config_lance_defaults(tmp_path):
 
 
 def test_load_config_hf_token(tmp_path):
-    from yt_summary.config import load_config
+    from yt_mem_ai.config import load_config
     env = tmp_path / ".env"
     env.write_text("HF_TOKEN=hf_abc123\n")
     assert load_config(env).hf_token == "hf_abc123"
 
 
 def test_load_config_hf_token_default_none(tmp_path):
-    from yt_summary.config import load_config
+    from yt_mem_ai.config import load_config
     assert load_config(tmp_path / "none.env").hf_token is None
 
 

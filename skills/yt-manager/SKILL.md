@@ -1,11 +1,11 @@
 ---
 name: yt-manager
-description: Use when the user wants to run any yt-ai operation from Claude Code — ingest a video, discover subscription uploads, batch-fetch pending, search the library, rate/recommend, compile highlights, build a supercut, check status, or run a full pipeline (daily routine or single-video). The umbrella entry point for the yt_summary CLI; delegates deep per-video analysis to [[summarize-video]] and [[daily-digest]].
+description: Use when the user wants to run any yt-ai operation from Claude Code — ingest a video, discover subscription uploads, batch-fetch pending, search the library, rate/recommend, compile highlights, build a supercut, check status, or run a full pipeline (daily routine or single-video). The umbrella entry point for the yt-mem-ai CLI; delegates deep per-video analysis to [[summarize-video]] and [[daily-digest]].
 ---
 
 # yt-manager
 
-Single entry point for driving the `yt-ai` CLI (the yt_summary YouTube pipeline)
+Single entry point for driving the `yt-ai` CLI (the yt-mem-ai YouTube pipeline)
 from Claude Code. Every data operation goes through the CLI — never touch the
 LanceDB store directly.
 

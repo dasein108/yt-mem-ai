@@ -1,6 +1,6 @@
 from pathlib import Path
-from yt_summary.config import Config
-from yt_summary import cookies
+from yt_mem_ai.config import Config
+from yt_mem_ai import cookies
 
 def _cfg(browser):
     return Config(downloads_dir=Path("d"), proxy_username=None,

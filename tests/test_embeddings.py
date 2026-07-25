@@ -1,8 +1,8 @@
 import pytest
 from pathlib import Path
-from yt_summary.config import Config
-from yt_summary.store.models import Segment
-from yt_summary.store import embeddings
+from yt_mem_ai.config import Config
+from yt_mem_ai.store.models import Segment
+from yt_mem_ai.store import embeddings
 
 
 def _cfg(**over):

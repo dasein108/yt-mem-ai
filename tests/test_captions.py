@@ -1,6 +1,6 @@
 from pathlib import Path
-from yt_summary.config import Config
-from yt_summary.transcript import captions
+from yt_mem_ai.config import Config
+from yt_mem_ai.transcript import captions
 
 def _cfg():
     return Config(downloads_dir=Path("d"), proxy_username=None,

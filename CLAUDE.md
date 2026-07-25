@@ -1,4 +1,4 @@
-# CLAUDE.md — yt_summary
+# CLAUDE.md — yt-mem-ai
 
 Guidance for Claude Code (and any LLM) working in this repo.
 
@@ -68,15 +68,15 @@ not an API) to keep it free and high-quality.
   explicit `--after` > stored epoch `last_discover_ts` (−`overlap_s`) > legacy
   `last_discover_at` date > 7-day default; it drops `is_seen` videos and advances
   `last_discover_ts` (never regressing) from the discovered `published_ts`.
-- REST API — **moved out** to the [`yt-ai-desktop`](https://github.com/dasein108/yt-ai-desktop)
+- REST API — **moved out** to the [`yt-mem-ai-desktop`](https://github.com/dasein108/yt-mem-ai-desktop)
   repo (FastAPI backend that imports this package and reuses `cli.py`'s `run_*`/
   `open_store` cores). This repo is the engine: library + data/pipeline CLI only.
 - `frontend/` — **moved out** to the standalone repo
-  [`yt-ai-desktop`](https://github.com/dasein108/yt-ai-desktop) (React+TS
+  [`yt-mem-ai-desktop`](https://github.com/dasein108/yt-mem-ai-desktop) (React+TS
   desktop UI + Electron wrapper). It consumes this engine as a Python package
-  (its FastAPI backend imports `yt_summary`'s CLI cores directly) and the
+  (its FastAPI backend imports `yt_mem_ai`'s CLI cores directly) and the
   packaged app bundles the engine. This repo is the engine: library + CLI +
-  skills, published to PyPI as `yt-ai`.
+  skills, published to PyPI as `yt-mem-ai`.
 
 ## Store (LanceDB)
 
@@ -100,12 +100,12 @@ transcribed → summarized`.
 - **Logging convention** — every runtime writes to the same file,
   `logs/common.jsonl` (one JSON object per line, gitignored, never edit by
   hand): backend via `obs.log_event`/`blog`, the frontend via
-  yt-ai-desktop's `src/lib/log.ts`'s `log()` (fire-and-forget `POST /log`, plus
+  yt-mem-ai-desktop's `src/lib/log.ts`'s `log()` (fire-and-forget `POST /log`, plus
   `installLogBridge()` auto-forwarding `console.error`/`warn` and uncaught
   errors/rejections), and Electron's main process via
-  yt-ai-desktop's `electron/lib.ts`'s `logLine()`/`logsPath()`. Every line has
+  yt-mem-ai-desktop's `electron/lib.ts`'s `logLine()`/`logsPath()`. Every line has
   `{ts, source, level, event, msg, ...ctx}` with `source ∈
-  backend|electron|frontend`; logging never raises. See the `yt-ai-desktop`
+  backend|electron|frontend`; logging never raises. See the `yt-mem-ai-desktop`
   repo for the `yt-debugger`-style tooling to trace an issue across all three.
 
 ## Recommendations
@@ -126,11 +126,11 @@ via a symlink `.claude/skills/<name> -> ../../skills/<name>` (thin ref, no drift
 - `daily-digest` — a day's transcribed videos → per-video summaries + `digests/<DATE>.md`.
 
 The `yt-debugger` skill (backend/electron/frontend log correlation) **moved
-out** with the REST API to the `yt-ai-desktop` repo.
+out** with the REST API to the `yt-mem-ai-desktop` repo.
 
 There are two independent summarization paths, both writing the same `summaries`
 table via `store.upsert_summary`: the skills-primary path above (free, via Claude
-Code) and the `yt-ai-desktop` backend's summarize job (OpenRouter, for the
+Code) and the `yt-mem-ai-desktop` backend's summarize job (OpenRouter, for the
 desktop UI). Neither is authoritative over the other — last write wins.
 
 ## Commands & daily routine

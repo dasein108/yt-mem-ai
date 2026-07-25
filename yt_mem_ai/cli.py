@@ -1,4 +1,4 @@
-# yt_summary/cli.py
+# yt_mem_ai/cli.py
 from __future__ import annotations
 import json
 from dataclasses import asdict

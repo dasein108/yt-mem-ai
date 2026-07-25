@@ -1,4 +1,4 @@
-# yt_summary/store/db.py
+# yt_mem_ai/store/db.py
 from __future__ import annotations
 import logging
 import re

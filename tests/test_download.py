@@ -1,6 +1,6 @@
 from pathlib import Path
-from yt_summary.config import Config
-from yt_summary import download
+from yt_mem_ai.config import Config
+from yt_mem_ai import download
 
 def _cfg(tmp_path, use_webshare=True):
     return Config(downloads_dir=tmp_path / "dl",

@@ -1,4 +1,4 @@
-# yt_summary/obs.py
+# yt_mem_ai/obs.py
 from __future__ import annotations
 import json
 import os

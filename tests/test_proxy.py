@@ -1,6 +1,6 @@
-from yt_summary.config import Config
+from yt_mem_ai.config import Config
 from pathlib import Path
-from yt_summary import proxy
+from yt_mem_ai import proxy
 
 
 def _cfg(user, pw, use_webshare=True):
