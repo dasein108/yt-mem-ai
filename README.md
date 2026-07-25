@@ -101,15 +101,17 @@ download/render failed). Use `compile` for a quick clickable digest; use
 
 Single video on demand: `yt-ai fetch <url>` then the `/summarize-video` skill.
 
-## Desktop UI (dev)
+## Local dev API
 
-One command starts the whole dev stack — the local API plus the Vite dev server
-(which proxies `/api` to the API) — and Ctrl-C stops both:
+`./dev.sh` starts the local API (`yt-ai serve`) for development; Ctrl-C stops it:
 
 ```bash
-./dev.sh                    # UI at http://localhost:5173, API at :8000
-YT_API_PORT=8010 ./dev.sh   # API on a different port (Vite proxy follows)
+./dev.sh                    # API at http://127.0.0.1:8000
+YT_API_PORT=8010 ./dev.sh   # API on a different port
 ```
+
+Run the desktop UI (from the [yt-ai-desktop](https://github.com/dasein108/yt-ai-desktop)
+repo) against this API.
 
 ## Local API (SP4)
 
