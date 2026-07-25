@@ -1,5 +1,18 @@
 # yt_summary — YouTube AI CLI
 
+## Install
+
+```bash
+# zero-install run (recommended)
+uvx yt-ai --help
+
+# or bootstrap uv + warm the cache
+curl -LsSf https://raw.githubusercontent.com/dasein108/yt-ai/main/install.sh | sh
+```
+
+The desktop UI lives in a separate repo: **[yt-ai-desktop](https://github.com/dasein108/yt-ai-desktop)**.
+It talks to this engine over the local API (`yt-ai serve`).
+
 Download YouTube audio, transcribe (captions → faster-whisper fallback), store
 everything in an embedded **LanceDB** with per-chunk embeddings, discover
 subscription uploads, and search your library semantically. Summaries,
