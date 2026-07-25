@@ -17,7 +17,7 @@ not an API) to keep it free and high-quality.
   `discover_feed_limit`/`discover_overlap_s` tune incremental discovery.
 - `obs.py` — unified logging. `log_event(source, event, level="info", msg="", *,
   log_file=None, **ctx)` never raises (append fails silently); `blog(...)` is the
-  `source="backend"` shorthand used across `cli.py`/`api/`. Writes one JSON line
+  `source="backend"` shorthand used across `cli.py`. Writes one JSON line
   (`{ts, source, level, event, msg, ...ctx}`) to `Config.log_file`
   (`YT_LOG_FILE` env, default `logs/common.jsonl`; gitignored).
 - `proxy.py` / `cookies.py` — Webshare rotating proxy + Chrome cookies for yt-dlp.

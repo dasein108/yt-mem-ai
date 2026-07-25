@@ -1,8 +1,9 @@
 # Repository Instructions — yt-ai (engine)
 
-This repo is the Python engine published to PyPI as `yt-ai`. The desktop UI is
-a separate repo (`yt-ai-desktop`) that consumes this engine over the local HTTP
-API only — never import Python across the boundary.
+This repo is the Python engine published to PyPI as `yt-ai`. The companion
+`yt-ai-desktop` repo depends on it: its React/Electron UI talks to the engine
+over the local HTTP API, and its Python backend imports this package and reuses
+`cli.py`'s CLI cores.
 
 ## Surface parity
 
