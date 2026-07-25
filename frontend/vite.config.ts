@@ -24,7 +24,8 @@ export default defineConfig(({ mode }) => ({
   server: {
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        // YT_API_PORT lets ./dev.sh run the API on a non-default port.
+        target: `http://127.0.0.1:${process.env.YT_API_PORT ?? '8000'}`,
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/api/, ''),
       },

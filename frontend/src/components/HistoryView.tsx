@@ -47,8 +47,11 @@ export function HistoryView() {
               const done = v.status === 'summarized'
               return (
                 <li key={v.video_id} className="flex items-center gap-3 py-2">
-                  <Link to={`/videos/${v.video_id}`} className="flex-1 truncate hover:underline">
-                    {v.title ?? v.video_id}
+                  <Link to={`/videos/${v.video_id}`} className="min-w-0 flex-1 hover:underline">
+                    <span className="block truncate">{v.title ?? v.video_id}</span>
+                    {v.channel && (
+                      <span className="block truncate text-xs text-slate-500">{v.channel}</span>
+                    )}
                   </Link>
                   {job ? (
                     <Badge className="bg-amber-100 text-amber-700">summarizing…</Badge>
