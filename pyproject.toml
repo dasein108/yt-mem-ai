@@ -1,7 +1,23 @@
 [project]
-name = "yt-summary"
-version = "0.1.0"
+name = "yt-ai"
+dynamic = ["version"]
+description = "Local-first YouTube AI CLI: download, transcribe (captions -> whisper), embed in LanceDB, discover subscriptions, and summarize/highlight/Q&A."
+readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "dasein" }]
+keywords = ["youtube", "transcription", "whisper", "lancedb", "summarization", "cli", "ai"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Multimedia :: Video",
+  "Topic :: Text Processing :: Linguistic",
+]
 dependencies = [
     "typer>=0.12",
     "yt-dlp>=2024.8",
@@ -19,12 +35,23 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.6", "httpx>=0.27"]
 
+[project.urls]
+Homepage = "https://github.com/dasein108/yt-ai"
+Repository = "https://github.com/dasein108/yt-ai"
+Issues = "https://github.com/dasein108/yt-ai/issues"
+
 [project.scripts]
 yt-ai = "yt_summary.cli:app"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["yt_summary"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
