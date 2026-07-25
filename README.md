@@ -88,19 +88,30 @@ download/render failed). Use `compile` for a quick clickable digest; use
 
 Single video on demand: `yt-ai fetch <url>` then the `/summarize-video` skill.
 
+## Desktop UI (dev)
+
+One command starts the whole dev stack — the local API plus the Vite dev server
+(which proxies `/api` to the API) — and Ctrl-C stops both:
+
+```bash
+./dev.sh                    # UI at http://localhost:5173, API at :8000
+YT_API_PORT=8010 ./dev.sh   # API on a different port (Vite proxy follows)
+```
+
 ## Local API (SP4)
 
 ```bash
 yt-ai serve [--host 127.0.0.1] [--port 8000]   # localhost-only FastAPI server
 ```
 
-Backend for the future desktop UI. Wraps the same `run_*` cores as the CLI over
-an in-memory job queue (jobs run in a background thread, not persisted).
+Backend for the desktop UI. Wraps the same `run_*` cores as the CLI. Jobs run on
+a bounded thread pool, are persisted in a `jobs` table, and unfinished ones are
+re-enqueued on restart; subscriptions auto-sync hourly (`YT_DISCOVER_INTERVAL_S`).
 
 Read endpoints:
 
 ```
-GET /videos                # list stored videos (?status=&since=)
+GET /videos                # paged {items,total} (?status=&since=&limit=30&offset=0)
 GET /videos/{video_id}     # metadata + transcript + summary
 GET /status                # counts by status
 GET /search                # semantic search (?q=&mode=hybrid|fts|vector&k=10)

@@ -34,6 +34,21 @@ def test_list_videos(tmp_path):
         assert body["total"] == 1
 
 
+def test_videos_expose_channel_tags_description(tmp_path):
+    client, conn = _client(tmp_path)
+    store.upsert_video(conn, Video(video_id="vm", url="um", title="Meta", status="transcribed",
+                                    published_at="2026-07-24", channel_id="cid", channel="My Channel",
+                                    tags="a,b,c", description="the description"))
+    with client:
+        item = next(v for v in client.get("/videos").json()["items"] if v["video_id"] == "vm")
+        assert item["channel"] == "My Channel"
+        assert item["channel_id"] == "cid"
+        assert item["tags"] == "a,b,c"
+        assert item["description"] == "the description"
+        detail = client.get("/videos/vm").json()
+        assert detail["channel"] == "My Channel" and detail["tags"] == "a,b,c"
+
+
 def test_videos_paginated_envelope(tmp_path):
     client, conn = _client(tmp_path)
     store.upsert_video(conn, Video(video_id="v2", url="u2", title="Second",

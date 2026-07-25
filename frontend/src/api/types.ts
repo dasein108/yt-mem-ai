@@ -5,6 +5,10 @@ export interface VideoOut {
   status: string | null
   published_at: string | null
   duration_s: number | null
+  channel_id: string | null
+  channel: string | null
+  tags: string | null
+  description: string | null
 }
 export interface Summary {
   video_id: string

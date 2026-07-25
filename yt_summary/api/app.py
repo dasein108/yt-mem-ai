@@ -83,7 +83,9 @@ def create_app(cfg, *, store_opener=None, summarize_client=None, start_worker: b
 
     def _video_out(v) -> dict:
         return {"video_id": v.video_id, "title": v.title, "url": v.url,
-                "status": v.status, "published_at": v.published_at, "duration_s": v.duration_s}
+                "status": v.status, "published_at": v.published_at, "duration_s": v.duration_s,
+                "channel_id": v.channel_id, "channel": v.channel,
+                "tags": v.tags, "description": v.description}
 
     @app.get("/videos", response_model=schemas.VideoPageOut)
     def list_videos(status: str | None = None, since: str | None = None,

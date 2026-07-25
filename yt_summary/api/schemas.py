@@ -9,6 +9,10 @@ class VideoOut(BaseModel):
     status: str | None = None
     published_at: str | None = None
     duration_s: int | None = None
+    channel_id: str | None = None
+    channel: str | None = None
+    tags: str | None = None
+    description: str | None = None
 
 
 class VideoDetailOut(VideoOut):
