@@ -1,9 +1,0 @@
-{
-  "appId": "app.ytsummary.desktop",
-  "productName": "yt_summary",
-  "files": ["dist/**/*", "dist-electron/**/*"],
-  "directories": { "output": "release" },
-  "mac": { "target": "dmg" },
-  "win": { "target": "nsis" },
-  "linux": { "target": "AppImage" }
-}
