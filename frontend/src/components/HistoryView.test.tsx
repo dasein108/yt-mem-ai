@@ -8,9 +8,25 @@ import type { Job } from '../api/types'
 
 describe('HistoryView', () => {
   it('lists videos grouped by day and shows a summary button/badge', async () => {
+    // Override the fixture so the summarized video's published_at is
+    // computed the same way the component computes "today", exercising
+    // the actual Today branch rather than matching a hardcoded date literal.
+    const today = new Date().toISOString().slice(0, 10)
+    server.use(
+      http.get('/api/videos', () =>
+        HttpResponse.json({
+          items: [
+            { video_id: 'v1', title: 'First Video', url: 'https://y/v1', status: 'summarized',
+              published_at: today, duration_s: 600 },
+            { video_id: 'v2', title: 'Second', url: 'https://y/v2', status: 'transcribed',
+              published_at: '2026-07-21', duration_s: 300 },
+          ],
+          total: 2,
+        })),
+    )
     renderWithProviders(<HistoryView />)
     expect(await screen.findByText('First Video')).toBeInTheDocument()
-    expect(screen.getByText(/2026-07-22|Today/)).toBeInTheDocument()
+    expect(screen.getByText('Today')).toBeInTheDocument()
     // Already-summarized video shows a badge, not a button.
     expect(screen.getByText('summarized')).toBeInTheDocument()
     // Transcribed-but-not-summarized video gets a Summarize button.

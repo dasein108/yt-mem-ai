@@ -50,6 +50,25 @@ def test_worker_persists_each_transition():
     assert statuses[-1] == "done"
 
 
+def test_worker_survives_persist_failure():
+    reg = JobRegistry()
+    calls = {"n": 0}
+    def bad_persist(job):
+        calls["n"] += 1
+        raise RuntimeError("db commit conflict")
+    w = Worker(reg, concurrency=2, persist=bad_persist)
+    jobs = [w.submit("x", lambda j: {"ok": True}) for _ in range(3)]
+    w.start()
+    import time as _t
+    for _ in range(50):
+        if all(j.status == "done" for j in reg.list()):
+            break
+        _t.sleep(0.05)
+    w.stop()
+    assert all(j.status == "done" for j in reg.list())  # work still completed
+    assert calls["n"] > 0  # persist was attempted (and swallowed)
+
+
 def test_worker_runs_bounded_parallel():
     reg = JobRegistry()
     w = Worker(reg, concurrency=3)

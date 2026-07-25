@@ -59,7 +59,10 @@ class Worker:
     def _mark(self, job: Job, status: str) -> None:
         job.status = status
         job.updated_at = datetime.now(UTC).isoformat()
-        self._persist(job)
+        try:
+            self._persist(job)
+        except Exception as exc:  # noqa: BLE001 - persistence must never kill the worker
+            blog("job.persist_error", level="error", msg=str(exc), job_id=job.id, kind=job.kind)
 
     def submit(self, kind: str, fn, video_id: str | None = None,
                job_id: str | None = None, created_at: str | None = None) -> Job:
