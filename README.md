@@ -101,33 +101,15 @@ download/render failed). Use `compile` for a quick clickable digest; use
 
 Single video on demand: `yt-ai fetch <url>` then the `/summarize-video` skill.
 
-## REST API & desktop app
+## Logging
 
-The local REST API and the desktop UI live in the companion repo
-**[yt-mem-ai-desktop](https://github.com/dasein108/yt-mem-ai-desktop)** — a full-stack app
-(FastAPI backend + React/Electron UI) that depends on this `yt-mem-ai` package and
-reuses its CLI cores. Install `yt-mem-ai` (`uvx yt-mem-ai` / `pip install yt-mem-ai`) and see
-that repo to run the API and UI.
-
-## Debugging
-
-Backend (`obs.log_event`/`blog`), Electron main process (`logLine`), and the
-frontend (`log()` + an auto-capture bridge over `console.error`/`warn` and
-uncaught errors/rejections, POSTing to `POST /log`) all append to one unified,
-append-only log: **`logs/common.jsonl`** — one JSON object per line,
-`{ts, source, level, event, msg, ...ctx}` with `source ∈ backend|electron|frontend`.
-Path defaults to `logs/common.jsonl`, overridable via `YT_LOG_FILE` (backend only;
-Electron/frontend always write to the repo's `logs/common.jsonl`). It's
-gitignored — delete/rotate it manually if it grows.
-
-The **`yt-debugger`** skill (end-to-end backend/electron/frontend log
-correlation) moved with the REST API to the
-[yt-mem-ai-desktop](https://github.com/dasein108/yt-mem-ai-desktop) repo. Two starter
-one-liners for filtering the log directly:
+The CLI writes structured JSON events to **`logs/common.jsonl`** (via
+`obs.log_event`/`blog`) — one object per line, `{ts, source, level, event, msg,
+...ctx}`. Override the path with `YT_LOG_FILE`; it's gitignored. Inspect with jq:
 
 ```bash
-jq -c 'select(.level=="error")' logs/common.jsonl              # every error, any runtime
-tail -f logs/common.jsonl | jq -c '{ts,source,event,msg}'       # live tail, compact
+jq -c 'select(.level=="error")' logs/common.jsonl   # every error
+tail -f logs/common.jsonl | jq -c '{ts,event,msg}'  # live tail, compact
 ```
 
 ## Tests
