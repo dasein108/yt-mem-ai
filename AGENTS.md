@@ -11,7 +11,9 @@ in sync in the same change:
 
 - Core logic in `yt_summary/` (single source of truth).
 - CLI in `yt_summary/cli.py` (thin `run_*` cores over the same core).
-- API routes in `yt_summary/api/` when the desktop UI needs it.
+- The REST API lives in the `yt-ai-desktop` repo's backend (it imports this
+  package). When you change a CLI core (`run_*`, `open_store`) that the API
+  consumes, keep that repo's backend in sync.
 - Canonical skills in `skills/<name>/SKILL.md` (the `.claude/skills/<name>`
   symlinks are thin pointers — never duplicate the body).
 - Tests in `tests/` (offline via the injectable seams; no network, no model

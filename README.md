@@ -11,7 +11,7 @@ curl -LsSf https://raw.githubusercontent.com/dasein108/yt-ai/main/install.sh | s
 ```
 
 The desktop UI lives in a separate repo: **[yt-ai-desktop](https://github.com/dasein108/yt-ai-desktop)**.
-It talks to this engine over the local API (`yt-ai serve`).
+It depends on this `yt-ai` package and runs its own local REST API.
 
 Download YouTube audio, transcribe (captions → faster-whisper fallback), store
 everything in an embedded **LanceDB** with per-chunk embeddings, discover
@@ -101,62 +101,13 @@ download/render failed). Use `compile` for a quick clickable digest; use
 
 Single video on demand: `yt-ai fetch <url>` then the `/summarize-video` skill.
 
-## Local dev API
+## REST API & desktop app
 
-`./dev.sh` starts the local API (`yt-ai serve`) for development; Ctrl-C stops it:
-
-```bash
-./dev.sh                    # API at http://127.0.0.1:8000
-YT_API_PORT=8010 ./dev.sh   # API on a different port
-```
-
-Run the desktop UI (from the [yt-ai-desktop](https://github.com/dasein108/yt-ai-desktop)
-repo) against this API.
-
-## Local API (SP4)
-
-```bash
-yt-ai serve [--host 127.0.0.1] [--port 8000]   # localhost-only FastAPI server
-```
-
-Backend for the desktop UI. Wraps the same `run_*` cores as the CLI. Jobs run on
-a bounded thread pool, are persisted in a `jobs` table, and unfinished ones are
-re-enqueued on restart; subscriptions auto-sync hourly (`YT_DISCOVER_INTERVAL_S`).
-
-Read endpoints:
-
-```
-GET /videos                # paged {items,total} (?status=&since=&limit=30&offset=0)
-GET /videos/{video_id}     # metadata + transcript + summary
-GET /status                # counts by status
-GET /search                # semantic search (?q=&mode=hybrid|fts|vector&k=10)
-GET /recommend             # ranked unrated videos (?limit=20)
-```
-
-Write / job endpoints:
-
-```
-POST /feedback              # like/dislike a video ({video_id, signal})
-POST /jobs/fetch            # download+transcribe+embed one video ({url, force})
-POST /jobs/discover         # find new subscription uploads ({after, deep, min_duration})
-POST /jobs/fetch-pending    # batch-fetch pending 'discovered' videos ({since, limit})
-POST /jobs/summarize        # summarize a fetched video via OpenRouter ({video_id})
-GET  /jobs/{job_id}         # poll a job's status/result
-GET  /jobs                  # list all jobs
-POST /log                   # ingest a frontend log line ({event, level, msg, ctx}) -> logs/common.jsonl
-```
-
-`POST /jobs/summarize` is the API's summarization path (distinct from the
-`/summarize-video` skill): it calls OpenRouter using `OPENROUTER_API_KEY` and
-`YT_OPENROUTER_MODEL` (`.env`) and writes the same `summaries` table.
-
-## Desktop UI
-
-The browser + Electron desktop UI lives in its own repo:
-**[yt-ai-desktop](https://github.com/dasein108/yt-ai-desktop)**. It talks to this
-engine over the local API — start the API here with `yt-ai serve`, then run the
-UI from that repo (or let its packaged Electron app launch `uvx yt-ai serve` as a
-sidecar). See that repo's README for setup, dev scripts, and Electron packaging.
+The local REST API and the desktop UI live in the companion repo
+**[yt-ai-desktop](https://github.com/dasein108/yt-ai-desktop)** — a full-stack app
+(FastAPI backend + React/Electron UI) that depends on this `yt-ai` package and
+reuses its CLI cores. Install `yt-ai` (`uvx yt-ai` / `pip install yt-ai`) and see
+that repo to run the API and UI.
 
 ## Debugging
 
@@ -169,10 +120,10 @@ Path defaults to `logs/common.jsonl`, overridable via `YT_LOG_FILE` (backend onl
 Electron/frontend always write to the repo's `logs/common.jsonl`). It's
 gitignored — delete/rotate it manually if it grows.
 
-Use the **`yt-debugger`** skill (`skills/yt-debugger/SKILL.md`) to diagnose an
-issue end-to-end: it runs the backend, introspects `/openapi.json`, probes
-endpoints, and gives jq recipes to filter the log by source/level/event/job_id.
-Two starter one-liners:
+The **`yt-debugger`** skill (end-to-end backend/electron/frontend log
+correlation) moved with the REST API to the
+[yt-ai-desktop](https://github.com/dasein108/yt-ai-desktop) repo. Two starter
+one-liners for filtering the log directly:
 
 ```bash
 jq -c 'select(.level=="error")' logs/common.jsonl              # every error, any runtime

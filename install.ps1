@@ -13,4 +13,3 @@ uv cache clean yt-ai *> $null
 
 Write-Host "yt-ai: ready. Run it with:"
 Write-Host "  uvx yt-ai --help"
-Write-Host "  uvx yt-ai serve        # start the local API for yt-ai-desktop"

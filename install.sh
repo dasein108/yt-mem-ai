@@ -29,4 +29,3 @@ fi
 
 echo "yt-ai: ready. Run it with:"
 echo "  uvx yt-ai --help"
-echo "  uvx yt-ai serve        # start the local API for yt-ai-desktop"

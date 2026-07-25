@@ -27,8 +27,6 @@ dependencies = [
     "sentence-transformers>=3.0",
     "openai>=1.40",
     "numpy>=1.26",
-    "fastapi>=0.110",
-    "uvicorn>=0.29",
 ]
 
 [project.optional-dependencies]

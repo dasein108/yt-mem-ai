@@ -62,36 +62,21 @@ not an API) to keep it free and high-quality.
   `.refs.md` sidecar's skipped list) rather than aborting the run. Real
   rendering (actual yt-dlp downloads + ffmpeg) is manual smoke only, not in
   the test suite.
-- `cli.py` — Typer app; thin `run_*` cores are the testable seam. `serve` runs the
-  local API (below). `fetch --captions-only` runs the metadata+captions path
+- `cli.py` — Typer app; thin `run_*` cores are the testable seam.
+  `fetch --captions-only` runs the metadata+captions path
   (no audio/whisper). `run_discover` is incremental: cutoff precedence is
   explicit `--after` > stored epoch `last_discover_ts` (−`overlap_s`) > legacy
   `last_discover_at` date > 7-day default; it drops `is_seen` videos and advances
   `last_discover_ts` (never regressing) from the discovered `published_ts`.
-- `api/` — local FastAPI server (SP4), localhost-only, backend for the future
-  desktop UI:
-  - `app.py` — `create_app(cfg, *, store_opener, summarize_client, start_worker)`
-    factory + read routes (`/videos`, `/videos/{id}`, `/status`, `/search`,
-    `/recommend`, `POST /feedback`, `POST /log`); wires up the in-memory job
-    registry/worker via `lifespan` and delegates job routes to
-    `app_jobs.register_jobs`. `POST /log` forwards the frontend's `log()` calls
-    into `obs.log_event("frontend", ...)` — see "Logging" below.
-  - `app_jobs.py` — `POST /jobs/{fetch,discover,fetch-pending,summarize}` +
-    `GET /jobs/{id}`, `GET /jobs`; each job closure reopens the store via
-    `app.state.store_opener()` and runs on `jobs.py`'s in-memory `Worker`
-    (jobs live in a process-local dict — nothing persisted across restarts).
-  - `jobs.py` — `JobRegistry`/`Job`/`Worker`, a queue + background thread with
-    an injectable `run_one()` seam for offline tests.
-  - `summarize.py` — `summarize_video(cfg, db, video_id, client)`: the API's
-    summarization path, calling OpenRouter (`OPENROUTER_API_KEY` +
-    `YT_OPENROUTER_MODEL`) and snapping highlight timestamps to chunk anchors.
-  - `schemas.py` — pydantic request/response models for the above.
+- REST API — **moved out** to the [`yt-ai-desktop`](https://github.com/dasein108/yt-ai-desktop)
+  repo (FastAPI backend that imports this package and reuses `cli.py`'s `run_*`/
+  `open_store` cores). This repo is the engine: library + data/pipeline CLI only.
 - `frontend/` — **moved out** to the standalone repo
-  [`yt-ai-desktop`](https://github.com/dasein108/yt-ai-desktop) (React+Vite+TS
-  desktop UI + Electron wrapper). It consumes this engine only over the local
-  HTTP API (`yt-ai serve`); the packaged app launches the engine as a sidecar
-  via `uvx yt-ai serve`. This repo is the engine: CLI + API + skills, published
-  to PyPI as `yt-ai`.
+  [`yt-ai-desktop`](https://github.com/dasein108/yt-ai-desktop) (React+TS
+  desktop UI + Electron wrapper). It consumes this engine as a Python package
+  (its FastAPI backend imports `yt_summary`'s CLI cores directly) and the
+  packaged app bundles the engine. This repo is the engine: library + CLI +
+  skills, published to PyPI as `yt-ai`.
 
 ## Store (LanceDB)
 
@@ -120,8 +105,8 @@ transcribed → summarized`.
   errors/rejections), and Electron's main process via
   yt-ai-desktop's `electron/lib.ts`'s `logLine()`/`logsPath()`. Every line has
   `{ts, source, level, event, msg, ...ctx}` with `source ∈
-  backend|electron|frontend`; logging never raises. Use the `yt-debugger`
-  skill to trace an issue across all three.
+  backend|electron|frontend`; logging never raises. See the `yt-ai-desktop`
+  repo for the `yt-debugger`-style tooling to trace an issue across all three.
 
 ## Recommendations
 
@@ -139,14 +124,14 @@ via a symlink `.claude/skills/<name> -> ../../skills/<name>` (thin ref, no drift
   delegates deep per-video analysis to `summarize-video` / `daily-digest`.
 - `summarize-video` — one ingested video → summary/highlights/Q&A (`summaries` table).
 - `daily-digest` — a day's transcribed videos → per-video summaries + `digests/<DATE>.md`.
-- `yt-debugger` — diagnose the app end-to-end: run `yt-ai serve`, introspect
-  `/openapi.json`, probe endpoints, and jq-filter `logs/common.jsonl` by
-  source/level/event/job_id to correlate a failure across backend/electron/frontend.
+
+The `yt-debugger` skill (backend/electron/frontend log correlation) **moved
+out** with the REST API to the `yt-ai-desktop` repo.
 
 There are two independent summarization paths, both writing the same `summaries`
 table via `store.upsert_summary`: the skills-primary path above (free, via Claude
-Code) and `POST /jobs/summarize` in `api/summarize.py` (OpenRouter, for the local
-API/desktop UI). Neither is authoritative over the other — last write wins.
+Code) and the `yt-ai-desktop` backend's summarize job (OpenRouter, for the
+desktop UI). Neither is authoritative over the other — last write wins.
 
 ## Commands & daily routine
 

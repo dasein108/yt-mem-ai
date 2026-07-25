@@ -462,13 +462,5 @@ def supercut(
     typer.echo(line)
 
 
-@app.command()
-def serve(host: str = typer.Option("127.0.0.1", "--host"), port: int = typer.Option(8000, "--port")):
-    """Run the local API server (for the desktop UI)."""
-    import uvicorn
-    from .api.app import create_app
-    uvicorn.run(create_app(load_config()), host=host, port=port)
-
-
 if __name__ == "__main__":
     app()
