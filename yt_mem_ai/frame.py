@@ -60,3 +60,35 @@ def _default_download(url: str, at_s: float, cfg, out_path: str) -> None:
 def _default_ffmpeg(argv: list[str]) -> None:
     import subprocess
     subprocess.run(argv, check=True)
+
+
+def grab_frame(db, video_id: str, at_s: float, out_path: str, *, cfg,
+               workdir: str | None = None, download_fn=None, ffmpeg_fn=None) -> str:
+    """Download a 1s section at at_s and write its first frame to out_path."""
+    from .store import db as store
+    download_fn = download_fn or _default_download
+    ffmpeg_fn = ffmpeg_fn or _default_ffmpeg
+
+    video = store.get_video(db, video_id)
+    if video is None or not getattr(video, "url", None):
+        raise FrameError(f"video not found or has no url: {video_id}")
+
+    if workdir is None:
+        import tempfile
+        workdir = tempfile.mkdtemp(prefix="ytframe-")
+    os.makedirs(workdir, exist_ok=True)
+    section = os.path.join(workdir, "section.mp4")
+
+    try:
+        download_fn(video.url, at_s, cfg, section)
+    except Exception as exc:
+        raise FrameError(f"download failed for {video_id} @ {at_s}s: {exc}") from exc
+
+    parent = os.path.dirname(os.path.abspath(out_path))
+    os.makedirs(parent, exist_ok=True)
+    try:
+        ffmpeg_fn(extract_frame_cmd(section, out_path))
+    except Exception as exc:
+        raise FrameError(f"frame extraction failed: {exc}") from exc
+
+    return out_path

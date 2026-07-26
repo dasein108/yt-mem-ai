@@ -1,6 +1,12 @@
+import os
+
+import lancedb
 import pytest
 
+from tests.support import fake_embedder
 from yt_mem_ai import frame as F
+from yt_mem_ai.store import db as store
+from yt_mem_ai.store.models import Video
 
 
 @pytest.mark.parametrize("text,expected", [
@@ -49,3 +55,52 @@ def _cfg(**over):
                 chunk_target_s=45.0, openai_api_key=None, use_webshare=True)
     base.update(over)
     return Config(**base)
+
+
+def _seeded_store(tmp_path, video_id="vid", url="https://youtu.be/vid"):
+    db = lancedb.connect(str(tmp_path / "s"))
+    store.init_db(db, fake_embedder())
+    store.upsert_video(db, Video(video_id=video_id, url=url, title="T", status="transcribed"))
+    return db
+
+
+def test_grab_frame_happy_path(tmp_path):
+    db = _seeded_store(tmp_path)
+    calls = {}
+
+    def fake_dl(url, at_s, cfg, out_path):
+        calls["dl"] = (url, at_s, out_path)
+        open(out_path, "wb").write(b"section")
+
+    def fake_ff(argv):
+        calls["ff"] = argv
+        open(argv[-1], "wb").write(b"png")
+
+    out = str(tmp_path / "frames" / "vid_30s.png")
+    result = F.grab_frame(db, "vid", 30.0, out, cfg=_cfg(),
+                          workdir=str(tmp_path / "w"),
+                          download_fn=fake_dl, ffmpeg_fn=fake_ff)
+    assert result == out
+    assert os.path.exists(out)                       # parent dir created + written
+    assert calls["dl"][0] == "https://youtu.be/vid"  # url resolved from store
+    assert calls["dl"][1] == 30.0
+    assert calls["ff"][-1] == out                    # ffmpeg writes to out
+
+
+def test_grab_frame_unknown_video(tmp_path):
+    db = _seeded_store(tmp_path)
+    with pytest.raises(F.FrameError):
+        F.grab_frame(db, "missing", 5.0, str(tmp_path / "x.png"), cfg=_cfg(),
+                     download_fn=lambda *a: None, ffmpeg_fn=lambda *a: None)
+
+
+def test_grab_frame_download_failure_wraps(tmp_path):
+    db = _seeded_store(tmp_path)
+
+    def boom(*a):
+        raise RuntimeError("yt-dlp exploded")
+
+    with pytest.raises(F.FrameError):
+        F.grab_frame(db, "vid", 5.0, str(tmp_path / "x.png"), cfg=_cfg(),
+                     workdir=str(tmp_path / "w"), download_fn=boom,
+                     ffmpeg_fn=lambda *a: None)
