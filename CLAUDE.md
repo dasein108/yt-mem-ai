@@ -46,6 +46,9 @@ not an API) to keep it free and high-quality.
   inline timestamp (e.g. live premieres).
 - `store/` — `models.py` (dataclasses + LanceModel schemas + `chunk_schema`),
   `embeddings.py` (`build_embedder`, `chunk_segments`), `db.py` (LanceDB CRUD + search).
+- `reembed` (CLI) — `run_reembed` rebuilds the `chunks` table with the current
+  `build_embedder(cfg)` (via `store.rebuild_chunks`), migrating the library to a
+  new embedding model without re-fetching.
 - `memory.py` — status-based `is_seen` / `mark_status`.
 - `recommend.py` — taste-centroid ranking over chunk embeddings (like − dislike).
 - `compile.py` — `compile_highlights` builds a deep-linked highlights doc from

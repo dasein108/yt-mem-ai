@@ -29,6 +29,14 @@ Config (`.env`): `YT_STORE_PATH` (LanceDB dir), `YT_EMBEDDING_BACKEND=local|open
 `YT_EMBEDDING_MODEL`, `YT_CHUNK_TARGET_S`, `OPENAI_API_KEY` (openai backend),
 `WEBSHARE_PROXY_*`, `YT_COOKIES_BROWSER`.
 
+**Embeddings:** `YT_EMBEDDING_BACKEND=local|openai`. Local uses
+sentence-transformers (`YT_EMBEDDING_MODEL`, default `all-MiniLM-L6-v2`) — for
+non-English libraries set `paraphrase-multilingual-MiniLM-L12-v2` (384-d, 50+
+languages) so semantic search works cross-language. `openai` uses
+`text-embedding-3-small|large` (needs `OPENAI_API_KEY`). After changing the model,
+run `yt-ai reembed` to migrate the existing library (re-embeds all chunks; no
+re-fetch).
+
 **Proxy / VLESS:** `YT_USE_WEBSHARE` defaults **off**. If you already run a
 system-level proxy/VPN (VLESS/Xray etc.), leave it off — traffic rides that
 tunnel. Stacking the Webshare proxy on top breaks the authenticated
@@ -56,6 +64,7 @@ yt-ai recommend              # rank your unrated fetched videos by taste (--limi
 yt-ai compile                 # deep-linked highlights doc, budget-bounded (--since/--max-minutes/--json/--out)
 yt-ai supercut                 # video reel of highlights, re-downloaded + labeled (--since/--max-minutes/--out/--keep-clips)
 yt-ai frame <video_id> --at <ts>  # still frame at a timestamp (seconds or H:M:S) → frames/<id>_<s>s.png
+yt-ai reembed                # re-embed all chunks with the current YT_EMBEDDING_* config
 ```
 
 ## Rate & recommend
