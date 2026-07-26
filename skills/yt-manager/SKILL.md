@@ -11,14 +11,14 @@ LanceDB store directly.
 
 ## Prereqs
 
-- Run all commands from the repo root: `/Users/dasein/dev/yt_summary`.
-- Invoke via uv: `uv run yt-ai <cmd>` (the `yt-ai` entry point after `uv sync`).
+- The `yt-ai` command ships in the **yt-mem-ai** package. Run it any of:
+  `uvx yt-mem-ai <cmd>`, or `pip install yt-mem-ai` then `yt-ai <cmd>`, or
+  `uv run yt-ai <cmd>` from a source checkout.
 - `.env` must be filled (Webshare proxy + cookies for yt-dlp, embedding backend).
 - Video lifecycle status: `discovered → downloaded → transcribed → summarized`.
 
 ```bash
-cd /Users/dasein/dev/yt_summary
-uv run yt-ai <command> [args]
+yt-ai <command> [args]        # (or: uvx yt-mem-ai <command> [args])
 ```
 
 ## Decide what the user wants, then run
@@ -53,6 +53,10 @@ Do **not** write summaries free-hand here. For the model-generated analysis
 - one video → invoke **[[summarize-video]]**
 - a day's batch + combined digest → invoke **[[daily-digest]]**
 
+Those skills produce the analysis with **this agent** (Claude Code) reading the
+stored transcript — no API key, no OpenRouter, no external LLM call. (The
+desktop app has a separate OpenRouter-based summarize path; it is not used here.)
+
 ### Taste / recommendations
 ```bash
 uv run yt-ai like <video_id>      # feedback table (latest signal per video wins)
@@ -70,10 +74,8 @@ uv run yt-ai supercut [--since <DATE>] [--max-minutes <N>] [--out <path>] [--kee
 # Slow: re-downloads each clip (720p) + ffmpeg concat. Needs network + local ffmpeg.
 ```
 
-### Local API (desktop UI backend)
-```bash
-uv run yt-ai serve [--host 127.0.0.1] [--port 8000]   # localhost-only FastAPI
-```
+> The REST API / `serve` command moved to the **yt-mem-ai-desktop** repo
+> (`yt-ai-desktop-serve`); it is not part of this engine CLI.
 
 ## Pipelines
 
