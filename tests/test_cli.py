@@ -379,3 +379,29 @@ def test_run_frame_out_override(monkeypatch):
     from yt_mem_ai import cli
     monkeypatch.setattr(cli, "grab_frame", lambda db, v, at_s, out, *, cfg: out)
     assert cli.run_frame(object(), "vid", "5", out="/tmp/x.png", db="DB") == "/tmp/x.png"
+
+
+def test_run_reembed_rebuilds_with_current_embedder(tmp_path, monkeypatch):
+    from yt_mem_ai import cli
+    from yt_mem_ai.store.models import Segment
+    from yt_mem_ai.store.embeddings import chunk_segments
+    from tests.support import fake_embedder_16
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    rows = chunk_segments("v1", [Segment("v1", 0.0, 5.0, "alpha"),
+                                 Segment("v1", 5.0, 10.0, "beta")], 3.0)
+    store.replace_chunks(conn, "v1", rows)
+    # force the "current" embedder to the dim-16 fake
+    monkeypatch.setattr(cli, "build_embedder", lambda c: fake_embedder_16())
+    n = cli.run_reembed(cfg, db=conn)
+    assert n == len(rows) and n >= 1
+    got = conn.open_table("chunks").search().limit(100).to_list()
+    assert len(got[0]["vector"]) == 16
+
+
+def test_run_reembed_empty_store_returns_zero(tmp_path, monkeypatch):
+    from yt_mem_ai import cli
+    from tests.support import fake_embedder_16
+    monkeypatch.setattr(cli, "build_embedder", lambda c: fake_embedder_16())
+    conn = _db(tmp_path)  # no chunks added
+    assert cli.run_reembed(_cfg(tmp_path), db=conn) == 0

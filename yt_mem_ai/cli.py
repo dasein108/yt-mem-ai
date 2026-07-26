@@ -511,5 +511,37 @@ def frame(
     typer.echo(path)
 
 
+def _embedding_model_name(cfg) -> str:
+    if cfg.embedding_model:
+        return cfg.embedding_model
+    return "all-MiniLM-L6-v2" if cfg.embedding_backend == "local" else "text-embedding-3-small"
+
+
+def run_reembed(cfg, db=None) -> int:
+    if db is None:
+        db = open_store(cfg)
+    rows = store.all_chunks(db)
+    if not rows:
+        return 0
+    embedder = build_embedder(cfg)
+    store.rebuild_chunks(db, embedder, rows)
+    return len(rows)
+
+
+@app.command()
+def reembed():
+    """Re-embed all stored chunks with the current YT_EMBEDDING_* config.
+
+    Use after changing YT_EMBEDDING_BACKEND / YT_EMBEDDING_MODEL to migrate the
+    library to a new model (e.g. a multilingual one) without re-fetching.
+    """
+    cfg = load_config()
+    n = run_reembed(cfg)
+    if n == 0:
+        typer.echo("no chunks to re-embed")
+    else:
+        typer.echo(f"re-embedded {n} chunks with {cfg.embedding_backend}:{_embedding_model_name(cfg)}")
+
+
 if __name__ == "__main__":
     app()
