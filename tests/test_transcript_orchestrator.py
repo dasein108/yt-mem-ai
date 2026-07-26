@@ -43,3 +43,24 @@ def test_raises_when_no_captions_and_no_audio():
     with pytest.raises(T.TranscriptUnavailable):
         T.get_transcript(v, None, _cfg(), captions_fn=lambda vid, cfg: None,
                          whisper_fn=lambda p, vid, cfg: _res("whisper"))
+
+
+def _blocked(vid, cfg):
+    raise T.CaptionsBlocked("rate-limited")
+
+
+def test_blocked_captions_with_audio_falls_to_whisper():
+    # A block is NOT "no captions" — with audio available, whisper instead.
+    v = Video(video_id="abc", url="u")
+    out = T.get_transcript(v, "/a.mp3", _cfg(), captions_fn=_blocked,
+                           whisper_fn=lambda p, vid, cfg: _res("whisper"))
+    assert out.source == "whisper"
+
+
+def test_blocked_captions_no_audio_surfaces_block_not_unavailable():
+    # captions-only path: a block must surface as CaptionsBlocked, never as the
+    # misleading TranscriptUnavailable ("no captions").
+    v = Video(video_id="abc", url="u")
+    with pytest.raises(T.CaptionsBlocked):
+        T.get_transcript(v, None, _cfg(), captions_fn=_blocked,
+                         whisper_fn=lambda p, vid, cfg: _res("whisper"))

@@ -2,19 +2,34 @@ from __future__ import annotations
 from ..config import Config
 from ..proxy import webshare_config
 from ..store.models import Segment
-from . import TranscriptResult
+from . import TranscriptResult, CaptionsBlocked
+
+# YouTube rate-limit / IP-block errors. Distinct from "no captions" — the
+# transcript may exist; we surface these as CaptionsBlocked (retry / use a proxy).
+try:
+    from youtube_transcript_api._errors import (
+        RequestBlocked, IpBlocked, YouTubeRequestFailed,
+    )
+    _BLOCK_ERRORS: tuple = (RequestBlocked, IpBlocked, YouTubeRequestFailed)
+except Exception:  # library missing or renamed — degrade to old behavior
+    _BLOCK_ERRORS = ()
 
 
 def _fetch_preferred_or_any(api, video_id: str, langs: tuple[str, ...]):
     """Fetch the preferred caption track; else fall back to ANY available track
     (manually-created preferred over auto-generated). Returns a FetchedTranscript
-    (iterable of snippets, with `.language_code`) or None."""
+    (iterable of snippets, with `.language_code`) or None. Raises CaptionsBlocked
+    when YouTube blocks the request (as opposed to captions being absent)."""
     try:
         return api.fetch(video_id, languages=langs)
+    except _BLOCK_ERRORS as exc:
+        raise CaptionsBlocked(f"{video_id}: {exc}") from exc
     except Exception:
-        pass
+        pass  # not available in the preferred languages — try any track
     try:
         transcripts = list(api.list(video_id))
+    except _BLOCK_ERRORS as exc:
+        raise CaptionsBlocked(f"{video_id}: {exc}") from exc
     except Exception:
         return None
     # manual (is_generated == False) first, then auto-generated
@@ -22,6 +37,8 @@ def _fetch_preferred_or_any(api, video_id: str, langs: tuple[str, ...]):
     for t in transcripts:
         try:
             return t.fetch()
+        except _BLOCK_ERRORS as exc:
+            raise CaptionsBlocked(f"{video_id}: {exc}") from exc
         except Exception:
             continue
     return None

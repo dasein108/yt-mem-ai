@@ -1,3 +1,4 @@
+import pytest
 from pathlib import Path
 from yt_mem_ai.config import Config
 from yt_mem_ai.transcript import captions
@@ -73,6 +74,24 @@ def test_fetch_captions_prefers_manual_over_generated():
             return [generated, manual]  # unsorted; impl must prefer manual
     res = captions.fetch_captions("abc", _cfg(), api_factory=FakeApi)
     assert res.full_text == "manual"
+
+
+def test_fetch_captions_raises_blocked_on_youtube_block():
+    # A YouTube rate-limit/block must raise CaptionsBlocked, NOT be silently
+    # reported as "no captions" (the captions may well exist).
+    from yt_mem_ai.transcript.captions import _BLOCK_ERRORS
+    from yt_mem_ai.transcript import CaptionsBlocked
+    if not _BLOCK_ERRORS:
+        pytest.skip("youtube-transcript-api block errors unavailable")
+    Block = _BLOCK_ERRORS[0]
+
+    class FakeApi:
+        def __init__(self, proxy_config=None): pass
+        def fetch(self, vid, languages=("en",)):
+            raise Block(vid)  # block on the preferred-language fetch
+
+    with pytest.raises(CaptionsBlocked):
+        captions.fetch_captions("abc", _cfg(), api_factory=FakeApi)
 
 
 def test_fetch_captions_respects_configured_langs():

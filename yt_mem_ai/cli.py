@@ -10,7 +10,7 @@ from .store import db as store
 from .store.models import TranscriptRow, Video, is_stream
 from .store.embeddings import build_embedder, chunk_segments
 from .download import download, download_metadata
-from .transcript import get_transcript, TranscriptUnavailable
+from .transcript import get_transcript, TranscriptUnavailable, CaptionsBlocked
 from .discovery import discover as discover_videos
 from .recommend import recommend as recommend_videos
 from .compile import compile_highlights, render_markdown
@@ -104,6 +104,10 @@ def fetch(url: str, force: bool = typer.Option(False, "--force"),
     except TranscriptUnavailable as exc:
         typer.echo(f"no captions available: {exc}")
         raise typer.Exit(1)
+    except CaptionsBlocked as exc:
+        typer.echo(f"captions blocked by YouTube (rate-limited): {exc}\n"
+                   "Retry later, or set YT_USE_WEBSHARE=true to route through a proxy.")
+        raise typer.Exit(3)
     typer.echo(f"stored {vid}")
 
 
