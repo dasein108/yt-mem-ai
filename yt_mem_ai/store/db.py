@@ -111,6 +111,12 @@ def get_transcript_text(db: lancedb.DBConnection, video_id: str) -> str | None:
     return rows[0]["full_text"] if rows else None
 
 
+def get_transcript_lang(db: lancedb.DBConnection, video_id: str) -> str | None:
+    tbl = db.open_table("transcripts")
+    rows = tbl.search().where(f"video_id = '{_safe(video_id)}'").limit(1).to_list()
+    return rows[0]["lang"] if rows else None
+
+
 def replace_chunks(db: lancedb.DBConnection, video_id: str, chunk_rows: list[dict]) -> None:
     tbl = db.open_table("chunks")
     tbl.delete(f"video_id = '{_safe(video_id)}'")

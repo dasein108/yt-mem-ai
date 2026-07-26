@@ -115,6 +115,7 @@ def show(video_id: str, as_json: bool = typer.Option(False, "--json")):
             "status": v.status, "channel_id": v.channel_id, "channel": v.channel,
             "published_at": v.published_at, "duration_s": v.duration_s,
             "tags": v.tags, "description": v.description, "transcript": text,
+            "transcript_lang": store.get_transcript_lang(db, video_id),
             "summary": store.get_summary(db, video_id),
         }))
         return

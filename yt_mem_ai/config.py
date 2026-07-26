@@ -39,6 +39,11 @@ class Config:
     use_webshare: bool = False
     job_concurrency: int = 3
     discover_interval_s: float = 3600.0
+    # Preferred caption languages (order = priority). `fetch_captions` tries these
+    # first, then falls back to ANY available track (manual preferred over
+    # auto-generated) — so non-English videos are no longer skipped. Summaries are
+    # produced in the user's target language by the LLM regardless of source lang.
+    caption_langs: tuple[str, ...] = ("en",)
 
 
 def _clean(value: str | None) -> str | None:
@@ -50,6 +55,14 @@ def _clean(value: str | None) -> str | None:
 
 def _truthy(value: str | None) -> bool:
     return _clean(value) is not None and _clean(value).lower() in ("1", "true", "yes", "on")
+
+
+def _parse_langs(value: str | None) -> tuple[str, ...]:
+    """Comma-separated caption language codes → tuple; default ('en',)."""
+    if not value:
+        return ("en",)
+    langs = tuple(x.strip() for x in value.split(",") if x.strip())
+    return langs or ("en",)
 
 
 def load_config(env_path: Path | None = None) -> Config:
@@ -67,7 +80,7 @@ def load_config(env_path: Path | None = None) -> Config:
         "YT_CHUNK_TARGET_S", "OPENAI_API_KEY", "HF_TOKEN", "YT_LOG_FILE",
         "YT_DISCOVER_TIMEOUT_S", "YT_USE_WEBSHARE", "YT_DISCOVER_FEED_LIMIT",
         "YT_DISCOVER_OVERLAP_S",
-        "YT_JOB_CONCURRENCY", "YT_DISCOVER_INTERVAL_S",
+        "YT_JOB_CONCURRENCY", "YT_DISCOVER_INTERVAL_S", "YT_CAPTION_LANGS",
     ):
         if os.environ.get(key) is not None:
             data[key] = os.environ[key]
@@ -95,4 +108,5 @@ def load_config(env_path: Path | None = None) -> Config:
         discover_overlap_s=float(_clean(data.get("YT_DISCOVER_OVERLAP_S")) or "3600"),
         job_concurrency=int(_clean(data.get("YT_JOB_CONCURRENCY")) or "3"),
         discover_interval_s=float(_clean(data.get("YT_DISCOVER_INTERVAL_S")) or "3600"),
+        caption_langs=_parse_langs(_clean(data.get("YT_CAPTION_LANGS"))),
     )

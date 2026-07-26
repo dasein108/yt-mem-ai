@@ -35,4 +35,56 @@ def test_fetch_captions_returns_none_on_error():
         def __init__(self, proxy_config=None): pass
         def fetch(self, vid, languages=("en",)):
             raise Exception("no transcript")
+        def list(self, vid):
+            raise Exception("nothing")
     assert captions.fetch_captions("abc", _cfg(), api_factory=FakeApi) is None
+
+
+class _Track:
+    def __init__(self, lang, is_generated, snips):
+        self.language_code, self.is_generated, self._snips = lang, is_generated, snips
+    def fetch(self):
+        return _Fetched(self._snips, language_code=self.language_code)
+
+
+def test_fetch_captions_falls_back_to_any_language():
+    # No English, but a Russian track exists → fetch it, keep lang="ru".
+    class FakeApi:
+        def __init__(self, proxy_config=None): pass
+        def fetch(self, vid, languages=("en",)):
+            raise Exception("no en")
+        def list(self, vid):
+            return [_Track("ru", True, [_Snip("привет", 0.0, 2.0)])]
+    res = captions.fetch_captions("abc", _cfg(), api_factory=FakeApi)
+    assert res is not None
+    assert res.lang == "ru"
+    assert res.full_text == "привет"
+
+
+def test_fetch_captions_prefers_manual_over_generated():
+    # Two ru tracks: generated + manual → picks the manual one.
+    manual = _Track("ru", False, [_Snip("manual", 0.0, 1.0)])
+    generated = _Track("ru", True, [_Snip("auto", 0.0, 1.0)])
+    class FakeApi:
+        def __init__(self, proxy_config=None): pass
+        def fetch(self, vid, languages=("en",)):
+            raise Exception("no en")
+        def list(self, vid):
+            return [generated, manual]  # unsorted; impl must prefer manual
+    res = captions.fetch_captions("abc", _cfg(), api_factory=FakeApi)
+    assert res.full_text == "manual"
+
+
+def test_fetch_captions_respects_configured_langs():
+    # cfg.caption_langs is passed through to api.fetch.
+    seen = {}
+    class FakeApi:
+        def __init__(self, proxy_config=None): pass
+        def fetch(self, vid, languages=("en",)):
+            seen["langs"] = languages
+            return _Fetched([_Snip("x", 0.0, 1.0)], language_code=languages[0])
+    from dataclasses import replace
+    res = captions.fetch_captions("abc", replace(_cfg(), caption_langs=("ru", "en")),
+                                  api_factory=FakeApi)
+    assert seen["langs"] == ("ru", "en")
+    assert res.lang == "ru"

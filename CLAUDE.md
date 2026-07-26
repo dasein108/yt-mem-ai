@@ -29,7 +29,11 @@ not an API) to keep it free and high-quality.
   captions-only path; uses `process=False` so meta survives the missing JS
   challenge solver (which otherwise fails format selection).
 - `transcript/` — `captions.py` (youtube-transcript-api) → `whisper.py` (faster-whisper)
-  fallback, orchestrated by `get_transcript`.
+  fallback, orchestrated by `get_transcript`. `fetch_captions` tries `cfg.caption_langs`
+  (`YT_CAPTION_LANGS`, default `en`) then falls back to ANY available track (manual
+  over auto-generated), so non-English videos ingest via the fast captions path; the
+  source language is stored in `transcripts.lang` (exposed as `transcript_lang` in
+  `show --json`). Skills translate to the user's target language.
 - `discovery.py` — subscription feed extraction (`discover`), injectable `extract_fn` seam.
   Flat feed pull is capped (`playlistend=discover_feed_limit`) and stamped with
   approximate per-entry `timestamp` via `youtubetab:approximate_date` — dates in

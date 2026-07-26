@@ -88,6 +88,15 @@ Report the review path + a short lede in chat.
 - All data via the `yt-ai` CLI ([[yt-manager]] has the full surface). Never touch
   the store directly.
 - Grounded strictly in transcripts; highlight timestamps only from `yt-ai search`.
+- **Language / translation:** transcripts may be in ANY language — the source
+  language is stored and returned by `show --json` as `transcript_lang`. Produce
+  every artifact (summary, highlight labels, Q&A, presentation, digest, review) in
+  the user's **target language** (default English, or whatever they ask), translating
+  from the source as needed. Caveat: vector search is language-sensitive, so to
+  anchor a highlight in a non-English video, run `yt-ai search "<phrase>"` with the
+  phrase in the transcript's **original** language, then write the label in the
+  target language. (For heavily multilingual libraries, set a multilingual
+  `YT_EMBEDDING_MODEL` for better cross-language search.)
 - `is_seen` is status-based, so re-fetch is a no-op → follow-ups ("now highlight
   it", "make slides") and re-runs never re-download.
 - Dates are `YYYY-MM-DD`. Always report what ran + the output paths (`slides/`,
