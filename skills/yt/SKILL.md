@@ -1,60 +1,96 @@
 ---
 name: yt
-description: One-shot YouTube request by URL in chat — "summarize: <url>", "highlight: <url>", "qa: <url>", or "summarize this video <url>". Ingests the video if not already cached (captions → whisper fallback), then produces the requested artifact from the cached transcript. Repeat requests on the same video reuse the cache — no re-download.
+description: One skill for any YouTube request over the yt-mem-ai CLI — one-shot by URL or id ("summarize: <url>", "highlight: <url>", "qa: <url>", "presentation: <url>"), process the latest subscription uploads into a daily digest, or a cross-video subscriptions review. Ingests and caches transcripts (captions → whisper), anchors highlights via semantic search, and never re-downloads a cached video.
 ---
 
-# yt — one-shot YouTube summarize / highlight / Q&A by URL
+# yt — summarize / highlights / Q&A / presentation / digest / review
 
-Turn a YouTube URL into a summary, highlights, or Q&A in one step. Ingests and
-**caches** the transcript on first use; later requests on the same video read the
-cache — no download.
+One entry point for turning YouTube into artifacts. All data access goes through
+the `yt-ai` CLI (see [[yt-manager]] for the full command surface) — never touch
+the LanceDB store directly. Everything is grounded in the transcript; highlight
+timestamps come from `yt-ai search`, never invented. The analysis is done by
+**this agent** — no API key, no OpenRouter.
 
-## Inputs
-- A YouTube URL (`watch?v=`, `youtu.be/`, `/shorts/`) — or a bare `video_id`
-  (for a follow-up on a video already discussed).
-- Intent from the phrasing: `summarize` (default), `highlight`, or `qa`.
+## Pick the scenario
 
-## Steps
+- **A — one video** (a URL, a bare 11-char `video_id`, or "this video" as a
+  follow-up): produce a `summarize` / `highlights` / `qa` / `presentation` artifact.
+- **B — process latest subscriptions** ("catch up", "daily", "new uploads"):
+  discover + fetch + analyze each + write a dated digest.
+- **C — subscriptions review** ("review my subs", "themes lately", "what's been
+  happening"): one cross-video synthesis over a date range.
 
-1. **Identify the video.** Extract the 11-char `video_id` and the URL. If the
-   user gave only a bare id / said "this video" as a follow-up, reuse the id from
-   the earlier turn — do not ask for the URL again.
+## Core: analyze one video (used by A and B)
 
-2. **Ensure the transcript is cached** (idempotent — a no-op if already ingested):
-   ```bash
-   yt-ai fetch <url> --captions-only
-   ```
-   - If the video is already ingested, this prints the id and returns instantly
-     (`is_seen` skips it — **no download**).
-   - If it prints `no captions available: ...`, fall back to whisper (downloads
-     audio + transcribes — slower, but always yields a transcript):
-     ```bash
-     yt-ai fetch <url> --whisper
-     ```
-   Never re-download a video that is already cached.
+Given a `video_id` (and a URL if it may not be ingested yet):
 
-3. **Reuse the analysis if it exists.** Load the stored data:
-   ```bash
-   yt-ai show <video_id> --json
-   ```
-   If the JSON already has a non-null `summary` (from a prior call), **reuse it**
-   and skip to step 5 — no recompute. Otherwise generate + save it by following
-   **[[summarize-video]]** (semantic-search-anchored highlights, grounded in the
-   transcript, persisted with `save-summary`).
+1. **Ensure ingested** (idempotent): `yt-ai show <video_id> --json`.
+   - `not found` and you have a URL → `yt-ai fetch <url> --captions-only`. If that
+     prints `no captions available: ...`, fall back to `yt-ai fetch <url> --whisper`
+     (downloads audio + transcribes — slower, always yields a transcript).
+   - Already ingested → instant, no download (`is_seen` skips it).
+2. **Reuse if present:** if the `show --json` output has a non-null `summary`,
+   reuse it — skip generation unless the user asked for a fresh artifact.
+3. **Anchor highlights:** for each candidate highlight phrase, run
+   `yt-ai search "<phrase>" --vector -k 3` and use the `MM:SS` from a returned
+   line whose `video_id` matches. Never invent timestamps.
+4. **Produce** (you, the model — no API): `summary_md` (2–4 sentence exec summary
+   + key bullets), `highlights` JSON `[{"start_s": <seconds>, "label": "..."}]`
+   (3–8, seconds from step 3), `qa` JSON `[{"q": "...", "a": "..."}]` (3–6).
+5. **Persist:** `yt-ai save-summary <video_id> "<summary_md>" --highlights '<json>' --qa '<json>'`.
 
-4. **Present the requested artifact** in chat:
-   - `summarize` → executive summary + key bullets (mention highlights/Q&A are
-     available).
-   - `highlight` → the highlights as `MM:SS — label`, each a deep link
-     `https://www.youtube.com/watch?v=<id>&t=<start>s`.
-   - `qa` → the Q&A pairs.
+## A — single-video artifacts
 
-## Notes
-- **The cache is the store.** After step 2 the transcript lives in LanceDB
-  (`transcripts` + `chunks`); `is_seen` makes re-fetch a no-op, so follow-ups
-  ("now highlight the important parts") never re-download — they read the cached
-  transcript, and if already summarized, the cached highlights.
-- Everything is grounded in the transcript; highlight timestamps come from
-  `yt-ai search`, never invented.
-- Related: [[summarize-video]] (the id-based analysis primitive this delegates
-  to), [[yt-manager]] (any other yt-ai operation), [[daily-digest]] (a day's batch).
+Run the core, then deliver the artifact the phrasing asked for:
+
+- **summarize** (default) → executive summary + key bullets in chat (mention
+  highlights / qa / presentation are available on request).
+- **highlights** → each as `MM:SS — label`, a deep link
+  `https://www.youtube.com/watch?v=<id>&t=<start>s`.
+- **qa** → the Q&A pairs.
+- **presentation** → write a slide deck to `slides/<video_id>.md`:
+  - `---`-separated slides (renderable by reveal.js / Marp; no images).
+  - Slide 1: title + channel + a one-line thesis.
+  - One slide per theme/section: a heading, 3–5 key-point bullets, and any
+    notable quote with its `MM:SS` timestamp.
+  - Final slide: takeaways + the watch link.
+  Report the file path + the title slide in chat.
+
+## B — process latest subscriptions (daily digest)
+
+```bash
+yt-ai discover           # new uploads → 'discovered'
+yt-ai fetch-pending      # download + transcribe + embed today's batch (skips failures)
+```
+Then for each of the day's transcribed videos
+(`yt-ai list --status transcribed --since <DATE> --json`), run the **core**
+analysis. Compose `digests/<DATE>.md`:
+- Top **executive digest**: cross-video themes and what's worth the user's time.
+- One **section per video**: `## <title>` + link, the 2–4 sentence summary, top
+  highlights (`MM:SS — label`), 2–3 Q&A.
+
+Create `digests/` if needed. Report the digest path + the executive digest.
+Idempotent — re-running overwrites each `summaries` row and rewrites the file.
+
+## C — subscriptions review (cross-video themes)
+
+Select the period's videos: `yt-ai list --status summarized --since <DATE> --json`
+(analyze any still `transcribed` via the core first). Then write **one essay** to
+`reviews/<DATE>.md` — no per-video sections:
+- Common threads across the videos, contradictions / disagreements, emerging trends.
+- Ground every claim in the videos; when citing a specific moment, name the video
+  title + a `MM:SS` deep link.
+
+Report the review path + a short lede in chat.
+
+## Conventions
+
+- All data via the `yt-ai` CLI ([[yt-manager]] has the full surface). Never touch
+  the store directly.
+- Grounded strictly in transcripts; highlight timestamps only from `yt-ai search`.
+- `is_seen` is status-based, so re-fetch is a no-op → follow-ups ("now highlight
+  it", "make slides") and re-runs never re-download.
+- Dates are `YYYY-MM-DD`. Always report what ran + the output paths (`slides/`,
+  `digests/`, `reviews/`).
+- Related: [[yt-manager]] (the full CLI surface — discover, recommend, compile,
+  supercut, frame, status).

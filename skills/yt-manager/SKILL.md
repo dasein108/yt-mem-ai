@@ -1,6 +1,6 @@
 ---
 name: yt-manager
-description: Use when the user wants to run any yt-ai operation from Claude Code — ingest a video, discover subscription uploads, batch-fetch pending, search the library, rate/recommend, compile highlights, build a supercut, check status, or run a full pipeline (daily routine or single-video). The umbrella entry point for the yt-mem-ai CLI; delegates deep per-video analysis to [[summarize-video]] and [[daily-digest]].
+description: Use when the user wants to run any yt-ai operation from Claude Code — ingest a video, discover subscription uploads, batch-fetch pending, search the library, rate/recommend, compile highlights, build a supercut, check status, or run a full pipeline (daily routine or single-video). The umbrella entry point for the yt-mem-ai CLI; delegates per-video analysis, digests, and reviews to [[yt]].
 ---
 
 # yt-manager
@@ -49,13 +49,12 @@ uv run yt-ai save-summary <video_id> "<summary_md>" \
   --highlights '<json>' --qa '<json>'
 ```
 Do **not** write summaries free-hand here. For the model-generated analysis
-(summary + timestamped highlights + Q&A), hand off:
-- one video → invoke **[[summarize-video]]**
-- a day's batch + combined digest → invoke **[[daily-digest]]**
+(summary + timestamped highlights + Q&A + presentation, a subscription digest, or
+a cross-video review), hand off to **[[yt]]**.
 
-Those skills produce the analysis with **this agent** (Claude Code) reading the
-stored transcript — no API key, no OpenRouter, no external LLM call. (The
-desktop app has a separate OpenRouter-based summarize path; it is not used here.)
+[[yt]] produces the analysis with **this agent** (Claude Code) reading the stored
+transcript — no API key, no OpenRouter, no external LLM call. (The desktop app has
+a separate OpenRouter-based summarize path; it is not used here.)
 
 ### Taste / recommendations
 ```bash
@@ -84,7 +83,7 @@ uv run yt-ai supercut [--since <DATE>] [--max-minutes <N>] [--out <path>] [--kee
 uv run yt-ai discover          # new uploads → 'discovered'
 uv run yt-ai fetch-pending     # download+transcribe+embed today's batch (skips failures)
 ```
-then invoke **[[daily-digest]]** (per-video summaries + `digests/<DATE>.md`), then:
+then invoke **[[yt]]** (process subscriptions → per-video summaries + `digests/<DATE>.md`), then:
 ```bash
 uv run yt-ai compile           # deep-linked highlights doc for the day
 # optionally: uv run yt-ai supercut   # shareable video reel
@@ -94,7 +93,7 @@ uv run yt-ai compile           # deep-linked highlights doc for the day
 ```bash
 uv run yt-ai fetch <url>
 ```
-then invoke **[[summarize-video]]**.
+then invoke **[[yt]]** (single-video summary / highlights / Q&A / presentation).
 
 ## Conventions
 
@@ -112,5 +111,5 @@ then invoke **[[summarize-video]]**.
 - If `fetch-pending`/`list` finds nothing for a day, run `discover` first.
 - `supercut` continues past a clip whose download/render fails (logged in the
   `.refs.md` sidecar's skipped list) rather than aborting.
-- Related: [[summarize-video]] (one video), [[daily-digest]] (a day + cross-video digest).
+- Related: [[yt]] (analysis scenarios: single video, subscription digest, cross-video review).
 ```

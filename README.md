@@ -70,7 +70,7 @@ Before you've liked anything, it falls back to most-recently-published.
 yt-ai discover               # find new subscription uploads → 'discovered'
 yt-ai fetch-pending          # download+transcribe+embed today's batch (robust, skips failures)
 # then in Claude Code:
-/daily-digest                # per-video summaries + digests/YYYY-MM-DD.md
+/yt process subscriptions    # per-video summaries + digests/YYYY-MM-DD.md
 yt-ai compile                # compile the day's highlights into a deep-linked markdown you can click into
 ```
 
@@ -99,7 +99,7 @@ listing each rendered clip's source link (and any clips skipped because their
 download/render failed). Use `compile` for a quick clickable digest; use
 `supercut` when you want a shareable video.
 
-Single video on demand: `yt-ai fetch <url>` then the `/summarize-video` skill.
+Single video on demand: `yt-ai fetch <url>` then the `/yt` skill (summarize / highlights / qa / presentation).
 
 ## Logging
 

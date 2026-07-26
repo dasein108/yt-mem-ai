@@ -121,9 +121,10 @@ Claude Code only discovers skills under `.claude/skills/`, so each is surfaced
 via a symlink `.claude/skills/<name> -> ../../skills/<name>` (thin ref, no drift).
 
 - `yt-manager` — umbrella entry point for any `yt-ai` CLI op + both pipelines;
-  delegates deep per-video analysis to `summarize-video` / `daily-digest`.
-- `summarize-video` — one ingested video → summary/highlights/Q&A (`summaries` table).
-- `daily-digest` — a day's transcribed videos → per-video summaries + `digests/<DATE>.md`.
+  delegates per-video analysis, digests, and reviews to `yt`.
+- `yt` — scenario skill: one video → summary/highlights/Q&A/presentation
+  (`slides/<id>.md`); process subscriptions → `digests/<DATE>.md`; cross-video
+  subscriptions review → `reviews/<DATE>.md`. Persists via `save-summary`.
 
 The `yt-debugger` skill (backend/electron/frontend log correlation) **moved
 out** with the REST API to the `yt-mem-ai-desktop` repo.
@@ -135,8 +136,8 @@ desktop UI). Neither is authoritative over the other — last write wins.
 
 ## Commands & daily routine
 
-See README.md. Pipeline: `discover → fetch-pending → /daily-digest → compile`;
-single video: `fetch → /summarize-video`.
+See README.md. Pipeline: `discover → fetch-pending → /yt (process subscriptions) → compile`;
+single video: `fetch → /yt (summarize/highlights/qa/presentation)`.
 
 ## Dev
 

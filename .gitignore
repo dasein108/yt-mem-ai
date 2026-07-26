@@ -15,3 +15,5 @@ supercuts/
 logs/
 dist/
 *.egg-info/
+slides/
+reviews/
