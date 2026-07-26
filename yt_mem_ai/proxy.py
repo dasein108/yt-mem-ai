@@ -15,7 +15,10 @@ def ytdlp_proxy_url(cfg: Config) -> str | None:
 
 
 def webshare_config(cfg: Config) -> "WebshareProxyConfig | None":
-    if cfg.use_webshare and cfg.proxy_username and cfg.proxy_password:
+    # The transcript API can use Webshare independently of yt-dlp (use_webshare):
+    # YouTube IP-blocks the transcript endpoint, but yt-dlp through Webshare 405s.
+    if (cfg.use_webshare or cfg.captions_use_webshare) \
+            and cfg.proxy_username and cfg.proxy_password:
         from youtube_transcript_api.proxies import WebshareProxyConfig
         return WebshareProxyConfig(
             proxy_username=cfg.proxy_username,

@@ -36,3 +36,12 @@ def test_webshare_config_built_when_present():
 
 def test_webshare_config_none_when_disabled():
     assert proxy.webshare_config(_cfg("u", "p", use_webshare=False)) is None
+
+
+def test_captions_proxy_decoupled_from_ytdlp():
+    from dataclasses import replace
+    # captions_use_webshare on, use_webshare off → transcript API routes through
+    # Webshare (avoids the transcript IP-block), yt-dlp stays direct (avoids 405).
+    cfg = replace(_cfg("u", "p", use_webshare=False), captions_use_webshare=True)
+    assert proxy.webshare_config(cfg) is not None
+    assert proxy.ytdlp_proxy_url(cfg) is None

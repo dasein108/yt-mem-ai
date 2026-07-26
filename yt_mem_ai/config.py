@@ -37,6 +37,11 @@ class Config:
     # CONNECT tunnel returns 405). Turn on only if you have no other proxy and
     # YouTube is rate-limiting your raw IP.
     use_webshare: bool = False
+    # Route ONLY the transcript API (youtube-transcript-api) through Webshare,
+    # leaving yt-dlp direct. Needed because YouTube IP-blocks the transcript
+    # endpoint, but yt-dlp's HTTPS CONNECT through Webshare 405s. Independent of
+    # use_webshare (which gates yt-dlp). Uses WebshareProxyConfig's rotating proxy.
+    captions_use_webshare: bool = False
     job_concurrency: int = 3
     discover_interval_s: float = 3600.0
     # Preferred caption languages (order = priority). `fetch_captions` tries these
@@ -81,6 +86,7 @@ def load_config(env_path: Path | None = None) -> Config:
         "YT_DISCOVER_TIMEOUT_S", "YT_USE_WEBSHARE", "YT_DISCOVER_FEED_LIMIT",
         "YT_DISCOVER_OVERLAP_S",
         "YT_JOB_CONCURRENCY", "YT_DISCOVER_INTERVAL_S", "YT_CAPTION_LANGS",
+        "YT_CAPTIONS_USE_WEBSHARE",
     ):
         if os.environ.get(key) is not None:
             data[key] = os.environ[key]
@@ -109,4 +115,5 @@ def load_config(env_path: Path | None = None) -> Config:
         job_concurrency=int(_clean(data.get("YT_JOB_CONCURRENCY")) or "3"),
         discover_interval_s=float(_clean(data.get("YT_DISCOVER_INTERVAL_S")) or "3600"),
         caption_langs=_parse_langs(_clean(data.get("YT_CAPTION_LANGS"))),
+        captions_use_webshare=_truthy(data.get("YT_CAPTIONS_USE_WEBSHARE")),
     )
