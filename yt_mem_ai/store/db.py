@@ -132,6 +132,28 @@ def list_chunks(db: lancedb.DBConnection, video_id: str) -> list[dict]:
     return rows
 
 
+_CHUNK_FIELDS = ("id", "video_id", "start_s", "end_s", "text")
+
+
+def all_chunks(db: lancedb.DBConnection) -> list[dict]:
+    """Every chunk row as {id, video_id, start_s, end_s, text} (vector stripped)."""
+    tbl = db.open_table("chunks")
+    rows = tbl.search().limit(100_000_000).to_list()
+    return [{k: r[k] for k in _CHUNK_FIELDS} for r in rows]
+
+
+def rebuild_chunks(db: lancedb.DBConnection, embedder, rows: list[dict]) -> None:
+    """Drop + recreate the chunks table with `embedder` and re-insert `rows`
+    (text is the embedder's SourceField → auto re-embedded). Rebuilds FTS."""
+    if "chunks" in db.table_names():
+        db.drop_table("chunks")
+    tbl = db.create_table("chunks", schema=chunk_schema(embedder))
+    if rows:
+        clean = [{k: r[k] for k in _CHUNK_FIELDS} for r in rows]
+        tbl.add(clean)
+        _ensure_fts(tbl, "text")
+
+
 def upsert_summary(db, video_id, summary_md, highlights, qa, model, created_at) -> None:
     tbl = db.open_table("summaries")
     row = {"video_id": video_id, "summary_md": summary_md, "highlights": highlights,

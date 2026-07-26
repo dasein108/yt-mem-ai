@@ -226,3 +226,29 @@ def test_job_crud_roundtrip(tmp_path):
                             "created_at": "2026-07-24T00:01:00Z", "updated_at": "2026-07-24T00:01:00Z"})
     assert {r["id"] for r in store.list_jobs(conn, status="running")} == {"j1"}
     assert len(store.list_jobs(conn)) == 2
+
+
+def test_rebuild_chunks_reembeds_at_new_dim(tmp_path):
+    from tests.support import fake_embedder_16
+    conn = _db(tmp_path)  # init_db with the dim-8 fake embedder
+    # seed chunks for two videos via the existing dim-8 path
+    from yt_mem_ai.store.embeddings import chunk_segments
+    from yt_mem_ai.store.models import Segment
+    for vid in ("v1", "v2"):
+        rows = chunk_segments(vid, [Segment(vid, 0.0, 5.0, f"hello {vid}"),
+                                    Segment(vid, 5.0, 10.0, f"world {vid}")], 3.0)
+        store.replace_chunks(conn, vid, rows)
+    before = store.all_chunks(conn)
+    assert len(before) >= 2
+    assert set(before[0]) == {"id", "video_id", "start_s", "end_s", "text"}
+
+    # rebuild with a dim-16 embedder
+    store.rebuild_chunks(conn, fake_embedder_16(), before)
+    tbl = conn.open_table("chunks")
+    rows = tbl.search().limit(1000).to_list()
+    assert len(rows) == len(before)                      # same count
+    assert len(rows[0]["vector"]) == 16                  # new dim
+    assert {r["text"] for r in rows} == {r["text"] for r in before}  # same text
+    # FTS still works
+    hits = tbl.search("hello", query_type="fts").limit(5).to_list()
+    assert any("hello" in h["text"] for h in hits)
