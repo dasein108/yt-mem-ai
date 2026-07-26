@@ -33,7 +33,8 @@ not an API) to keep it free and high-quality.
   (`YT_CAPTION_LANGS`, default `en`) then falls back to ANY available track (manual
   over auto-generated), so non-English videos ingest via the fast captions path; the
   source language is stored in `transcripts.lang` (exposed as `transcript_lang` in
-  `show --json`). Skills translate to the user's target language.
+  `show --json`). Skills produce artifacts in the video's original language by
+  default (user preference); translate only when a target language is requested.
 - `discovery.py` — subscription feed extraction (`discover`), injectable `extract_fn` seam.
   Flat feed pull is capped (`playlistend=discover_feed_limit`) and stamped with
   approximate per-entry `timestamp` via `youtubetab:approximate_date` — dates in
