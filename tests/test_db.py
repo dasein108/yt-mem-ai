@@ -20,7 +20,8 @@ def test_dataclasses_still_present():
 def test_lance_schemas_have_expected_fields():
     assert set(models.VideoSchema.model_fields) == {
         "video_id", "channel_id", "channel", "title", "url", "duration_s",
-        "published_at", "description", "tags", "fetched_at", "audio_path", "status"}
+        "published_at", "description", "tags", "fetched_at", "audio_path", "status",
+        "live_status"}
     assert set(models.TranscriptSchema.model_fields) == {
         "video_id", "source", "lang", "full_text", "created_at"}
     assert set(models.StateSchema.model_fields) == {"key", "value"}

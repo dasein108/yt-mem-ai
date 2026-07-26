@@ -18,10 +18,24 @@ class Video:
     fetched_at: str | None = None
     audio_path: str | None = None
     status: str = "discovered"
+    # yt-dlp live_status (is_live / is_upcoming / post_live / was_live / not_live /
+    # None). Persisted so batch ingestion can mark + skip streams. See is_stream().
+    live_status: str | None = None
     # Approximate publish epoch (seconds, UTC) carried through discovery for the
     # incremental high-water mark. NOT in VideoSchema, so it is never persisted —
     # `_VIDEO_FIELDS` (schema-derived) skips it on read/write.
     published_ts: float | None = None
+
+
+# Live-stream live_status values: batch ingestion marks these and skips
+# transcription (they're long + usually caption-less); transcribe on demand.
+_STREAM_LIVE_STATUSES = {"is_live", "is_upcoming", "post_live", "was_live"}
+
+
+def is_stream(video) -> bool:
+    """True if the video is a live stream (live now / upcoming / just-ended / a
+    past-live VOD)."""
+    return getattr(video, "live_status", None) in _STREAM_LIVE_STATUSES
 
 
 @dataclass
@@ -55,6 +69,7 @@ class VideoSchema(LanceModel):
     fetched_at: str | None = None
     audio_path: str | None = None
     status: str = "discovered"
+    live_status: str | None = None
 
 
 class ChannelSchema(LanceModel):

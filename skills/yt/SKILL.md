@@ -62,6 +62,11 @@ Run the core, then deliver the artifact the phrasing asked for:
 yt-ai discover           # new uploads → 'discovered'
 yt-ai fetch-pending      # download + transcribe + embed today's batch (skips failures)
 ```
+Live streams are auto-detected and marked `status=stream` — `fetch-pending` skips
+them (long + usually caption-less). List them with `yt-ai list --status stream`;
+to transcribe one on demand, fetch it directly (`yt-ai fetch <url>`, optionally
+`--whisper`).
+
 Then for each of the day's transcribed videos
 (`yt-ai list --status transcribed --since <DATE> --json`), run the **core**
 analysis. Compose `digests/<DATE>.md`:

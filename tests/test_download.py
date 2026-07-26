@@ -38,6 +38,16 @@ def test_video_from_info_maps_fields():
     assert v.published_at == "2026-07-21"
 
 
+def test_video_from_info_captures_live_status():
+    from yt_mem_ai.store.models import is_stream
+    live = download.video_from_info({"id": "l", "live_status": "was_live"}, "u")
+    assert live.live_status == "was_live" and is_stream(live)
+    vod = download.video_from_info({"id": "v", "live_status": "not_live"}, "u")
+    assert vod.live_status == "not_live" and not is_stream(vod)
+    plain = download.video_from_info({"id": "p"}, "u")
+    assert plain.live_status is None and not is_stream(plain)
+
+
 def test_video_from_info_captures_channel_description_tags():
     info = {"id": "abc", "title": "T", "channel": "My Channel",
             "description": "the description", "tags": ["x", "y", "z"],

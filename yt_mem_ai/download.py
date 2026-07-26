@@ -50,6 +50,7 @@ def video_from_info(info: dict, url: str) -> Video:
         tags=",".join(tags) or None,
         fetched_at=datetime.now(UTC).isoformat(),
         status="downloaded",
+        live_status=info.get("live_status"),
     )
 
 

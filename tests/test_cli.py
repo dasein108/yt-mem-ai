@@ -27,6 +27,8 @@ def _db(tmp_path):
 def test_run_fetch_stores_video_transcript_chunks(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     conn = _db(tmp_path)
+    monkeypatch.setattr(cli, "download_metadata",
+        lambda url, c: Video(video_id="abc", url=url, status="downloaded"))
     monkeypatch.setattr(cli, "download",
         lambda url, c: (Video(video_id="abc", url=url, status="downloaded"), "/a.mp3"))
     monkeypatch.setattr(cli, "get_transcript",
@@ -37,6 +39,38 @@ def test_run_fetch_stores_video_transcript_chunks(tmp_path, monkeypatch):
     assert store.get_video(conn, "abc").status == "transcribed"
     assert store.get_transcript_text(conn, "abc") == "hello world"
     assert len(store.list_chunks(conn, "abc")) >= 1
+
+
+def test_run_fetch_marks_and_skips_stream_in_batch(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    stream = Video(video_id="live1", url="u", title="Live", status="downloaded",
+                   live_status="was_live")
+    monkeypatch.setattr(cli, "download_metadata", lambda url, c: stream)
+
+    def _boom(*a, **k):
+        raise AssertionError("batch must not download/transcribe a stream")
+    monkeypatch.setattr(cli, "download", _boom)
+    monkeypatch.setattr(cli, "get_transcript", _boom)
+    vid = cli.run_fetch("https://y/live1", cfg, db=conn, include_streams=False)
+    assert vid == "live1"
+    assert store.get_video(conn, "live1").status == "stream"
+    assert store.get_transcript_text(conn, "live1") is None
+
+
+def test_run_fetch_transcribes_stream_when_included(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    conn = _db(tmp_path)
+    v = Video(video_id="live2", url="u", title="Live", status="downloaded",
+              live_status="was_live")
+    monkeypatch.setattr(cli, "download", lambda url, c: (v, "/a.mp3"))
+    monkeypatch.setattr(cli, "get_transcript",
+        lambda vid, audio, c, force_whisper=False: T.TranscriptResult("whisper", "en", "hi",
+            [Segment("live2", 0.0, 5.0, "hi")]))
+    out = cli.run_fetch("https://y/live2", cfg, db=conn, include_streams=True)
+    assert out == "live2"
+    assert store.get_video(conn, "live2").status == "transcribed"
+    assert store.get_transcript_text(conn, "live2") == "hi"
 
 
 def test_run_fetch_captions_only_skips_audio_download(tmp_path, monkeypatch):
@@ -89,6 +123,8 @@ def test_run_fetch_skips_after_download_when_real_id_seen(tmp_path, monkeypatch)
     store.upsert_video(conn, Video(video_id="abc", url="u", status="transcribed"))
     # URL is unparseable by _extract_video_id (no v=/youtu.be/shorts marker),
     # so the pre-download check can't catch it; download reveals the real id "abc".
+    monkeypatch.setattr(cli, "download_metadata",
+        lambda url, c: Video(video_id="abc", url=url, status="downloaded"))
     monkeypatch.setattr(cli, "download",
         lambda url, c: (Video(video_id="abc", url=url, status="downloaded"), "/a.mp3"))
     def _boom(*a, **k):
@@ -310,6 +346,8 @@ def test_run_fetch_emits_workflow_events(tmp_path, monkeypatch):
     monkeypatch.setenv("YT_LOG_FILE", str(tmp_path / "c.jsonl"))
     cfg = _cfg(tmp_path)
     conn = _db(tmp_path)
+    monkeypatch.setattr(cli, "download_metadata",
+        lambda url, c: Video(video_id="abc", url=url, status="downloaded"))
     monkeypatch.setattr(cli, "download",
         lambda url, c: (Video(video_id="abc", url=url, status="downloaded"), "/a.mp3"))
     monkeypatch.setattr(cli, "get_transcript",

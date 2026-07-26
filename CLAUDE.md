@@ -92,7 +92,11 @@ not an API) to keep it free and high-quality.
 
 Tables: `videos`, `channels`, `transcripts`, `chunks` (embedded + FTS), `summaries`,
 `feedback`, `app_state`. Video lifecycle `status`: `discovered → downloaded →
-transcribed → summarized`.
+transcribed → summarized`. Live streams get a terminal `status=stream`: batch
+ingestion (`fetch-pending`) detects them via yt-dlp `live_status` (`is_live`/
+`is_upcoming`/`post_live`/`was_live`, see `models.is_stream`), marks them, and
+**skips transcription** (they're long + usually caption-less). A direct
+`yt-ai fetch <url>` transcribes a stream on demand (`run_fetch(include_streams=True)`).
 
 ## Conventions (follow these)
 

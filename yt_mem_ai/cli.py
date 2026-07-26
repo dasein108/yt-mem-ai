@@ -7,7 +7,7 @@ from pathlib import Path
 import typer
 from .config import load_config
 from .store import db as store
-from .store.models import TranscriptRow, Video
+from .store.models import TranscriptRow, Video, is_stream
 from .store.embeddings import build_embedder, chunk_segments
 from .download import download, download_metadata
 from .transcript import get_transcript, TranscriptUnavailable
@@ -37,7 +37,8 @@ def open_store(cfg):
 
 
 def run_fetch(url: str, cfg, force: bool = False, db=None, video_id: str | None = None,
-              captions_only: bool = False, force_whisper: bool = False) -> str:
+              captions_only: bool = False, force_whisper: bool = False,
+              include_streams: bool = False) -> str:
     if db is None:
         db = open_store(cfg)
     vid = video_id or _extract_video_id(url)
@@ -49,8 +50,23 @@ def run_fetch(url: str, cfg, force: bool = False, db=None, video_id: str | None 
     # fallback. get_transcript raises TranscriptUnavailable if the video has none.
     if captions_only:
         video, audio = download_metadata(url, cfg), None
+    elif not include_streams:
+        # Probe metadata first so a live stream is detected BEFORE downloading
+        # its (huge / never-ending) audio; only fetch audio for non-streams.
+        video, audio = download_metadata(url, cfg), None
+        if not is_stream(video):
+            video, audio = download(url, cfg)
     else:
         video, audio = download(url, cfg)
+
+    # Streams are marked and skipped unless explicitly included (transcribe on
+    # demand): batch ingestion never whispers a live stream.
+    if not include_streams and is_stream(video):
+        video.status = "stream"
+        store.upsert_video(db, video)
+        blog("fetch.stream_skip", video_id=video.video_id, live_status=video.live_status)
+        return video.video_id
+
     if not force and memory.is_seen(db, video.video_id):
         blog("fetch.skip", video_id=video.video_id)
         return video.video_id
@@ -84,7 +100,7 @@ def fetch(url: str, force: bool = typer.Option(False, "--force"),
     cfg = load_config()
     try:
         vid = run_fetch(url, cfg, force=force, captions_only=captions_only,
-                        force_whisper=whisper)
+                        force_whisper=whisper, include_streams=True)
     except TranscriptUnavailable as exc:
         typer.echo(f"no captions available: {exc}")
         raise typer.Exit(1)
@@ -95,7 +111,7 @@ def fetch(url: str, force: bool = typer.Option(False, "--force"),
 def transcript(url: str):
     """Transcribe + store (same pipeline as fetch)."""
     cfg = load_config()
-    vid = run_fetch(url, cfg)
+    vid = run_fetch(url, cfg, include_streams=True)
     typer.echo(f"transcribed {vid}")
 
 
@@ -112,7 +128,8 @@ def show(video_id: str, as_json: bool = typer.Option(False, "--json")):
     if as_json:
         typer.echo(json.dumps({
             "video_id": v.video_id, "title": v.title, "url": v.url,
-            "status": v.status, "channel_id": v.channel_id, "channel": v.channel,
+            "status": v.status, "live_status": v.live_status,
+            "channel_id": v.channel_id, "channel": v.channel,
             "published_at": v.published_at, "duration_s": v.duration_s,
             "tags": v.tags, "description": v.description, "transcript": text,
             "transcript_lang": store.get_transcript_lang(db, video_id),
@@ -297,6 +314,7 @@ def list_videos_cmd(
     if as_json:
         typer.echo(json.dumps([
             {"video_id": v.video_id, "title": v.title, "url": v.url, "status": v.status,
+             "live_status": v.live_status,
              "channel_id": v.channel_id, "channel": v.channel,
              "published_at": v.published_at, "duration_s": v.duration_s,
              "tags": v.tags, "description": v.description} for v in videos]))
