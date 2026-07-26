@@ -15,6 +15,7 @@ from .discovery import discover as discover_videos
 from .recommend import recommend as recommend_videos
 from .compile import compile_highlights, render_markdown
 from .supercut import build_supercut
+from .frame import parse_timestamp, grab_frame, FrameError
 from . import memory
 from .obs import blog
 
@@ -460,6 +461,31 @@ def supercut(
     if not res.labeled:
         line += " (labels skipped: ffmpeg has no drawtext)"
     typer.echo(line)
+
+
+def run_frame(cfg, video_id: str, at: str, out: str | None = None, db=None) -> str:
+    at_s = parse_timestamp(at)
+    if db is None:
+        db = open_store(cfg)
+    out = out or f"frames/{video_id}_{int(at_s)}s.png"
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    return grab_frame(db, video_id, at_s, out, cfg=cfg)
+
+
+@app.command()
+def frame(
+    video_id: str = typer.Argument(..., help="Ingested video id"),
+    at: str = typer.Option(..., "--at", help="Timestamp: seconds or HH:MM:SS"),
+    out: str = typer.Option(None, "--out", help="Output path (default frames/<id>_<s>s.png)"),
+):
+    """Grab a still frame from an ingested video at a timestamp (needs yt-dlp + ffmpeg)."""
+    cfg = load_config()
+    try:
+        path = run_frame(cfg, video_id, at, out)
+    except (FrameError, ValueError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1)
+    typer.echo(path)
 
 
 if __name__ == "__main__":

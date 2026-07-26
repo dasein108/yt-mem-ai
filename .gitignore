@@ -12,6 +12,7 @@ yt_lance/
 digests/
 compilations/
 supercuts/
+frames/
 logs/
 dist/
 *.egg-info/

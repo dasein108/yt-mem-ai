@@ -317,3 +317,27 @@ def test_run_fetch_emits_workflow_events(tmp_path, monkeypatch):
     cli.run_fetch("https://y/abc", cfg, db=conn)
     events = {json.loads(x)["event"] for x in (tmp_path / "c.jsonl").read_text().splitlines()}
     assert "fetch.done" in events
+
+
+def test_run_frame_default_path_and_parse(tmp_path, monkeypatch):
+    from yt_mem_ai import cli
+    captured = {}
+
+    def fake_grab(db, video_id, at_s, out_path, *, cfg):
+        captured["at_s"] = at_s
+        captured["out"] = out_path
+        return out_path
+
+    monkeypatch.setattr(cli, "grab_frame", fake_grab)
+    cfg = object()
+    # sentinel db so run_frame doesn't open a real store
+    out = cli.run_frame(cfg, "vid", "1:30", out=None, db="DB")
+    assert captured["at_s"] == 90.0
+    assert out == "frames/vid_90s.png"
+    assert captured["out"] == "frames/vid_90s.png"
+
+
+def test_run_frame_out_override(monkeypatch):
+    from yt_mem_ai import cli
+    monkeypatch.setattr(cli, "grab_frame", lambda db, v, at_s, out, *, cfg: out)
+    assert cli.run_frame(object(), "vid", "5", out="/tmp/x.png", db="DB") == "/tmp/x.png"
