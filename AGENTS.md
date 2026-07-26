@@ -23,6 +23,9 @@ in sync in the same change:
 The CLI and API are thin adapters over the same core — do not fork logic into
 either surface.
 
+The `frame` command shares `supercut.py`'s download/ffmpeg approach — when you
+change the section-download format or the ffmpeg invocation in one, check the other.
+
 ## Packaging
 
 - Version comes from git tags via `hatch-vcs`. Do not hand-edit a version.

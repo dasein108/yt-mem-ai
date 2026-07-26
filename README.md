@@ -55,6 +55,7 @@ yt-ai dislike <video_id>     # mark disliked
 yt-ai recommend              # rank your unrated fetched videos by taste (--limit/--json)
 yt-ai compile                 # deep-linked highlights doc, budget-bounded (--since/--max-minutes/--json/--out)
 yt-ai supercut                 # video reel of highlights, re-downloaded + labeled (--since/--max-minutes/--out/--keep-clips)
+yt-ai frame <video_id> --at <ts>  # still frame at a timestamp (seconds or H:M:S) → frames/<id>_<s>s.png
 ```
 
 ## Rate & recommend

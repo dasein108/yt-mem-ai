@@ -62,6 +62,11 @@ not an API) to keep it free and high-quality.
   `.refs.md` sidecar's skipped list) rather than aborting the run. Real
   rendering (actual yt-dlp downloads + ffmpeg) is manual smoke only, not in
   the test suite.
+- `frame.py` — single still-frame grab: `grab_frame(db, video_id, at_s, out_path,
+  cfg=, workdir=, download_fn=, ffmpeg_fn=)` downloads a 1s 720p section at the
+  timestamp (reusing `supercut`'s `_FORMAT` + `download_range_func`) and extracts
+  the first frame via ffmpeg. `parse_timestamp` accepts seconds or `H:M:S`.
+  Injectable seams keep it offline-testable; real yt-dlp/ffmpeg is manual smoke.
 - `cli.py` — Typer app; thin `run_*` cores are the testable seam.
   `fetch --captions-only` runs the metadata+captions path
   (no audio/whisper). `run_discover` is incremental: cutoff precedence is
