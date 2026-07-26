@@ -1,6 +1,7 @@
 # yt_mem_ai/frame.py
 from __future__ import annotations
 
+import math
 import os
 
 from .download import build_opts
@@ -23,7 +24,7 @@ def parse_timestamp(text: str) -> float:
         nums = [float(p) for p in parts]
     except ValueError:
         raise ValueError(f"invalid timestamp: {text!r}")
-    if any(n < 0 for n in nums):
+    if any(not math.isfinite(n) or n < 0 for n in nums):
         raise ValueError(f"invalid timestamp: {text!r}")
     seconds = 0.0
     for n in nums:

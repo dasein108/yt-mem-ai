@@ -20,7 +20,7 @@ def test_parse_timestamp_ok(text, expected):
     assert F.parse_timestamp(text) == expected
 
 
-@pytest.mark.parametrize("bad", ["", "   ", "a:b", "1:2:3:4", "-5", "1:-2"])
+@pytest.mark.parametrize("bad", ["", "   ", "a:b", "1:2:3:4", "-5", "1:-2", "nan", "inf", "1:inf"])
 def test_parse_timestamp_rejects(bad):
     with pytest.raises(ValueError):
         F.parse_timestamp(bad)
