@@ -157,6 +157,40 @@ def _keep_duration(entry: dict, min_duration: int) -> bool:
     return dur is None or dur >= min_duration  # keep live/unknown-duration entries
 
 
+_CHANNEL_TABS = ("/videos", "/streams", "/shorts", "/featured", "/playlists")
+
+
+def _channel_uploads_url(url: str) -> str:
+    """Point a channel URL / @handle at its uploads (/videos) tab."""
+    stripped = url.rstrip("/")
+    if any(stripped.endswith(tab) for tab in _CHANNEL_TABS):
+        return stripped
+    return f"{stripped}/videos"
+
+
+def channel_videos(cfg: Config, url: str, limit: int = 20, after: str | None = None,
+                   before: str | None = None, extract_fn=None) -> list[Video]:
+    """Enumerate a channel's uploads (newest-first, capped, date-filtered). Does
+    NOT ingest. `after`/`before` are inclusive YYYY-MM-DD bounds on published_at."""
+    if extract_fn is None:
+        extract_fn = _default_extract_fn(cfg)
+    tab = _channel_uploads_url(url)
+    info = extract_fn(tab, True) or {}
+    entries = (info.get("entries") or [])[:limit]
+    out: list[Video] = []
+    for entry in entries:
+        if not entry.get("id"):
+            continue
+        v = _entry_to_video(entry, _published_ts(entry, extract_fn))
+        pub = v.published_at or ""
+        if after and pub < after:
+            continue
+        if before and pub > before:
+            continue
+        out.append(v)
+    return out
+
+
 def discover(cfg: Config, after: str | None = None, deep: bool = False,
              min_duration: int = 120, extract_fn=None,
              timeout_s: float | None = None,

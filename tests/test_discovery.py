@@ -136,3 +136,43 @@ def test_discover_times_out_on_hanging_extract():
         return {}
     with pytest.raises(discovery.DiscoverTimeout):
         discovery.discover(_cfg(), after="2026-07-01", extract_fn=hang, timeout_s=0.05)
+
+
+def test_channel_uploads_url_normalizes():
+    from yt_mem_ai import discovery as d
+    assert d._channel_uploads_url("https://youtube.com/@chan") == "https://youtube.com/@chan/videos"
+    assert d._channel_uploads_url("https://youtube.com/@chan/") == "https://youtube.com/@chan/videos"
+    assert d._channel_uploads_url("https://youtube.com/@chan/videos") == "https://youtube.com/@chan/videos"
+    assert d._channel_uploads_url("https://youtube.com/channel/UC123/streams") == "https://youtube.com/channel/UC123/streams"
+
+
+def test_channel_videos_maps_caps_and_filters(_cfg_fixture=None):
+    from yt_mem_ai import discovery as d
+    from yt_mem_ai.config import Config
+    from pathlib import Path
+    cfg = Config(downloads_dir=Path("d"), proxy_username=None, proxy_password=None,
+                 cookies_browser=None, whisper_model="s", whisper_device="cpu",
+                 whisper_compute_type="int8", openrouter_api_key=None, openrouter_model="m",
+                 store_path=Path("s"), embedding_backend="local", embedding_model=None,
+                 chunk_target_s=45.0, openai_api_key=None)
+    # newest-first fake channel: 3 entries with epoch timestamps
+    entries = [
+        {"id": "v3", "title": "Newest", "timestamp": 1753500000, "duration": 600},
+        {"id": "v2", "title": "Middle",  "timestamp": 1753400000, "duration": 600},
+        {"id": "v1", "title": "Oldest",  "timestamp": 1753300000, "duration": 600},
+    ]
+
+    def fake_extract(url, flat):
+        assert url.endswith("/videos")   # normalized
+        return {"entries": entries}
+
+    got = d.channel_videos(cfg, "https://youtube.com/@chan", limit=2, extract_fn=fake_extract)
+    assert [v.video_id for v in got] == ["v3", "v2"]            # newest-first, capped at 2
+    assert got[0].title == "Newest" and got[0].url.endswith("v3")
+    assert got[0].published_at is not None                       # date derived from timestamp
+
+    # date filter (published_at strings)
+    d3 = d.channel_videos(cfg, "https://youtube.com/@chan", limit=10,
+                          after=got[0].published_at, before=got[0].published_at,
+                          extract_fn=fake_extract)
+    assert all(v.published_at == got[0].published_at for v in d3)
