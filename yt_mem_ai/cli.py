@@ -11,7 +11,7 @@ from .store.models import TranscriptRow, Video, is_stream
 from .store.embeddings import build_embedder, chunk_segments
 from .download import download, download_metadata
 from .transcript import get_transcript, TranscriptUnavailable, CaptionsBlocked
-from .discovery import discover as discover_videos
+from .discovery import discover as discover_videos, channel_videos
 from .recommend import recommend as recommend_videos
 from .compile import compile_highlights, render_markdown
 from .supercut import build_supercut
@@ -285,6 +285,37 @@ def discover(
         dur = f"{(v.duration_s or 0) // 60}m" if v.duration_s else "live"
         typer.echo(f"{v.published_at or '????-??-??'}  {(v.title or '')[:60]:60}  {dur:>5}  {v.url}")
     typer.echo(f"\n{new_count} new / {len(discovered) - new_count} already known")
+
+
+def run_channel_list(cfg, url: str, limit: int = 20, after: str | None = None,
+                     before: str | None = None, extract_fn=None) -> list[Video]:
+    return channel_videos(cfg, url, limit=limit, after=after, before=before,
+                          extract_fn=extract_fn)
+
+
+@app.command("channel-list")
+def channel_list_cmd(
+    url: str = typer.Argument(..., help="Channel URL or @handle"),
+    limit: int = typer.Option(20, "--limit", "-n", help="Newest N uploads"),
+    from_: str = typer.Option(None, "--from", help="Only uploads on/after YYYY-MM-DD"),
+    to: str = typer.Option(None, "--to", help="Only uploads on/before YYYY-MM-DD"),
+    as_json: bool = typer.Option(False, "--json"),
+):
+    """List a channel's recent uploads (enumerate only — does not ingest)."""
+    cfg = load_config()
+    vids = run_channel_list(cfg, url, limit=limit, after=from_, before=to)
+    if as_json:
+        typer.echo(json.dumps([
+            {"video_id": v.video_id, "url": v.url, "title": v.title,
+             "published_at": v.published_at, "duration_s": v.duration_s} for v in vids]))
+        return
+    if not vids:
+        typer.echo("no videos")
+        return
+    for v in vids:
+        d = v.duration_s
+        d = f"{d // 60}m" if isinstance(d, int) else "?"
+        typer.echo(f"{v.published_at or '????-??-??'}  {v.video_id}  {d:>4}  {v.title or ''}")
 
 
 def run_list(cfg, status: str | None = None, since: str | None = None,

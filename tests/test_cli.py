@@ -405,3 +405,21 @@ def test_run_reembed_empty_store_returns_zero(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "build_embedder", lambda c: fake_embedder_16())
     conn = _db(tmp_path)  # no chunks added
     assert cli.run_reembed(_cfg(tmp_path), db=conn) == 0
+
+
+def test_run_channel_list_delegates(tmp_path, monkeypatch):
+    from yt_mem_ai import cli
+    from yt_mem_ai.store.models import Video
+    captured = {}
+
+    def fake_channel_videos(cfg, url, limit=20, after=None, before=None, extract_fn=None):
+        captured.update(url=url, limit=limit, after=after, before=before)
+        return [Video(video_id="v3", url="https://youtu.be/v3", title="Newest",
+                      published_at="2026-07-26")]
+
+    monkeypatch.setattr(cli, "channel_videos", fake_channel_videos)
+    out = cli.run_channel_list(_cfg(tmp_path), "https://youtube.com/@chan",
+                               limit=5, after="2026-07-01", before="2026-07-26")
+    assert [v.video_id for v in out] == ["v3"]
+    assert captured == {"url": "https://youtube.com/@chan", "limit": 5,
+                        "after": "2026-07-01", "before": "2026-07-26"}
