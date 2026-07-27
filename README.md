@@ -65,6 +65,7 @@ yt-ai compile                 # deep-linked highlights doc, budget-bounded (--si
 yt-ai supercut                 # video reel of highlights, re-downloaded + labeled (--since/--max-minutes/--out/--keep-clips)
 yt-ai frame <video_id> --at <ts>  # still frame at a timestamp (seconds or H:M:S) → frames/<id>_<s>s.png
 yt-ai reembed                # re-embed all chunks with the current YT_EMBEDDING_* config
+yt-ai channel-list <url>     # list a channel's recent uploads (--limit/--from/--to/--json); enumerate only
 ```
 
 ## Rate & recommend

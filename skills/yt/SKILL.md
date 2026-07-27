@@ -1,6 +1,6 @@
 ---
 name: yt
-description: One skill for any YouTube request over the yt-mem-ai CLI — one-shot by URL or id ("summarize: <url>", "highlight: <url>", "qa: <url>", "presentation: <url>"), process the latest subscription uploads into a daily digest, or a cross-video subscriptions review. Ingests and caches transcripts (captions → whisper), anchors highlights via semantic search, and never re-downloads a cached video.
+description: One skill for any YouTube request over the yt-mem-ai CLI — one-shot by URL or id ("summarize: <url>", "highlight: <url>", "qa: <url>", "presentation: <url>"), process the latest subscription uploads into a daily digest, or a cross-video subscriptions review. Ingests and caches transcripts (captions → whisper), anchors highlights via semantic search, and never re-downloads a cached video. Also processes an arbitrary group of videos (a channel's recent uploads, a comma list of ids/URLs, or a date range) into per-video analysis + a group synthesis.
 ---
 
 # yt — summarize / highlights / Q&A / presentation / digest / review
@@ -19,6 +19,9 @@ timestamps come from `yt-ai search`, never invented. The analysis is done by
   discover + fetch + analyze each + write a dated digest.
 - **C — subscriptions review** ("review my subs", "themes lately", "what's been
   happening"): one cross-video synthesis over a date range.
+- **D — group (arbitrary set)** ("process/review these videos <ids/urls>", "review
+  channel <url>", "review <channel> from <date> to <date>"): ingest a user-specified
+  set, then per-video analysis + a group synthesis.
 
 ## Core: analyze one video (used by A and B)
 
@@ -87,6 +90,31 @@ Select the period's videos: `yt-ai list --status summarized --since <DATE> --jso
   title + a `MM:SS` deep link.
 
 Report the review path + a short lede in chat.
+
+## D — group of videos (arbitrary set)
+
+Process a user-specified set (not tied to today's subscriptions), then per-video
+analysis + a top-level synthesis.
+
+1. **Resolve the set → ids/URLs:**
+   - comma list (`id1,id2,https://youtu.be/id3`) → parse directly;
+   - channel (URL/@handle) → `yt-ai channel-list <url> --limit N [--from D] [--to D] --json`;
+   - date range over a channel → same with `--from/--to`.
+   Report the resolved count first; if it's large (> ~15), say so and confirm/cap
+   before mass-ingesting (whisper is slow).
+2. **Ingest each:** `yt-ai fetch <url>` (captions→whisper; streams auto-marked
+   `status=stream` and skipped; continue past failures — note any skipped).
+3. **Per-video:** run the **core** analysis (summary + search-anchored highlights +
+   Q&A, `presentation` → `slides/<id>.md` if asked), persisted via `save-summary`,
+   in each video's original language (FTS-anchor non-English).
+4. **Group synthesis** → `groups/<label>.md` (label = channel handle / date-range
+   slug / timestamp): an executive synthesis (themes, standouts, what's worth
+   watching) + one section per video (`## <title>` + link, summary, top highlights
+   as `MM:SS — label`, 2–3 Q&A).
+5. **Report** the `groups/<label>.md` path + the executive synthesis.
+
+This is the daily-digest shape (B) over an arbitrary set. Use C instead for a
+themes-only essay with no per-video sections.
 
 ## Conventions
 
