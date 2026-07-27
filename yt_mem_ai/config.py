@@ -14,6 +14,8 @@ class Config:
     whisper_model: str
     whisper_device: str
     whisper_compute_type: str
+    # OpenRouter + job/discover fields below are consumed by the **yt-mem-ai-desktop**
+    # backend (via this shared load_config), NOT by the engine itself — do not remove.
     openrouter_api_key: str | None
     openrouter_model: str
     store_path: Path
@@ -42,8 +44,8 @@ class Config:
     # endpoint, but yt-dlp's HTTPS CONNECT through Webshare 405s. Independent of
     # use_webshare (which gates yt-dlp). Uses WebshareProxyConfig's rotating proxy.
     captions_use_webshare: bool = False
-    job_concurrency: int = 3
-    discover_interval_s: float = 3600.0
+    job_concurrency: int = 3          # desktop backend: job worker concurrency
+    discover_interval_s: float = 3600.0  # desktop backend: background discover timer
     # Preferred caption languages (order = priority). `fetch_captions` tries these
     # first, then falls back to ANY available track (manual preferred over
     # auto-generated) — so non-English videos are no longer skipped. Summaries are
