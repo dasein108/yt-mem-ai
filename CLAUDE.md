@@ -45,8 +45,10 @@ not an API) to keep it free and high-quality.
   fallback (`_published_ts`, `process=False`) only fires for entries lacking an
   inline timestamp (e.g. live premieres).
 - `channel-list` (CLI) — `channel_videos` enumerates a channel's recent uploads
-  (reuses discovery's flat-extract), capped + date-filtered; the `yt` skill's
-  "group" scenario uses it to ingest + review an arbitrary set → `groups/<label>.md`.
+  (reuses discovery's flat-extract), date-filtered then capped to `--limit`; the
+  `yt` skill's "group" scenario uses it to ingest + review an arbitrary set →
+  `groups/<label>.md`. The underlying fetch is bounded by `YT_DISCOVER_FEED_LIMIT`
+  (default 60), so `--limit`/date windows beyond the newest ~60 uploads need it raised.
 - `store/` — `models.py` (dataclasses + LanceModel schemas + `chunk_schema`),
   `embeddings.py` (`build_embedder`, `chunk_segments`), `db.py` (LanceDB CRUD + search).
 - `reembed` (CLI) — `run_reembed` rebuilds the `chunks` table with the current

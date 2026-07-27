@@ -146,7 +146,7 @@ def test_channel_uploads_url_normalizes():
     assert d._channel_uploads_url("https://youtube.com/channel/UC123/streams") == "https://youtube.com/channel/UC123/streams"
 
 
-def test_channel_videos_maps_caps_and_filters(_cfg_fixture=None):
+def test_channel_videos_maps_caps_and_filters():
     from yt_mem_ai import discovery as d
     from yt_mem_ai.config import Config
     from pathlib import Path
@@ -176,3 +176,11 @@ def test_channel_videos_maps_caps_and_filters(_cfg_fixture=None):
                           after=got[0].published_at, before=got[0].published_at,
                           extract_fn=fake_extract)
     assert all(v.published_at == got[0].published_at for v in d3)
+
+    # filter-then-cap: matching the OLDEST video with a small limit must still
+    # return it (a naive cap-before-filter would slice it off and return []).
+    v1 = d.channel_videos(cfg, "https://youtube.com/@chan", limit=10, extract_fn=fake_extract)[-1]
+    oldest = d.channel_videos(cfg, "https://youtube.com/@chan", limit=1,
+                              after=v1.published_at, before=v1.published_at,
+                              extract_fn=fake_extract)
+    assert [v.video_id for v in oldest] == ["v1"]

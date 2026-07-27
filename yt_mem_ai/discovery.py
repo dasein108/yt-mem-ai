@@ -176,8 +176,10 @@ def channel_videos(cfg: Config, url: str, limit: int = 20, after: str | None = N
         extract_fn = _default_extract_fn(cfg)
     tab = _channel_uploads_url(url)
     info = extract_fn(tab, True) or {}
-    entries = (info.get("entries") or [])[:limit]
+    entries = info.get("entries") or []
     out: list[Video] = []
+    # Filter FIRST, then cap — otherwise a date window older than the newest
+    # `limit` uploads would slice them off before the filter and return nothing.
     for entry in entries:
         if not entry.get("id"):
             continue
@@ -188,6 +190,8 @@ def channel_videos(cfg: Config, url: str, limit: int = 20, after: str | None = N
         if before and pub > before:
             continue
         out.append(v)
+        if len(out) >= limit:  # newest-first feed → the newest `limit` matches
+            break
     return out
 
 
