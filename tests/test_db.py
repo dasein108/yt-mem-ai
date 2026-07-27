@@ -252,3 +252,21 @@ def test_rebuild_chunks_reembeds_at_new_dim(tmp_path):
     # FTS still works
     hits = tbl.search("hello", query_type="fts").limit(5).to_list()
     assert any("hello" in h["text"] for h in hits)
+
+
+def test_rebuild_chunks_preserves_live_table_on_embed_failure(tmp_path):
+    # A failed re-embed must NOT empty the live chunks table (embed into a temp
+    # table first; only swap on success).
+    from tests.support import fake_embedder_boom
+    conn = _db(tmp_path)
+    rows = chunk_segments("v1", [Segment("v1", 0.0, 5.0, "hello world")], 3.0)
+    store.replace_chunks(conn, "v1", rows)
+    before = store.all_chunks(conn)
+    assert before
+
+    with pytest.raises(Exception):
+        store.rebuild_chunks(conn, fake_embedder_boom(), before)
+
+    # live chunks table intact (same text), still queryable
+    after = store.all_chunks(conn)
+    assert {r["text"] for r in after} == {r["text"] for r in before}

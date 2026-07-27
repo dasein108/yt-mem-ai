@@ -143,15 +143,31 @@ def all_chunks(db: lancedb.DBConnection) -> list[dict]:
 
 
 def rebuild_chunks(db: lancedb.DBConnection, embedder, rows: list[dict]) -> None:
-    """Drop + recreate the chunks table with `embedder` and re-insert `rows`
-    (text is the embedder's SourceField → auto re-embedded). Rebuilds FTS."""
-    if "chunks" in db.table_names():
-        db.drop_table("chunks")
-    tbl = db.create_table("chunks", schema=chunk_schema(embedder))
+    """Re-embed the chunks table with `embedder`, safely.
+
+    LanceDB OSS has no rename_table, so we embed into a temp table FIRST and only
+    replace the live `chunks` table once embedding succeeds — a failed embed
+    (network/API/quota, model download) leaves the existing chunks intact rather
+    than emptying an unrecoverable table. LanceDB skips re-embedding rows that
+    already carry a vector, so the copy into `chunks` embeds each text exactly once.
+    """
+    tmp_name = "chunks__reembed"
+    if tmp_name in db.table_names():
+        db.drop_table(tmp_name)
+    tmp = db.create_table(tmp_name, schema=chunk_schema(embedder))
+    embedded: list[dict] = []
     if rows:
         clean = [{k: r[k] for k in _CHUNK_FIELDS} for r in rows]
-        tbl.add(clean)
-        _ensure_fts(tbl, "text")
+        tmp.add(clean)  # embeds here — if this raises, the live table is untouched
+        embedded = tmp.search().limit(100_000_000).to_list()  # rows incl. vectors
+    # Embedding succeeded — now swap the live table.
+    if "chunks" in db.table_names():
+        db.drop_table("chunks")
+    live = db.create_table("chunks", schema=chunk_schema(embedder))
+    if embedded:
+        live.add(embedded)  # vectors already present → not re-embedded
+        _ensure_fts(live, "text")
+    db.drop_table(tmp_name)
 
 
 def upsert_summary(db, video_id, summary_md, highlights, qa, model, created_at) -> None:

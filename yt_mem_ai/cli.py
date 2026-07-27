@@ -536,7 +536,11 @@ def reembed():
     library to a new model (e.g. a multilingual one) without re-fetching.
     """
     cfg = load_config()
-    n = run_reembed(cfg)
+    try:
+        n = run_reembed(cfg)
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1)
     if n == 0:
         typer.echo("no chunks to re-embed")
     else:
