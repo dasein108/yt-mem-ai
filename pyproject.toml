@@ -56,5 +56,12 @@ packages = ["yt_mem_ai"]
 # from an installed package (loaded by mcp_server._load_skill).
 force-include = { "skills/yt/SKILL.md" = "yt_mem_ai/_skills/yt.md", "skills/yt-manager/SKILL.md" = "yt_mem_ai/_skills/yt-manager.md" }
 
+[tool.hatch.build.targets.sdist]
+# The sdist must carry skills/ so the wheel's force-include resolves when the
+# wheel is built *from the sdist* (uv build / pip install from source).
+# force-include is deterministic where a plain `include` glob of skills/ was not.
+include = ["/yt_mem_ai", "/tests", "/README.md", "/LICENSE", "/pyproject.toml"]
+force-include = { "skills/yt/SKILL.md" = "skills/yt/SKILL.md", "skills/yt-manager/SKILL.md" = "skills/yt-manager/SKILL.md" }
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
