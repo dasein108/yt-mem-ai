@@ -204,3 +204,9 @@ uv run --with ruff ruff check .         # lint
 
 TDD: tests live in `tests/`, one per module; keep them offline via the injectable seams.
 Design docs in `docs/superpowers/specs/`, plans in `docs/superpowers/plans/`.
+
+**Releasing** (maintainers): version comes from the git tag (hatch-vcs). Tag →
+`uv build` → `sh scripts/publish.sh dist/yt_mem_ai-X.Y.Z*`. The script loads
+`UV_PUBLISH_TOKEN` (PyPI token) from `.env` (gitignored) on demand — never commit
+it; rotate on PyPI if exposed. `tests/conftest.py` isolates `YT_MEM_AI_HOME` so
+the global config file can't perturb tests.

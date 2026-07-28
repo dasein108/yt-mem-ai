@@ -167,3 +167,18 @@ tail -f logs/common.jsonl | jq -c '{ts,event,msg}'  # live tail, compact
 uv run pytest -q                       # offline unit tests (fake embedder)
 YT_RUN_INTEGRATION=1 uv run pytest -q  # + real sentence-transformers integration
 ```
+
+## Releasing (maintainers)
+
+Version comes from the git tag (hatch-vcs). Tag, build, and publish:
+
+```bash
+git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z
+uv build                                # → dist/ (sdist + wheel)
+sh scripts/publish.sh dist/yt_mem_ai-X.Y.Z*   # uploads to PyPI
+```
+
+`scripts/publish.sh` loads `UV_PUBLISH_TOKEN` from `.env` (gitignored) on demand,
+so you don't export it each time — add `UV_PUBLISH_TOKEN=pypi-…` to `.env` once
+(see `.env.example`). Equivalently: `set -a; . ./.env; set +a; uv publish dist/*`.
+Rotate the token on PyPI if it's ever exposed.
