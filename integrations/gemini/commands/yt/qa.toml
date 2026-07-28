@@ -1,0 +1,7 @@
+description = "Generate a grounded Q&A set for a YouTube video."
+prompt = """
+Generate Q&A for the YouTube video: {{args}}
+
+Use the yt-mem-ai MCP tools. Ensure it's ingested, then produce 3–6
+question/answer pairs, each drawn strictly from the transcript.
+"""

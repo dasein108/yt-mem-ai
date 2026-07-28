@@ -83,6 +83,7 @@ yt-ai supercut                 # video reel of highlights, re-downloaded + label
 yt-ai frame <video_id> --at <ts>  # still frame at a timestamp (seconds or H:M:S) → frames/<id>_<s>s.png
 yt-ai reembed                # re-embed all chunks with the current YT_EMBEDDING_* config
 yt-ai channel-list <url>     # list a channel's recent uploads (--limit/--from/--to/--json); enumerate only
+yt-ai config list            # get/set any .env setting: config get/set/unset/path (reconfigure from CLI or chat)
 ```
 
 ## Rate & recommend
@@ -99,7 +100,7 @@ yt-ai discover               # find new subscription uploads → 'discovered'
 yt-ai fetch-pending          # download+transcribe+embed today's batch (robust, skips failures)
 # then in Claude Code:
 /yt process subscriptions    # per-video summaries + digests/YYYY-MM-DD.md
-yt-ai compile                # compile the day's highlights into a deep-linked markdown you can click into
+yt-ai compile --out compilations/$(date +%F).md   # save the day's highlights as clickable deep links
 ```
 
 `yt-ai discover` is **incremental**: it pulls the newest feed entries (one flat
@@ -111,11 +112,12 @@ and already-processed videos (`is_seen`) are filtered out. Pass `--after
 YYYY-MM-DD` to override the cutoff manually. Full per-video metadata
 (description, tags, exact time) is fetched later at ingest, not during discover.
 
-`yt-ai compile` builds `compilations/<DATE>.md`: each highlight from the day's
-summarized videos becomes a deep link (`watch?v=ID&t=<start>s`) that jumps
-straight to its moment, newest-video-first and budget-bounded by
-`--max-minutes` (default 20). Fast — no downloading, just the same
-`compile_highlights` selection rendered as markdown.
+`yt-ai compile` renders a deep-linked highlights doc: each highlight from the
+day's summarized videos becomes a deep link (`watch?v=ID&t=<start>s`) that jumps
+straight to its moment, newest-video-first and budget-bounded by `--max-minutes`
+(default 20). Fast — no downloading, just the `compile_highlights` selection as
+markdown. It **prints to stdout** by default; pass `--out compilations/<DATE>.md`
+to save a file.
 
 `yt-ai supercut` renders that same highlight selection as an actual video
 reel instead of a doc: it **re-downloads** each highlight's section (720p,

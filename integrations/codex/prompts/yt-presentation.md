@@ -1,0 +1,6 @@
+Build a presentation from the YouTube video: $ARGUMENTS
+
+Use the `yt-mem-ai` MCP tools. Ensure it's ingested, then write a `---`-separated
+slide deck to slides/<video_id>.md: title slide, one slide per theme (heading +
+3–5 bullets + a notable quote with its MM:SS), and a takeaways slide with the
+watch link.

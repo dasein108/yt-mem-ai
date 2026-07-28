@@ -325,7 +325,7 @@ do_codex_plugin() {
       mkdir -p "$HOME/.codex/skills/$s"
       curl -LsSf "$RAW_ROOT/skills/$s/SKILL.md" -o "$HOME/.codex/skills/$s/SKILL.md" 2>/dev/null || true
     done
-    for p in yt-summarize yt-highlights yt-digest yt-group; do
+    for p in yt-summarize yt-highlights yt-qa yt-presentation yt-digest yt-review yt-group; do
       curl -LsSf "$RAW/codex/prompts/$p.md" -o "$HOME/.codex/prompts/$p.md" 2>/dev/null || true
     done
     curl -LsSf "$RAW/codex/AGENTS.md" -o "$HOME/.codex/AGENTS.md" 2>/dev/null || true

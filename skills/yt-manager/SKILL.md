@@ -15,7 +15,10 @@ LanceDB store directly.
   `uvx yt-mem-ai <cmd>`, or `pip install yt-mem-ai` then `yt-ai <cmd>`, or
   `uv run yt-ai <cmd>` from a source checkout.
 - `.env` must be filled (Webshare proxy + cookies for yt-dlp, embedding backend).
-- Video lifecycle status: `discovered → downloaded → transcribed → summarized`.
+  You don't have to hand-edit it: inspect and set any setting from here with
+  `yt-ai config list` / `yt-ai config set KEY VALUE` (see **Configure & maintain**).
+- Video lifecycle status: `discovered → transcribed → summarized` (live streams
+  get a terminal `stream` and skip transcription).
 
 ```bash
 yt-ai <command> [args]        # (or: uvx yt-mem-ai <command> [args])
@@ -33,6 +36,12 @@ uv run yt-ai transcript <url>   # same pipeline (alias intent)
 ```bash
 uv run yt-ai discover [--after <DATE>] [--deep] [--min-duration <s>] [--json]
 uv run yt-ai fetch-pending [--since <DATE>] [--limit <N>]   # ingest 'discovered' videos
+```
+
+### Enumerate a channel (does not ingest)
+```bash
+uv run yt-ai channel-list <url> [--limit <N>] [--from <DATE>] [--to <DATE>] [--json]
+# newest uploads for a channel URL/@handle; feed the URLs to `fetch` to ingest a group.
 ```
 
 ### Read / query the library
@@ -63,14 +72,36 @@ uv run yt-ai dislike <video_id>
 uv run yt-ai recommend [--limit <N>] [--json]   # rank unrated fetched videos by taste
 ```
 
+### Configure & maintain
+```bash
+uv run yt-ai config list                     # every setting, value, and source
+uv run yt-ai config set KEY VALUE            # e.g. WEBSHARE_PROXY_USERNAME, YT_EMBEDDING_MODEL
+uv run yt-ai config get KEY [--reveal]       # secrets masked unless --reveal
+uv run yt-ai config unset KEY                # remove from the config file
+```
+Use this to reconfigure the engine on request — set Webshare proxy creds, switch
+the embedding model/backend, point at a cookies browser, change caption languages
+— without hand-editing `.env`. `set` writes the global config
+(`~/.yt-mem-ai/config.env`) by default; add `--project` for `./.env`. Only known
+`.env` keys are accepted. After changing the embedding model/backend, migrate the
+existing library:
+```bash
+uv run yt-ai reembed                          # re-embed all chunks with the current YT_EMBEDDING_* config
+```
+
 ### Compile / video output
 ```bash
 uv run yt-ai compile [--since <DATE>] [--max-minutes <N>] [--out <path>] [--json]
-# → deep-linked highlights doc compilations/<DATE>.md. Fast, no download.
+# Deep-linked highlights doc from summarized videos. Fast, no download. Prints the
+# markdown to stdout by default; pass --out compilations/<DATE>.md to save a file.
 
 uv run yt-ai supercut [--since <DATE>] [--max-minutes <N>] [--out <path>] [--keep-clips]
 # → actual video reel supercuts/<date>.mp4 + .refs.md sidecar.
 # Slow: re-downloads each clip (720p) + ffmpeg concat. Needs network + local ffmpeg.
+
+uv run yt-ai frame <video_id> --at <seconds|H:M:S> [--out <path>]
+# Grab one still frame from an ingested video (needs yt-dlp + ffmpeg).
+# → frames/<id>_<s>s.png by default.
 ```
 
 > The REST API / `serve` command moved to the **yt-mem-ai-desktop** repo

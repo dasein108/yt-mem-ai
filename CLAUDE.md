@@ -22,7 +22,8 @@ not an API) to keep it free and high-quality.
 - `settings.py` — runtime get/set of the `.env` variables, powering `yt-ai
   config {list,get,set,unset,path}` and the MCP `config_*` tools (so an agent/user
   can set Webshare creds, swap the embedding model, etc. from chat). `KNOWN`
-  registry mirrors `.env.example` (validates keys + choices, masks secrets);
+  registry covers the `.env.example` variables plus a couple of desktop-backend
+  knobs (validates keys + choices, masks secrets);
   `set_setting` writes the global config file by default (`scope="project"` →
   `./.env`) and flags when a process env var would override the write.
 - `obs.py` — unified logging. `log_event(source, event, level="info", msg="", *,

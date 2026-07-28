@@ -6,7 +6,8 @@ server. All data goes through its tools; never invent highlight timestamps.
 
 **Tools:** `fetch`, `show`, `search`, `list_videos`, `status`, `discover`,
 `fetch_pending`, `channel_list`, `save_summary`, `like`, `dislike`, `recommend`,
-`compile`, `supercut`, `frame`, `reembed`.
+`compile`, `supercut`, `frame`, `reembed`, and the config tools `config_list`,
+`config_get`, `config_set`, `config_unset` (see **Reconfigure on request**).
 
 **Core (one video):**
 1. `show(video_id)`; if `error: not found` and you have a URL →

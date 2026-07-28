@@ -9,7 +9,8 @@ directly, and never invent highlight timestamps.
 
 `fetch`, `show`, `search`, `list_videos`, `status`, `discover`, `fetch_pending`,
 `channel_list`, `save_summary`, `like`, `dislike`, `recommend`, `compile`,
-`supercut`, `frame`, `reembed`.
+`supercut`, `frame`, `reembed`, and the config tools `config_list`, `config_get`,
+`config_set`, `config_unset` (see **Reconfigure on request**).
 
 ## Core (one video)
 

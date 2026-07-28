@@ -20,7 +20,8 @@ Restart Gemini CLI to activate. You get:
 - **MCP tools** (`yt-mem-ai` server): fetch / show / search / discover / …
 - **Skills**: `yt`, `yt-manager` (the native `SKILL.md` scenario playbooks,
   auto-discovered from the extension's `skills/`).
-- **Commands**: `/yt:summarize`, `/yt:highlights`, `/yt:digest`, `/yt:group`.
+- **Commands**: `/yt:summarize`, `/yt:highlights`, `/yt:qa`, `/yt:presentation`,
+  `/yt:digest`, `/yt:review`, `/yt:group`.
 - **Context**: `GEMINI.md`.
 
 ## MCP-only

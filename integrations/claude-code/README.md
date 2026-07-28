@@ -27,9 +27,10 @@ select **Claude Code (Plugin)**.
 - **Skills**: `yt`, `yt-manager` (the full scenario playbooks).
 - **Commands**: `/yt-summarize`, `/yt-highlights`, `/yt-qa`, `/yt-presentation`,
   `/yt-digest`, `/yt-review`, `/yt-group`.
-- **MCP tools** (`yt-mem-ai` server): `fetch`, `show`, `search`, `save_summary`,
-  `discover`, `fetch_pending`, `channel_list`, `list_videos`, `like`, `dislike`,
-  `recommend`, `compile`, `supercut`, `frame`, `reembed`.
+- **MCP tools** (`yt-mem-ai` server): `fetch`, `show`, `status`, `list_videos`,
+  `search`, `save_summary`, `discover`, `fetch_pending`, `channel_list`, `like`,
+  `dislike`, `recommend`, `compile`, `supercut`, `frame`, `reembed`, and the
+  config tools `config_list`, `config_get`, `config_set`, `config_unset`.
 
 ## MCP-only (no plugin)
 
@@ -45,3 +46,9 @@ The server reads `.env`/env vars via `load_config()`. The bundled `.mcp.json`
 sets an absolute store under `~/.yt-mem-ai/` so data doesn't scatter across the
 host's working directory. Override any `YT_*` / `WEBSHARE_*` / cookie var in the
 `env` block or your shell. See the repo `.env.example`.
+
+**Reconfigure from chat** — ask Claude to set anything and it uses the `config_*`
+tools (no file editing): e.g. "set my Webshare proxy login", "switch to the
+multilingual embedding model". `config_set` persists to `~/.yt-mem-ai/config.env`
+and takes effect on the next call; `config_list` shows every setting and its
+source. Equivalent CLI: `yt-ai config set/get/list`.

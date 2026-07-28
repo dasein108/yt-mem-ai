@@ -130,7 +130,11 @@ themes-only essay with no per-video sections.
   whole run (and treat that as their saved default). Anchoring caveat: vector
   search is language-sensitive — search with a phrase in the transcript's original
   language, then write the label in the chosen output language. (For heavily
-  multilingual libraries, a multilingual `YT_EMBEDDING_MODEL` improves search.)
+  multilingual libraries, a multilingual `YT_EMBEDDING_MODEL` improves search —
+  switch it from chat with `yt-ai config set YT_EMBEDDING_MODEL
+  paraphrase-multilingual-MiniLM-L12-v2`, then `yt-ai reembed` to migrate the
+  library. `yt-ai config set/list` reconfigures any `.env` setting — Webshare
+  creds, cookies browser, backend — see [[yt-manager]].)
 - `is_seen` is status-based, so re-fetch is a no-op → follow-ups ("now highlight
   it", "make slides") and re-runs never re-download.
 - Dates are `YYYY-MM-DD`. Always report what ran + the output paths (`slides/`,
