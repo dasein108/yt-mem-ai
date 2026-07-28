@@ -312,30 +312,56 @@ ensure_uv() {
   uvx --refresh-package yt-mem-ai --from "yt-mem-ai[mcp]" yt-ai-mcp --help >/dev/null 2>&1 || true
 }
 PY=$(command -v python3 2>/dev/null || true)
-UVX=""
+UVX=""; MCP_BIN=""
+
+mcp_selected() { for _i in 2 3 4 6 8; do in_set "$_i" "$INSTALL" && return 0; done; return 1; }
+
+# For any MCP target, install the server as a persistent, absolute-path binary.
+# This avoids the two Claude-Desktop failure modes: (1) a heavy `uvx` cold start
+# (torch/lancedb download) that times out the MCP handshake, and (2) a bare
+# "uvx" command that the GUI app can't find on PATH.
+ensure_yt_ai_mcp() {
+  msg "installing the yt-ai-mcp server (uv tool install 'yt-mem-ai[mcp]') — first run pulls ML deps, please wait…"
+  uv tool install --force "yt-mem-ai[mcp]" >/dev/null 2>&1 || uv tool install "yt-mem-ai[mcp]" || true
+  MCP_BIN=$(command -v yt-ai-mcp 2>/dev/null || true)
+  if [ -z "$MCP_BIN" ]; then
+    for _d in "$(uv tool dir --bin 2>/dev/null || true)" "$HOME/.local/bin"; do
+      [ -n "$_d" ] && [ -x "$_d/yt-ai-mcp" ] && { MCP_BIN="$_d/yt-ai-mcp"; break; }
+    done
+  fi
+  if [ -n "$MCP_BIN" ]; then msg "server ready: $MCP_BIN"
+  else warn "couldn't locate the yt-ai-mcp binary after install — MCP configs will fall back to uvx (slower cold start)."; fi
+}
+
+# Launch shape for MCP configs: prefer the installed binary (fast, absolute),
+# else uvx. Sets MCP_CMD (string) + MCP_ARGS_JSON (JSON array literal).
+mcp_cmd()       { [ -n "$MCP_BIN" ] && printf '%s' "$MCP_BIN" || printf '%s' "${UVX:-uvx}"; }
+mcp_args_json() { [ -n "$MCP_BIN" ] && printf '[]' || printf '["--from", "yt-mem-ai[mcp]", "yt-ai-mcp"]'; }
+
 # Only bootstrap uv + the data dir when we're actually installing something.
 if _any "$INSTALL"; then
   ensure_uv
   UVX=$(command -v uvx)
   mkdir -p "$DATA_DIR/lance" "$DATA_DIR/logs" "$DATA_DIR/downloads"
+  mcp_selected && ensure_yt_ai_mcp
 fi
 
 # merge one stdio MCP server into a JSON config file's mcpServers map.
 # args: FILE  SERVER_NAME   (uses $UVX and $DATA_DIR from env)
 json_merge_server() {
-  _file=$1; _name=$2
+  _file=$1; _name=$2; _cmd=$(mcp_cmd); _args=$(mcp_args_json)
   mkdir -p "$(dirname "$_file")"
   if [ -n "$PY" ]; then
-    YT_FILE="$_file" YT_NAME="$_name" YT_UVX="$UVX" YT_DATA="$DATA_DIR" "$PY" - <<'PYEOF'
+    YT_FILE="$_file" YT_NAME="$_name" YT_CMD="$_cmd" YT_ARGS="$_args" YT_DATA="$DATA_DIR" "$PY" - <<'PYEOF'
 import json, os
-f, name, uvx, data = (os.environ[k] for k in ("YT_FILE","YT_NAME","YT_UVX","YT_DATA"))
+f, name, cmd, args, data = (os.environ[k] for k in ("YT_FILE","YT_NAME","YT_CMD","YT_ARGS","YT_DATA"))
 cfg = {}
 if os.path.exists(f):
     try: cfg = json.load(open(f))
     except Exception: cfg = {}
 cfg.setdefault("mcpServers", {})[name] = {
-    "command": uvx,
-    "args": ["--from", "yt-mem-ai[mcp]", "yt-ai-mcp"],
+    "command": cmd,
+    "args": json.loads(args),
     "env": {
         "YT_STORE_PATH": f"{data}/lance",
         "YT_LOG_FILE": f"{data}/logs/common.jsonl",
@@ -350,8 +376,8 @@ PYEOF
 {
   "mcpServers": {
     "$_name": {
-      "command": "$UVX",
-      "args": ["--from", "yt-mem-ai[mcp]", "yt-ai-mcp"],
+      "command": "$_cmd",
+      "args": $_args,
       "env": { "YT_STORE_PATH": "$DATA_DIR/lance", "YT_LOG_FILE": "$DATA_DIR/logs/common.jsonl", "YT_DOWNLOADS_DIR": "$DATA_DIR/downloads" }
     }
   }
@@ -360,7 +386,7 @@ EOF
     msg "wrote $_file"
   else
     warn "python3 not found and $_file already exists — add this server manually:"
-    warn '  "yt-mem-ai": {"command": "'"$UVX"'", "args": ["--from","yt-mem-ai[mcp]","yt-ai-mcp"]}'
+    warn "  \"yt-mem-ai\": {\"command\": \"$_cmd\", \"args\": $_args}"
   fi
 }
 
@@ -404,17 +430,20 @@ src_dir() { # host → local integration dir (or empty in piped mode)
 }
 
 do_claude_code_mcp() {
-  if have claude; then
-    claude mcp add yt-mem-ai \
-      -e "YT_STORE_PATH=$DATA_DIR/lance" \
-      -e "YT_LOG_FILE=$DATA_DIR/logs/common.jsonl" \
-      -e "YT_DOWNLOADS_DIR=$DATA_DIR/downloads" \
-      -- "$UVX" --from "yt-mem-ai[mcp]" yt-ai-mcp \
-      && msg "Claude Code: added MCP server 'yt-mem-ai'." \
-      || warn "Claude Code: 'claude mcp add' failed — run it manually (see integrations/mcp/README.md)."
-  else
+  if ! have claude; then
     warn "Claude Code: 'claude' not on PATH. Install the CLI, then: claude mcp add yt-mem-ai -- uvx --from 'yt-mem-ai[mcp]' yt-ai-mcp"
+    return
   fi
+  if [ -n "$MCP_BIN" ]; then
+    claude mcp add yt-mem-ai \
+      -e "YT_STORE_PATH=$DATA_DIR/lance" -e "YT_LOG_FILE=$DATA_DIR/logs/common.jsonl" \
+      -e "YT_DOWNLOADS_DIR=$DATA_DIR/downloads" -- "$MCP_BIN"
+  else
+    claude mcp add yt-mem-ai \
+      -e "YT_STORE_PATH=$DATA_DIR/lance" -e "YT_LOG_FILE=$DATA_DIR/logs/common.jsonl" \
+      -e "YT_DOWNLOADS_DIR=$DATA_DIR/downloads" -- "$UVX" --from "yt-mem-ai[mcp]" yt-ai-mcp
+  fi && msg "Claude Code: added MCP server 'yt-mem-ai'." \
+     || warn "Claude Code: 'claude mcp add' failed — run it manually (see integrations/mcp/README.md)."
 }
 
 do_claude_code_plugin() {
@@ -436,8 +465,9 @@ do_claude_desktop_plugin() {
     warn "Claude Desktop bundle needs the repo checkout — falling back to MCP config."
     do_claude_desktop_mcp; return
   fi
-  # build.sh uses the mcpb CLI if present, else plain `zip` (a .mcpb is a zip).
-  if ( cd "$_src" && sh build.sh ); then
+  # build.sh bakes the absolute yt-ai-mcp binary path (YT_MCP_BIN) into the
+  # packed manifest so Desktop starts it instantly; falls back to zip if no mcpb.
+  if ( cd "$_src" && YT_MCP_BIN="$MCP_BIN" sh build.sh ); then
     _out="$_src/yt-mem-ai.mcpb"
     if have open; then open "$_out" && msg "Claude Desktop: opened $_out to install."
     else msg "Built $_out — open it in Claude Desktop → Settings → Extensions."; fi
@@ -456,8 +486,8 @@ do_codex_mcp() {
     cat >> "$CODEX_CFG" <<EOF
 
 [mcp_servers.yt-mem-ai]
-command = "$UVX"
-args = ["--from", "yt-mem-ai[mcp]", "yt-ai-mcp"]
+command = "$(mcp_cmd)"
+args = $(mcp_args_json)
 
 [mcp_servers.yt-mem-ai.env]
 YT_STORE_PATH = "$DATA_DIR/lance"

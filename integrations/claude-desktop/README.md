@@ -49,10 +49,29 @@ persist to `~/.yt-mem-ai/config.env` and take effect on the next call. Since
 Claude Desktop is MCP-only, these tools are the in-chat way to reconfigure without
 re-editing `claude_desktop_config.json`.
 
-## PATH caveat
+## Reliability — why a fresh extension may show "could not connect"
 
-Claude Desktop launches the server with the GUI app's environment, which often
-does **not** include `~/.local/bin` (where `uv`/`uvx` install). If the server
-fails to start, either add uv's bin dir to a login-shell PATH the app inherits,
-or replace `"uvx"` with its absolute path (`which uvx`) in the config / manifest.
-The installer detects and substitutes the absolute `uvx` path for you.
+Two Claude-Desktop-specific gotchas, both handled by the installer:
+
+1. **Heavy cold start.** `uvx --from 'yt-mem-ai[mcp]' yt-ai-mcp` downloads the
+   whole engine on first run (`lancedb`, `sentence-transformers` → **torch**,
+   hundreds of MB). Desktop's MCP handshake times out long before that finishes.
+2. **GUI PATH.** The app doesn't inherit your shell `PATH`, so a bare `"uvx"`
+   command may not be found.
+
+**The fix the installer applies:** it runs `uv tool install 'yt-mem-ai[mcp]'`
+once (downloads the deps, creates a stable `yt-ai-mcp` binary) and points the
+extension/config at that **absolute binary** with no args — so Desktop starts it
+instantly and always finds it. To do it by hand:
+
+```
+uv tool install 'yt-mem-ai[mcp]'     # one-time; pulls ML deps
+which yt-ai-mcp                       # e.g. /Users/you/.local/bin/yt-ai-mcp
+```
+
+then set that path as the server `command` (args `[]`) in Option A's manifest
+(`YT_MCP_BIN=... sh build.sh`) or Option B's config.
+
+**After installing, flip the extension's toggle to Enabled** — a freshly added
+extension is Disabled until you turn it on (and it shows *MCP tools*, never
+skills; Claude Desktop can't run skills).
