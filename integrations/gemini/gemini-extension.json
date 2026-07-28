@@ -1,17 +1,6 @@
 {
   "name": "yt-mem-ai",
   "version": "0.1.0",
-  "description": "YouTube AI: ingest, transcribe, embed, search, and summarize/highlight/digest videos via the yt-ai-mcp server.",
-  "contextFileName": "GEMINI.md",
-  "mcpServers": {
-    "yt-mem-ai": {
-      "command": "uvx",
-      "args": ["--from", "yt-mem-ai[mcp]", "yt-ai-mcp"],
-      "env": {
-        "YT_STORE_PATH": "${HOME}/.yt-mem-ai/lance",
-        "YT_LOG_FILE": "${HOME}/.yt-mem-ai/logs/common.jsonl",
-        "YT_DOWNLOADS_DIR": "${HOME}/.yt-mem-ai/downloads"
-      }
-    }
-  }
+  "description": "YouTube AI: ingest, transcribe, embed, search, and summarize/highlight/digest videos. The yt + yt-manager skills drive the yt-ai CLI (via uvx).",
+  "contextFileName": "GEMINI.md"
 }

@@ -1,57 +1,45 @@
 # yt-mem-ai — Codex playbook
 
-When a task is about YouTube (summarize / highlights / Q&A / a subscriptions
-digest or review / analyzing a channel or set of videos), drive the `yt-mem-ai`
-MCP server. All data goes through its tools — never touch the LanceDB store
-directly, and never invent highlight timestamps.
+For any YouTube task (summarize / highlights / Q&A / a subscriptions digest or
+review / analyzing a channel or set of videos), use the installed **`yt` and
+`yt-manager` skills** — they contain the full workflow. Everything runs through
+the **`yt-ai` CLI**; never touch the LanceDB store directly, and never invent
+highlight timestamps (anchor them with `yt-ai search`).
 
-## Tools
+## Running the CLI
 
-`fetch`, `show`, `search`, `list_videos`, `status`, `discover`, `fetch_pending`,
-`channel_list`, `save_summary`, `like`, `dislike`, `recommend`, `compile`,
-`supercut`, `frame`, `reembed`, and the config tools `config_list`, `config_get`,
-`config_set`, `config_unset` (see **Reconfigure on request**).
+`yt-ai` ships in the `yt-mem-ai` package. If it isn't on PATH, run every command
+as **`uvx yt-mem-ai <cmd>`** (zero-install, cached):
 
-## Core (one video)
+```
+uvx yt-mem-ai show <video_id> --json          # ingested? metadata + transcript
+uvx yt-mem-ai fetch <url> --captions-only      # ingest (captions→whisper)
+uvx yt-mem-ai search "<phrase>" --vector -k 3  # anchor a highlight timestamp
+uvx yt-mem-ai save-summary <id> "<md>" --highlights '<json>' --qa '<json>'
+uvx yt-mem-ai discover ; uvx yt-mem-ai fetch-pending   # subscriptions batch
+uvx yt-mem-ai channel-list <url> --limit N --json      # enumerate a channel
+```
 
-1. **Ingest (idempotent):** `show(video_id)`. If `error: not found` and you have
-   a URL → `fetch(url, captions_only=true)`; on `status: no_captions` →
-   `fetch(url, whisper=true)`.
-2. **Reuse:** if `show` returns a non-null `summary`, reuse it unless asked for a
-   fresh artifact.
-3. **Anchor:** for each candidate highlight phrase, `search(phrase, mode=vector,
-   k=3)` and take the `start_s`/`ts` from a hit whose `video_id` matches.
-4. **Produce** (you, the model — no external LLM): an exec summary + bullets,
-   highlights JSON `[{start_s, label}]`, Q&A JSON `[{q, a}]`.
-5. **Persist:** `save_summary(video_id, summary_md, highlights, qa)`.
-
-## Scenarios
-
-- **Digest** (latest subs): `discover` → `fetch_pending` → analyze each of the
-  day's transcribed videos → `digests/<DATE>.md`.
-- **Review** (themes essay): `list_videos(status=summarized, since=…)` → one
-  cross-video essay to `reviews/<DATE>.md`.
-- **Group** (arbitrary set): resolve via a comma list / `channel_list` / date
-  range → `fetch` each → per-video analysis → `groups/<label>.md`.
+See the `yt-manager` skill for the complete command surface (list, recommend,
+compile, supercut, frame, reembed, …).
 
 ## Reconfigure on request
 
-If the user asks to change settings ("set my Webshare proxy login", "use the
-multilingual embedding model", "pull cookies from Brave"), use the config tools —
-don't ask them to edit files:
+To change settings ("set my Webshare proxy login", "use the multilingual
+embedding model", "pull cookies from Brave"), use the config CLI — don't ask the
+user to edit files:
 
-- `config_list()` — every setting, its value, and source.
-- `config_set(key, value)` — persists to `~/.yt-mem-ai/config.env`; takes effect
-  next call. Only known `.env` keys (e.g. `WEBSHARE_PROXY_USERNAME`,
-  `WEBSHARE_PROXY_PASSWORD`, `YT_EMBEDDING_MODEL`, `YT_EMBEDDING_BACKEND`,
-  `YT_COOKIES_BROWSER`, `YT_CAPTION_LANGS`). After switching the embedding
-  model/backend, run `reembed` to migrate the library.
+```
+uvx yt-mem-ai config list                 # every setting, value, and source
+uvx yt-mem-ai config set KEY VALUE        # e.g. WEBSHARE_PROXY_USERNAME, YT_EMBEDDING_MODEL
+```
+
+Only known `.env` keys are accepted; secrets are masked. After changing the
+embedding model/backend, run `uvx yt-mem-ai reembed` to migrate the library.
 
 ## Conventions
 
 - Produce artifacts in each video's **original language** (from `transcript_lang`
-  in `show`); translate only when a target language is requested. Vector search
-  is language-sensitive — search in the transcript's language, label in the
-  output language.
+  in `show --json`); translate only when asked.
 - `fetch` is retry-safe (status-based `is_seen`) — follow-ups never re-download.
 - Dates are `YYYY-MM-DD`. Always report what ran + output paths.

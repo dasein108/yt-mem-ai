@@ -1,7 +1,9 @@
 # yt-mem-ai — Claude Code plugin
 
-Bundles the `yt` and `yt-manager` skills, the `/yt-*` slash commands, and the
-`yt-ai-mcp` tool server into one installable Claude Code plugin.
+A native Claude Code plugin: the `yt` and `yt-manager` **skills** + `/yt-*` slash
+commands. The skills drive the `yt-ai` CLI by shelling out (`uvx yt-mem-ai …`,
+zero-install) — **no MCP server involved**. If you'd rather have MCP tools, see
+*MCP-only* below; the two are independent.
 
 ## Install
 
@@ -27,28 +29,26 @@ select **Claude Code (Plugin)**.
 - **Skills**: `yt`, `yt-manager` (the full scenario playbooks).
 - **Commands**: `/yt-summarize`, `/yt-highlights`, `/yt-qa`, `/yt-presentation`,
   `/yt-digest`, `/yt-review`, `/yt-group`.
-- **MCP tools** (`yt-mem-ai` server): `fetch`, `show`, `status`, `list_videos`,
-  `search`, `save_summary`, `discover`, `fetch_pending`, `channel_list`, `like`,
-  `dislike`, `recommend`, `compile`, `supercut`, `frame`, `reembed`, and the
-  config tools `config_list`, `config_get`, `config_set`, `config_unset`.
 
-## MCP-only (no plugin)
+The skills run every operation through the `yt-ai` CLI via `uvx` — so you need
+`uv`/`uvx` on PATH (the installer bootstraps it), but **no package install and no
+MCP server**.
 
-If you just want the tools without the skills/commands:
+## MCP-only (optional, independent)
+
+If you want the typed MCP tool surface instead of (or alongside) the skills:
 
 ```
 claude mcp add yt-mem-ai -- uvx --from 'yt-mem-ai[mcp]' yt-ai-mcp
 ```
 
+(installer → **Claude Code (MCP only)**). That's a separate wiring — the plugin
+itself no longer bundles MCP.
+
 ## Config
 
-The server reads `.env`/env vars via `load_config()`. The bundled `.mcp.json`
-sets an absolute store under `~/.yt-mem-ai/` so data doesn't scatter across the
-host's working directory. Override any `YT_*` / `WEBSHARE_*` / cookie var in the
-`env` block or your shell. See the repo `.env.example`.
-
-**Reconfigure from chat** — ask Claude to set anything and it uses the `config_*`
-tools (no file editing): e.g. "set my Webshare proxy login", "switch to the
-multilingual embedding model". `config_set` persists to `~/.yt-mem-ai/config.env`
-and takes effect on the next call; `config_list` shows every setting and its
-source. Equivalent CLI: `yt-ai config set/get/list`.
+Reconfigure from chat with the CLI — `yt-ai config set KEY VALUE` /
+`yt-ai config list` (e.g. "set my Webshare proxy login", "switch to the
+multilingual embedding model"). Values persist to `~/.yt-mem-ai/config.env` and
+take effect on the next call; secrets are masked. See the repo `.env.example`.
+(If you added the MCP server, the equivalent `config_*` tools are available too.)

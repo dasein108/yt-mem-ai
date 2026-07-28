@@ -1,11 +1,10 @@
 {
   "name": "yt-mem-ai",
   "version": "0.1.0",
-  "description": "YouTube AI: ingest, transcribe, embed, search, and summarize/highlight/digest videos. Bundles the yt + yt-manager skills and the yt-ai-mcp tool server.",
+  "description": "YouTube AI: ingest, transcribe, embed, search, and summarize/highlight/digest videos. Ships the yt + yt-manager skills and /yt-* commands, which drive the yt-ai CLI (via uvx).",
   "author": { "name": "dasein" },
   "homepage": "https://github.com/dasein108/yt-mem-ai",
   "repository": "https://github.com/dasein108/yt-mem-ai",
   "license": "MIT",
-  "keywords": ["youtube", "transcription", "summarization", "mcp"],
-  "mcpServers": "./.mcp.json"
+  "keywords": ["youtube", "transcription", "summarization"]
 }

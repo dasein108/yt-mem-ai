@@ -1,7 +1,14 @@
-# yt-mem-ai integrations — MCP + host plugins
+# yt-mem-ai integrations — native plugins + MCP
 
-One MCP server (`yt-ai-mcp`, in the `yt-mem-ai` package) exposes the whole engine
-to every major agentic host. Everything here is a thin wrapper around it.
+Two ways to reach the engine, per host:
+
+- **Native plugins/extensions** (Claude Code, Codex, Gemini) ship the `yt` /
+  `yt-manager` **skills** (+ slash commands). The skills drive the `yt-ai` CLI by
+  shelling out — run via `uvx yt-mem-ai <cmd>`, zero-install. This is the
+  idiomatic path for each platform; **no MCP involved.**
+- **The `yt-ai-mcp` MCP server** (in the package) is for **Claude Desktop** —
+  which can't run skills — and for headless / other MCP hosts (Cursor, tool
+  runners) that want a typed tool surface. Optional everywhere else.
 
 ## Install (interactive)
 
@@ -33,18 +40,19 @@ Flags: `--claude-code=plugin,mcp`, `--claude-desktop=plugin,mcp`,
 
 ## Host × delivery matrix
 
-| Host | Plugin-style | MCP-only |
+| Host | Native plugin (skills + CLI) | MCP (optional) |
 |---|---|---|
-| **Claude Code** ([docs](claude-code/README.md)) | skills + `/yt-*` commands + MCP | `claude mcp add` |
-| **Claude Desktop** ([docs](claude-desktop/README.md)) | `.mcpb` bundle (double-click) | merge `claude_desktop_config.json` |
-| **Codex** ([docs](codex/README.md)) | `.codex-plugin` (skills + MCP) + prompts + AGENTS.md | `~/.codex/config.toml` server |
-| **Gemini CLI** ([docs](gemini/README.md)) | extension (skills + MCP + `/yt:*` commands) | merge `~/.gemini/settings.json` |
+| **Claude Code** ([docs](claude-code/README.md)) | skills + `/yt-*` commands | `claude mcp add` |
+| **Claude Desktop** ([docs](claude-desktop/README.md)) | — (no native skills) | `.mcpb` bundle **or** `claude_desktop_config.json` |
+| **Codex** ([docs](codex/README.md)) | `.codex-plugin` skills + prompts + AGENTS.md | `~/.codex/config.toml` server |
+| **Gemini CLI** ([docs](gemini/README.md)) | extension: skills + `/yt:*` commands | merge `~/.gemini/settings.json` |
 
 The same `yt` / `yt-manager` **SKILL.md** skills run natively on Claude Code,
-Codex (v0.117.0+, `~/.codex/skills/`), and Gemini extensions — so each plugin
-delivers the real scenarios, not just prompts. **Claude Desktop** is the one host
-without native skills (it only loads MCP), so its "plugin" is the `.mcpb` bundle
-and scenarios there come through MCP prompts.
+Codex (v0.117.0+, `~/.codex/skills/`), and Gemini extensions — and they call the
+`yt-ai` CLI via `uvx` (no package or MCP server needed). **Claude Desktop** is
+the one host without native skills, so it uses the **MCP** column (its scenarios
+come through MCP prompts). The MCP column is also there for anyone who wants the
+typed tool surface on the other hosts — it's optional, not required.
 
 ## The server itself
 

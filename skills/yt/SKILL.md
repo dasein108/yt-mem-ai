@@ -7,9 +7,11 @@ description: One skill for any YouTube request over the yt-mem-ai CLI — one-sh
 
 One entry point for turning YouTube into artifacts. All data access goes through
 the `yt-ai` CLI (see [[yt-manager]] for the full command surface) — never touch
-the LanceDB store directly. Everything is grounded in the transcript; highlight
-timestamps come from `yt-ai search`, never invented. The analysis is done by
-**this agent** — no API key, no OpenRouter.
+the LanceDB store directly. If `yt-ai` isn't on PATH, run it as
+`uvx yt-mem-ai <cmd>` (zero-install; every `yt-ai <cmd>` below works that way).
+Everything is grounded in the transcript; highlight timestamps come from
+`yt-ai search`, never invented. The analysis is done by **this agent** — no API
+key, no OpenRouter.
 
 ## Pick the scenario
 

@@ -56,13 +56,13 @@ item_host()   { case "$1" in 1|2) echo claude-code;; 3|4) echo claude-desktop;; 
 item_method() { case "$1" in 1) echo plugin;; 2) echo mcp;; 3) echo plugin;; 4) echo mcp;; 5) echo plugin;; 6) echo mcp;; 7) echo extension;; 8) echo mcp;; esac; }
 item_label()  {
   case "$1" in
-    1) echo "Claude Code    (Plugin: skills + commands + MCP)";;
+    1) echo "Claude Code    (Plugin: skills + commands)";;
     2) echo "Claude Code    (MCP only)";;
     3) echo "Claude Desktop (Bundle .mcpb)";;
     4) echo "Claude Desktop (MCP config)";;
-    5) echo "Codex          (Plugin: skills + MCP + prompts + AGENTS.md)";;
+    5) echo "Codex          (Plugin: skills + prompts + AGENTS.md)";;
     6) echo "Codex          (MCP only)";;
-    7) echo "Gemini CLI     (Extension: MCP + commands)";;
+    7) echo "Gemini CLI     (Extension: skills + commands)";;
     8) echo "Gemini CLI     (MCP only)";;
   esac
 }
@@ -90,7 +90,7 @@ _probe_installed() {
     2) grep -qs 'yt-mem-ai' "$HOME/.claude.json" 2>/dev/null && echo yes || echo no ;;  # claude-code mcp (best-effort)
     3) grep -qs '"yt-mem-ai"' "$DESKTOP_CFG" 2>/dev/null && echo yes || echo no ;;       # claude-desktop bundle
     4) grep -qs '"yt-mem-ai"' "$DESKTOP_CFG" 2>/dev/null && echo yes || echo no ;;       # claude-desktop mcp
-    5) { grep -qs '^\[mcp_servers\.yt-mem-ai\]' "$HOME/.codex/config.toml" 2>/dev/null && [ -e "$HOME/.codex/skills/yt/SKILL.md" ]; } && echo yes || echo no ;;
+    5) [ -e "$HOME/.codex/skills/yt/SKILL.md" ] && echo yes || echo no ;;   # codex plugin = native skills (no MCP)
     6) grep -qs '^\[mcp_servers\.yt-mem-ai\]' "$HOME/.codex/config.toml" 2>/dev/null && echo yes || echo no ;;
     7) [ -d "$HOME/.gemini/extensions/yt-mem-ai" ] && echo yes || echo no ;;             # gemini extension
     8) grep -qs 'yt-mem-ai' "$HOME/.gemini/settings.json" 2>/dev/null && echo yes || echo no ;;  # gemini mcp
@@ -422,7 +422,7 @@ do_claude_code_plugin() {
   msg "Claude Code plugin — run these inside Claude Code (no stable CLI for /plugin):"
   printf '     /plugin marketplace add %s\n' "$_src"
   printf '     /plugin install yt-mem-ai@yt-mem-ai\n'
-  msg "(This bundles the yt + yt-manager skills, /yt-* commands, and the MCP server.)"
+  msg "(Ships the yt + yt-manager skills and /yt-* commands; they drive the yt-ai CLI via uvx. For MCP tools instead, pick 'Claude Code (MCP only)'.)"
 }
 
 do_claude_desktop_mcp() {
@@ -469,10 +469,9 @@ EOF
 }
 
 do_codex_plugin() {
-  do_codex_mcp
   # Native SKILL.md skills — Codex loads them from the User scope ~/.codex/skills/
-  # (v0.117.0+). This is the reliable, non-interactive install; the full
-  # .codex-plugin/ manifest is also available for the /plugins marketplace browser.
+  # (v0.117.0+). The skills drive the yt-ai CLI via uvx (no MCP, no package
+  # install). The full .codex-plugin/ manifest is also usable via /plugins.
   mkdir -p "$HOME/.codex/skills" "$HOME/.codex/prompts"
   _src=$(src_dir codex)
   if [ -n "$_src" ]; then
@@ -489,7 +488,7 @@ do_codex_plugin() {
     done
     curl -LsSf "$RAW/codex/AGENTS.md" -o "$HOME/.codex/AGENTS.md" 2>/dev/null || true
   fi
-  msg "Codex: installed skills (yt, yt-manager) + prompts + ~/.codex/AGENTS.md."
+  msg "Codex: installed skills (yt, yt-manager) + prompts + ~/.codex/AGENTS.md. CLI runs via uvx."
 }
 
 do_gemini_mcp() { json_merge_server "$HOME/.gemini/settings.json" "yt-mem-ai"; msg "Gemini: MCP server merged into ~/.gemini/settings.json. Restart gemini."; }

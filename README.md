@@ -131,23 +131,29 @@ download/render failed). Use `compile` for a quick clickable digest; use
 
 Single video on demand: `yt-ai fetch <url>` then the `/yt` skill (summarize / highlights / qa / presentation).
 
-## Integrations (MCP + plugins)
+## Integrations (native plugins + MCP)
 
-The whole engine is exposed as an MCP server (`yt-ai-mcp`) so **any** agentic
-host can drive it — Claude Code, Claude Desktop, Codex, Gemini CLI, Cursor, …
-One interactive installer wires up whichever hosts you pick (as a plugin or as a
-bare MCP, in any combination):
+Two ways to reach the engine, per host:
+
+- **Native plugins/extensions** for Claude Code, Codex, and Gemini ship the
+  `yt` / `yt-manager` **skills** (+ slash commands). The skills drive the `yt-ai`
+  CLI via `uvx yt-mem-ai <cmd>` — zero-install, the idiomatic path per each
+  platform, **no MCP**.
+- **The `yt-ai-mcp` MCP server** (`uvx --from 'yt-mem-ai[mcp]' yt-ai-mcp`) is
+  **Claude Desktop's** only path (it can't run skills) and an optional typed-tool
+  surface for headless / other MCP hosts (Cursor, tool runners).
+
+One interactive installer wires up whichever you pick — arrow-key checkbox UI,
+pre-checks already-installed targets, untick to uninstall:
 
 ```bash
 sh integrations/install.sh                      # checkbox picker (Windows: install.ps1)
 # non-interactive:
-sh integrations/install.sh --claude-desktop=plugin --codex=mcp
+sh integrations/install.sh --claude-code=plugin --claude-desktop=mcp
 ```
 
-Run the server directly with `uvx --from 'yt-mem-ai[mcp]' yt-ai-mcp`. Tools mirror
-the CLI (`fetch`, `search`, `discover`, `compile`, …) and the `yt`/`yt-manager`
-scenarios ship as MCP prompts. See [`integrations/README.md`](integrations/README.md)
-(and [`integrations/PROMPT.md`](integrations/PROMPT.md) for a paste-into-any-agent
+See [`integrations/README.md`](integrations/README.md) (and
+[`integrations/PROMPT.md`](integrations/PROMPT.md) for a paste-into-any-agent
 installer).
 
 ## Logging

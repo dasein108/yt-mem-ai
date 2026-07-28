@@ -11,9 +11,12 @@ LanceDB store directly.
 
 ## Prereqs
 
-- The `yt-ai` command ships in the **yt-mem-ai** package. Run it any of:
-  `uvx yt-mem-ai <cmd>`, or `pip install yt-mem-ai` then `yt-ai <cmd>`, or
-  `uv run yt-ai <cmd>` from a source checkout.
+- The `yt-ai` command ships in the **yt-mem-ai** package. **Every `yt-ai <cmd>`
+  example below runs equivalently as `uvx yt-mem-ai <cmd>`** — zero-install,
+  cached, always latest. If `yt-ai` isn't on PATH (the native plugins don't
+  install a package, they run the CLI via uvx), just prefix with `uvx`:
+  `uvx yt-mem-ai fetch <url>`, `uvx yt-mem-ai search "<q>"`, etc. (A source
+  checkout can also use `uv run yt-ai <cmd>`.)
 - `.env` must be filled (Webshare proxy + cookies for yt-dlp, embedding backend).
   You don't have to hand-edit it: inspect and set any setting from here with
   `yt-ai config list` / `yt-ai config set KEY VALUE` (see **Configure & maintain**).

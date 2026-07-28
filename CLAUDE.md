@@ -105,19 +105,20 @@ not an API) to keep it free and high-quality.
   SKILL.md files (`_load_skill`: source `skills/<name>/SKILL.md`, or the
   `force-include`d `yt_mem_ai/_skills/*.md` in a built wheel) — single source of
   truth, no drift. Host packaging lives under `integrations/` (see below).
-- `integrations/` — host wrappers around `yt-ai-mcp`: `claude-code/` (plugin:
-  `.claude-plugin/{plugin,marketplace}.json` + `.mcp.json` + `commands/` +
-  `skills/` symlinks to the canonical `skills/`), `claude-desktop/` (`.mcpb`
-  bundle `manifest.json` + `build.sh`; the one host without native skills, so its
-  scenarios come via MCP prompts), `codex/` (`.codex-plugin/plugin.json` +
-  `skills/` symlinks + config snippet + `prompts/` + `AGENTS.md`; Codex v0.117.0+
-  runs the same SKILL.md skills, installed to `~/.codex/skills/`), `gemini/`
-  (`gemini-extension.json` + `skills/` symlinks + `commands/*.toml` + `GEMINI.md`),
-  and `mcp/` (raw-server docs). The `yt`/`yt-manager` skills are symlinked (never
-  copied) into each plugin. `install.sh`/`install.ps1` is the
-  interactive host×method multi-select installer; `PROMPT.md` is the
-  paste-into-any-agent installer. All configs invoke the server via
-  `uvx --from 'yt-mem-ai[mcp]' yt-ai-mcp` (no source checkout).
+- `integrations/` — host packaging. **Native plugins are skills-only**: the
+  `yt`/`yt-manager` skills (symlinked, never copied, into each plugin) drive the
+  `yt-ai` CLI by shelling out via `uvx yt-mem-ai <cmd>` — **no bundled MCP**.
+  `claude-code/` (`.claude-plugin/{plugin,marketplace}.json` + `commands/` +
+  `skills/`), `codex/` (`.codex-plugin/plugin.json` + `skills/` + `prompts/` +
+  `AGENTS.md`; installed to `~/.codex/skills/`), `gemini/`
+  (`gemini-extension.json` + `skills/` + `commands/*.toml` + `GEMINI.md`).
+  **MCP (`yt-ai-mcp`) is Claude Desktop's only path** (`claude-desktop/`: `.mcpb`
+  `manifest.json` + `build.sh`, or a plain `claude_desktop_config.json` entry)
+  and an **optional** typed-tool surface elsewhere; `mcp/` documents the raw
+  server. `install.sh`/`install.ps1` is the interactive host×method multi-select
+  installer (arrow-key checkbox UI; pre-checks already-installed targets; untick
+  to uninstall); `PROMPT.md` is the paste-into-any-agent installer. Every MCP
+  config invokes `uvx --from 'yt-mem-ai[mcp]' yt-ai-mcp` (no source checkout).
 - REST API — **moved out** to the [`yt-mem-ai-desktop`](https://github.com/dasein108/yt-mem-ai-desktop)
   repo (FastAPI backend that imports this package and reuses `cli.py`'s `run_*`/
   `open_store` cores). This repo is the engine: library + data/pipeline CLI only.
