@@ -14,7 +14,9 @@ sh integrations/install.sh        # macOS/Linux  (Windows: integrations\install.
 You get an **arrow-key checkbox UI** — `↑`/`↓` (or `j`/`k`) to move, **space** to
 toggle, `a` to select all detected hosts, **enter** to install, `q` to quit —
 so you can tick, e.g., `[x] Claude Desktop (Bundle)` **and** `[x] Codex (MCP)` in
-one run. Undetected hosts are dimmed but still selectable. (Falls back to a
+one run. Undetected hosts are dimmed but still selectable. **Already-installed
+targets are auto-detected, pre-checked `[x]`, and labeled `(installed)`** — untick
+to skip them, or just add new ones (re-installing is idempotent). (Falls back to a
 numbered menu on terminals without cursor addressing.) Non-interactive / piped:
 
 ```

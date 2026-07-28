@@ -71,13 +71,43 @@ case "$(uname -s 2>/dev/null || echo unknown)" in
   Darwin) DESKTOP_CFG="$HOME/Library/Application Support/Claude/claude_desktop_config.json" ;;
   *)      DESKTOP_CFG="$HOME/.config/Claude/claude_desktop_config.json" ;;
 esac
-item_detected() {
+# Is the host present on the system? (probed once, cached in DET.)
+_probe_detected() {
   case "$(item_host "$1")" in
     claude-code)    have claude && echo yes || echo no ;;
     claude-desktop) [ -e "$(dirname "$DESKTOP_CFG")" ] && echo yes || echo no ;;
     codex)          have codex && echo yes || echo no ;;
     gemini)         have gemini && echo yes || echo no ;;
   esac
+}
+
+# Is THIS host×method already installed? File/dir checks only (fast, no CLI).
+# Best-effort: config-based targets are exact; plugin/bundle installs that a host
+# records elsewhere may under-detect (shown unchecked; re-install is idempotent).
+_probe_installed() {
+  case "$1" in
+    1) grep -qs 'yt-mem-ai' "$HOME/.claude.json" 2>/dev/null && echo yes || echo no ;;  # claude-code plugin (best-effort)
+    2) grep -qs 'yt-mem-ai' "$HOME/.claude.json" 2>/dev/null && echo yes || echo no ;;  # claude-code mcp (best-effort)
+    3) grep -qs '"yt-mem-ai"' "$DESKTOP_CFG" 2>/dev/null && echo yes || echo no ;;       # claude-desktop bundle
+    4) grep -qs '"yt-mem-ai"' "$DESKTOP_CFG" 2>/dev/null && echo yes || echo no ;;       # claude-desktop mcp
+    5) { grep -qs '^\[mcp_servers\.yt-mem-ai\]' "$HOME/.codex/config.toml" 2>/dev/null && [ -e "$HOME/.codex/skills/yt/SKILL.md" ]; } && echo yes || echo no ;;
+    6) grep -qs '^\[mcp_servers\.yt-mem-ai\]' "$HOME/.codex/config.toml" 2>/dev/null && echo yes || echo no ;;
+    7) [ -d "$HOME/.gemini/extensions/yt-mem-ai" ] && echo yes || echo no ;;             # gemini extension
+    8) grep -qs 'yt-mem-ai' "$HOME/.gemini/settings.json" 2>/dev/null && echo yes || echo no ;;  # gemini mcp
+  esac
+}
+
+# Cached membership (filled by compute_states before the picker runs).
+DET=" "; INST=" "
+item_detected() { case "$DET"  in *" $1 "*) echo yes;; *) echo no;; esac; }
+item_installed(){ case "$INST" in *" $1 "*) echo yes;; *) echo no;; esac; }
+compute_states() {
+  for _i in 1 2 3 4 5 6 7 8; do
+    [ "$(_probe_detected "$_i")"  = yes ] && DET="$DET$_i "
+    [ "$(_probe_installed "$_i")" = yes ] && INST="$INST$_i "
+  done
+  # Pre-check whatever is already installed so its box shows [x] ("remember").
+  for _i in 1 2 3 4 5 6 7 8; do case "$INST" in *" $_i "*) add_sel "$_i";; esac; done
 }
 
 # --------------------------------------------------------------------------- #
@@ -136,12 +166,13 @@ fi
 picker_whiptail() {
   _args=""
   for i in 1 2 3 4 5 6 7 8; do
-    _on=off; [ "$(item_detected "$i")" = yes ] && _on=on
+    _on=off; [ "$(item_installed "$i")" = yes ] && _on=on   # pre-check installed
     _args="$_args $i \"$(item_label "$i")\" $_on"
   done
   _chosen=$(eval whiptail --title "'yt-mem-ai installer'" \
     --checklist "'Select targets (space toggles, enter confirms):'" 20 74 8 $_args \
     3>&1 1>&2 2>&3) || return 1
+  SEL=" "                                                    # whiptail result is authoritative
   for c in $_chosen; do add_sel "$(printf '%s' "$c" | tr -d '"')"; done
 }
 
@@ -150,7 +181,9 @@ picker_plain() {
     printf '\n  yt-mem-ai installer — select targets\n\n'
     for i in 1 2 3 4 5 6 7 8; do
       mark=" "; is_sel "$i" && mark="X"
-      det=""; [ "$(item_detected "$i")" = no ] && det="  (not detected)"
+      det=""
+      if [ "$(item_installed "$i")" = yes ]; then det="  (installed)"
+      elif [ "$(item_detected "$i")" = no ]; then det="  (not detected)"; fi
       printf '   [%s] %s) %s%s\n' "$mark" "$i" "$(item_label "$i")" "$det"
     done
     printf '\n   Type a number to toggle, "a" all-detected, "i" install, "q" quit: '
@@ -174,7 +207,8 @@ tui_render() {
   for _i in 1 2 3 4 5 6 7 8; do
     if is_sel "$_i"; then _box="${C_SEL}[x]${C_RESET}"; else _box="[ ]"; fi
     _lab=$(item_label "$_i")
-    [ "$(item_detected "$_i")" = no ] && _lab="$_lab ${C_DIM}(not detected)${C_RESET}"
+    if [ "$(item_installed "$_i")" = yes ]; then _lab="$_lab ${C_SEL}(installed)${C_RESET}"
+    elif [ "$(item_detected "$_i")" = no ]; then _lab="$_lab ${C_DIM}(not detected)${C_RESET}"; fi
     if [ "$_i" = "$_c" ]; then
       printf '  %s❯%s %s %s%s%s\n' "$C_CUR" "$C_RESET" "$_box" "$C_CUR" "$_lab" "$C_RESET"
     else
@@ -215,6 +249,7 @@ tui_bash() {
 }
 
 if [ "$NONINTERACTIVE" -eq 0 ]; then
+  compute_states                                     # detect installed → pre-check [x]
   if [ -t 0 ] && [ -t 1 ] && [ -n "${BASH_VERSION:-}" ]; then
     tui_bash; INTERACTIVE_PICKED=1                    # rich arrow-key checkbox UI
   elif [ -t 0 ] && [ -t 1 ] && have bash; then
