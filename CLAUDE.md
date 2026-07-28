@@ -86,6 +86,27 @@ not an API) to keep it free and high-quality.
   explicit `--after` > stored epoch `last_discover_ts` (−`overlap_s`) > legacy
   `last_discover_at` date > 7-day default; it drops `is_seen` videos and advances
   `last_discover_ts` (never regressing) from the discovered `published_ts`.
+- `mcp_server.py` — `FastMCP` server (`yt-ai-mcp` console entry, optional `[mcp]`
+  extra) exposing the engine to any MCP host. Thin protocol adapter: each
+  `@mcp.tool()` loads config, opens the store, and calls the matching `run_*`
+  core, returning JSON-safe dicts (no business logic here). The `yt`/`yt-manager`
+  scenarios ship as `@mcp.prompt()`s whose bodies are loaded from the checked-in
+  SKILL.md files (`_load_skill`: source `skills/<name>/SKILL.md`, or the
+  `force-include`d `yt_mem_ai/_skills/*.md` in a built wheel) — single source of
+  truth, no drift. Host packaging lives under `integrations/` (see below).
+- `integrations/` — host wrappers around `yt-ai-mcp`: `claude-code/` (plugin:
+  `.claude-plugin/{plugin,marketplace}.json` + `.mcp.json` + `commands/` +
+  `skills/` symlinks to the canonical `skills/`), `claude-desktop/` (`.mcpb`
+  bundle `manifest.json` + `build.sh`; the one host without native skills, so its
+  scenarios come via MCP prompts), `codex/` (`.codex-plugin/plugin.json` +
+  `skills/` symlinks + config snippet + `prompts/` + `AGENTS.md`; Codex v0.117.0+
+  runs the same SKILL.md skills, installed to `~/.codex/skills/`), `gemini/`
+  (`gemini-extension.json` + `skills/` symlinks + `commands/*.toml` + `GEMINI.md`),
+  and `mcp/` (raw-server docs). The `yt`/`yt-manager` skills are symlinked (never
+  copied) into each plugin. `install.sh`/`install.ps1` is the
+  interactive host×method multi-select installer; `PROMPT.md` is the
+  paste-into-any-agent installer. All configs invoke the server via
+  `uvx --from 'yt-mem-ai[mcp]' yt-ai-mcp` (no source checkout).
 - REST API — **moved out** to the [`yt-mem-ai-desktop`](https://github.com/dasein108/yt-mem-ai-desktop)
   repo (FastAPI backend that imports this package and reuses `cli.py`'s `run_*`/
   `open_store` cores). This repo is the engine: library + data/pipeline CLI only.

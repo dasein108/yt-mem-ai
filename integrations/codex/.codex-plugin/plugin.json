@@ -1,0 +1,40 @@
+{
+  "name": "yt-mem-ai",
+  "version": "0.1.0",
+  "description": "YouTube AI: ingest, transcribe, embed, search, and summarize/highlight/digest videos. Bundles the yt + yt-manager skills and the yt-ai-mcp tool server.",
+  "author": {
+    "name": "dasein",
+    "url": "https://github.com/dasein108"
+  },
+  "homepage": "https://github.com/dasein108/yt-mem-ai",
+  "repository": "https://github.com/dasein108/yt-mem-ai",
+  "license": "MIT",
+  "keywords": ["youtube", "transcription", "summarization", "mcp"],
+  "skills": "./skills/",
+  "mcpServers": {
+    "yt-mem-ai": {
+      "command": "uvx",
+      "args": ["--from", "yt-mem-ai[mcp]", "yt-ai-mcp"],
+      "env": {
+        "YT_STORE_PATH": "${HOME}/.yt-mem-ai/lance",
+        "YT_LOG_FILE": "${HOME}/.yt-mem-ai/logs/common.jsonl",
+        "YT_DOWNLOADS_DIR": "${HOME}/.yt-mem-ai/downloads"
+      }
+    }
+  },
+  "interface": {
+    "displayName": "YouTube AI (yt-mem-ai)",
+    "shortDescription": "Ingest, search, and summarize/highlight YouTube videos.",
+    "longDescription": "Local-first YouTube pipeline: captions→whisper transcription, per-chunk embeddings in LanceDB, semantic search, and skills for summaries, highlights, digests, and cross-video reviews. Tools run via the yt-ai-mcp server; scenarios via the yt and yt-manager skills.",
+    "developerName": "dasein",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "websiteURL": "https://github.com/dasein108/yt-mem-ai",
+    "defaultPrompt": [
+      "Summarize this video: <url>",
+      "Highlight this video: <url>",
+      "Catch up on my subscriptions"
+    ],
+    "brandColor": "#E11D48"
+  }
+}

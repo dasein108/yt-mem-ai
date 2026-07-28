@@ -1,0 +1,13 @@
+# yt-mem-ai MCP server for OpenAI Codex CLI.
+# Merge this into ~/.codex/config.toml (or run: codex mcp add — see README).
+# Adjust the env paths as you like; an absolute YT_STORE_PATH keeps the store in
+# one place regardless of Codex's working directory.
+
+[mcp_servers.yt-mem-ai]
+command = "uvx"
+args = ["--from", "yt-mem-ai[mcp]", "yt-ai-mcp"]
+
+[mcp_servers.yt-mem-ai.env]
+YT_STORE_PATH = "~/.yt-mem-ai/lance"
+YT_LOG_FILE = "~/.yt-mem-ai/logs/common.jsonl"
+YT_DOWNLOADS_DIR = "~/.yt-mem-ai/downloads"

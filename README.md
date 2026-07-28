@@ -112,6 +112,25 @@ download/render failed). Use `compile` for a quick clickable digest; use
 
 Single video on demand: `yt-ai fetch <url>` then the `/yt` skill (summarize / highlights / qa / presentation).
 
+## Integrations (MCP + plugins)
+
+The whole engine is exposed as an MCP server (`yt-ai-mcp`) so **any** agentic
+host can drive it — Claude Code, Claude Desktop, Codex, Gemini CLI, Cursor, …
+One interactive installer wires up whichever hosts you pick (as a plugin or as a
+bare MCP, in any combination):
+
+```bash
+sh integrations/install.sh                      # checkbox picker (Windows: install.ps1)
+# non-interactive:
+sh integrations/install.sh --claude-desktop=plugin --codex=mcp
+```
+
+Run the server directly with `uvx --from 'yt-mem-ai[mcp]' yt-ai-mcp`. Tools mirror
+the CLI (`fetch`, `search`, `discover`, `compile`, …) and the `yt`/`yt-manager`
+scenarios ship as MCP prompts. See [`integrations/README.md`](integrations/README.md)
+(and [`integrations/PROMPT.md`](integrations/PROMPT.md) for a paste-into-any-agent
+installer).
+
 ## Logging
 
 The CLI writes structured JSON events to **`logs/common.jsonl`** (via

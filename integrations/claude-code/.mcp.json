@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "yt-mem-ai": {
+      "command": "uvx",
+      "args": ["--from", "yt-mem-ai[mcp]", "yt-ai-mcp"],
+      "env": {
+        "YT_STORE_PATH": "${HOME}/.yt-mem-ai/lance",
+        "YT_LOG_FILE": "${HOME}/.yt-mem-ai/logs/common.jsonl",
+        "YT_DOWNLOADS_DIR": "${HOME}/.yt-mem-ai/downloads"
+      }
+    }
+  }
+}

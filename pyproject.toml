@@ -30,7 +30,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.6", "httpx>=0.27"]
+dev = ["pytest>=8.0", "ruff>=0.6", "httpx>=0.27", "mcp>=1.2"]
+mcp = ["mcp>=1.2"]
 
 [project.urls]
 Homepage = "https://github.com/dasein108/yt-mem-ai"
@@ -40,6 +41,7 @@ Issues = "https://github.com/dasein108/yt-mem-ai/issues"
 [project.scripts]
 yt-ai = "yt_mem_ai.cli:app"
 yt-mem-ai = "yt_mem_ai.cli:app"
+yt-ai-mcp = "yt_mem_ai.mcp_server:main"
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
@@ -50,6 +52,9 @@ source = "vcs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["yt_mem_ai"]
+# Ship the scenario playbooks inside the wheel so the MCP server's prompts work
+# from an installed package (loaded by mcp_server._load_skill).
+force-include = { "skills/yt/SKILL.md" = "yt_mem_ai/_skills/yt.md", "skills/yt-manager/SKILL.md" = "yt_mem_ai/_skills/yt-manager.md" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

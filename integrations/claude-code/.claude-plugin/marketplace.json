@@ -1,0 +1,14 @@
+{
+  "name": "yt-mem-ai",
+  "owner": { "name": "dasein", "url": "https://github.com/dasein108" },
+  "metadata": {
+    "description": "Single-plugin marketplace for the yt-mem-ai YouTube AI engine."
+  },
+  "plugins": [
+    {
+      "name": "yt-mem-ai",
+      "source": ".",
+      "description": "Ingest/transcribe/embed/search YouTube + summarize, highlight, digest, review. Skills (yt, yt-manager) + the yt-ai-mcp tool server."
+    }
+  ]
+}

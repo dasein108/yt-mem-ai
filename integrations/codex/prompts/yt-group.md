@@ -1,0 +1,7 @@
+Analyze this group of videos: $ARGUMENTS
+
+Use the `yt-mem-ai` MCP tools. Resolve the set — a comma list of ids/URLs, a
+channel via `channel_list`, or a date range — report the count, then `fetch`
+each, run per-video analysis (summary + search-anchored highlights + Q&A,
+`save_summary`), and write `groups/<label>.md` (executive synthesis + one section
+per video).
