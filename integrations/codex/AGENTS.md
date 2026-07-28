@@ -14,12 +14,16 @@ is installed on PATH** — this plugin ships skills only, so don't look for a
 
 ```
 uvx yt-mem-ai show <video_id> --json          # ingested? metadata + transcript
-uvx yt-mem-ai fetch <url> --captions-only      # ingest (captions→whisper)
+uvx yt-mem-ai fetch '<url>' --captions-only      # ingest (captions→whisper)
 uvx yt-mem-ai search "<phrase>" --vector -k 3  # anchor a highlight timestamp
 uvx yt-mem-ai save-summary <id> "<md>" --highlights '<json>' --qa '<json>'
 uvx yt-mem-ai discover ; uvx yt-mem-ai fetch-pending   # subscriptions batch
-uvx yt-mem-ai channel-list <url> --limit N --json      # enumerate a channel
+uvx yt-mem-ai channel-list '<url>' --limit N --json      # enumerate a channel
 ```
+
+**Single-quote URLs** — they contain `?`/`&`, which the shell treats as glob and
+job-control metacharacters, so a bare URL fails. Always
+`fetch 'https://www.youtube.com/watch?v=ID'`.
 
 See the `yt-manager` skill for the complete command surface (list, recommend,
 compile, supercut, frame, reembed, …).

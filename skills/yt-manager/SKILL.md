@@ -14,6 +14,11 @@ operation goes through the CLI — never touch the LanceDB store directly.
   always latest. **Nothing is installed on PATH**: the native plugins ship skills
   only, so do NOT go hunting for a `yt-ai` binary, a wrapper script, or a venv.
   (Only inside a source checkout of this repo may you use `uv run yt-ai <cmd>`.)
+- **Always single-quote a video/channel URL** — YouTube URLs contain `?` and `&`,
+  which the shell treats as glob and job-control metacharacters, so a bare URL
+  fails (zsh: `no matches found`). Write
+  `uvx yt-mem-ai fetch 'https://www.youtube.com/watch?v=ID'`, never bare. Same for
+  `transcript` and `channel-list`.
 - Settings live in a global config file, not a `.env` you hand-edit: inspect and
   change anything with `uvx yt-mem-ai config list` / `uvx yt-mem-ai config set
   KEY VALUE` (see **Configure & maintain**). Prefer `config set` over exporting
@@ -30,8 +35,8 @@ uvx yt-mem-ai <command> [args]
 
 ### Ingest one video
 ```bash
-uvx yt-mem-ai fetch <url>        # download audio + transcribe + embed + store
-uvx yt-mem-ai transcript <url>   # same pipeline (alias intent)
+uvx yt-mem-ai fetch '<url>'        # download audio + transcribe + embed + store
+uvx yt-mem-ai transcript '<url>'   # same pipeline (alias intent)
 ```
 
 ### Discover + batch ingest (subscriptions)
@@ -42,7 +47,7 @@ uvx yt-mem-ai fetch-pending [--since <DATE>] [--limit <N>]   # ingest 'discovere
 
 ### Enumerate a channel (does not ingest)
 ```bash
-uvx yt-mem-ai channel-list <url> [--limit <N>] [--from <DATE>] [--to <DATE>] [--json]
+uvx yt-mem-ai channel-list '<url>' [--limit <N>] [--from <DATE>] [--to <DATE>] [--json]
 # newest uploads for a channel URL/@handle; feed the URLs to `fetch` to ingest a group.
 ```
 
@@ -139,7 +144,7 @@ uvx yt-mem-ai compile           # deep-linked highlights doc for the day
 
 **Single video on demand:**
 ```bash
-uvx yt-mem-ai fetch <url>
+uvx yt-mem-ai fetch '<url>'
 ```
 then invoke **[[yt]]** (single-video summary / highlights / Q&A / presentation).
 
@@ -155,7 +160,7 @@ then invoke **[[yt]]** (single-video summary / highlights / Q&A / presentation).
 
 ## Notes
 
-- If `show` prints `not found`, the video isn't ingested — run `fetch <url>` first.
+- If `show` prints `not found`, the video isn't ingested — run `fetch '<url>'` first.
 - If `fetch-pending`/`list` finds nothing for a day, run `discover` first.
 - `supercut` continues past a clip whose download/render fails (logged in the
   `.refs.md` sidecar's skipped list) rather than aborting.

@@ -1,6 +1,6 @@
 ---
 name: yt
-description: One skill for any YouTube request over the yt-mem-ai CLI — one-shot by URL or id ("summarize: <url>", "highlight: <url>", "qa: <url>", "presentation: <url>"), process the latest subscription uploads into a daily digest, or a cross-video subscriptions review. Ingests and caches transcripts (captions → whisper), anchors highlights via semantic search, and never re-downloads a cached video. Also processes an arbitrary group of videos (a channel's recent uploads, a comma list of ids/URLs, or a date range) into per-video analysis + a group synthesis.
+description: One skill for any YouTube request over the yt-mem-ai CLI — one-shot by URL or id ("summarize: '<url>'", "highlight: '<url>'", "qa: '<url>'", "presentation: '<url>'"), process the latest subscription uploads into a daily digest, or a cross-video subscriptions review. Ingests and caches transcripts (captions → whisper), anchors highlights via semantic search, and never re-downloads a cached video. Also processes an arbitrary group of videos (a channel's recent uploads, a comma list of ids/URLs, or a date range) into per-video analysis + a group synthesis.
 ---
 
 # yt — summarize / highlights / Q&A / presentation / digest / review
@@ -10,7 +10,9 @@ the **`uvx yt-mem-ai <cmd>`** CLI (see [[yt-manager]] for the full command
 surface) — never touch the LanceDB store directly. Always invoke it exactly that
 way: zero-install and cached, so nothing has to be on PATH. **Do not go looking
 for a `yt-ai` binary** — the native plugins install no package. (Only inside a
-source checkout may you use `uv run yt-ai <cmd>`.)
+source checkout may you use `uv run yt-ai <cmd>`.) **Single-quote every URL** —
+YouTube URLs contain `?`/`&`, which the shell globs on, so a bare URL fails:
+`uvx yt-mem-ai fetch 'https://www.youtube.com/watch?v=ID' --captions-only`.
 Everything is grounded in the transcript; highlight timestamps come from
 `uvx yt-mem-ai search`, never invented. The analysis is done by **this agent** — no API
 key, no OpenRouter.
@@ -24,7 +26,7 @@ key, no OpenRouter.
 - **C — subscriptions review** ("review my subs", "themes lately", "what's been
   happening"): one cross-video synthesis over a date range.
 - **D — group (arbitrary set)** ("process/review these videos <ids/urls>", "review
-  channel <url>", "review <channel> from <date> to <date>"): ingest a user-specified
+  channel '<url>'", "review <channel> from <date> to <date>"): ingest a user-specified
   set, then per-video analysis + a group synthesis.
 
 ## Core: analyze one video (used by A and B)
@@ -32,8 +34,8 @@ key, no OpenRouter.
 Given a `video_id` (and a URL if it may not be ingested yet):
 
 1. **Ensure ingested** (idempotent): `uvx yt-mem-ai show <video_id> --json`.
-   - `not found` and you have a URL → `uvx yt-mem-ai fetch <url> --captions-only`. If that
-     prints `no captions available: ...`, fall back to `uvx yt-mem-ai fetch <url> --whisper`
+   - `not found` and you have a URL → `uvx yt-mem-ai fetch '<url>' --captions-only`. If that
+     prints `no captions available: ...`, fall back to `uvx yt-mem-ai fetch '<url>' --whisper`
      (downloads audio + transcribes — slower, always yields a transcript).
    - Blocked instead? `Sign in to confirm you're not a bot` → run
      `uvx yt-mem-ai config set YT_COOKIES_BROWSER chrome` and retry;
@@ -75,7 +77,7 @@ uvx yt-mem-ai fetch-pending      # download + transcribe + embed today's batch (
 ```
 Live streams are auto-detected and marked `status=stream` — `fetch-pending` skips
 them (long + usually caption-less). List them with `uvx yt-mem-ai list --status stream`;
-to transcribe one on demand, fetch it directly (`uvx yt-mem-ai fetch <url>`, optionally
+to transcribe one on demand, fetch it directly (`uvx yt-mem-ai fetch '<url>'`, optionally
 `--whisper`).
 
 Then for each of the day's transcribed videos
@@ -106,11 +108,11 @@ analysis + a top-level synthesis.
 
 1. **Resolve the set → ids/URLs:**
    - comma list (`id1,id2,https://youtu.be/id3`) → parse directly;
-   - channel (URL/@handle) → `uvx yt-mem-ai channel-list <url> --limit N [--from D] [--to D] --json`;
+   - channel (URL/@handle) → `uvx yt-mem-ai channel-list '<url>' --limit N [--from D] [--to D] --json`;
    - date range over a channel → same with `--from/--to`.
    Report the resolved count first; if it's large (> ~15), say so and confirm/cap
    before mass-ingesting (whisper is slow).
-2. **Ingest each:** `uvx yt-mem-ai fetch <url>` (captions→whisper; streams auto-marked
+2. **Ingest each:** `uvx yt-mem-ai fetch '<url>'` (captions→whisper; streams auto-marked
    `status=stream` and skipped; continue past failures — note any skipped).
 3. **Per-video:** run the **core** analysis (summary + search-anchored highlights +
    Q&A, `presentation` → `slides/<id>.md` if asked), persisted via `save-summary`,
