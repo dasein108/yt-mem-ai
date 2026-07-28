@@ -211,9 +211,40 @@ def test_config_set_secret_masked(tmp_path, monkeypatch):
     assert mcp_server.config_get("WEBSHARE_PROXY_PASSWORD", reveal=True)["value"] == "hunter2"
 
 
+def test_analyze_video_returns_transcript(db, monkeypatch):
+    from datetime import datetime
+    from yt_mem_ai.store.models import TranscriptRow
+    store.upsert_video(db, Video(video_id="abc", url="https://y/abc", title="T",
+                                 status="transcribed"))
+    store.insert_transcript(db, TranscriptRow(
+        video_id="abc", source="captions", lang="en", full_text="hello world",
+        created_at=datetime.now().isoformat()))
+    monkeypatch.setattr(cli, "run_fetch", lambda url, cfg, **k: "abc")
+    out = mcp_server.analyze_video("https://y/abc")
+    assert out["status"] == "ok" and out["video_id"] == "abc"
+    assert out["transcript"] == "hello world"
+    assert out["transcript_lang"] == "en"
+    _json_safe(out)
+
+
+def test_analyze_video_captions_blocked(monkeypatch):
+    def boom(*a, **k):
+        raise CaptionsBlocked("rate limited")
+    monkeypatch.setattr(cli, "run_fetch", boom)
+    assert mcp_server.analyze_video("https://y/x")["status"] == "captions_blocked"
+
+
+def test_server_instructions_guide_the_model():
+    # The server-level instructions are what make Claude Desktop actually reach
+    # for the tools on "summarize this video".
+    ins = mcp_server._INSTRUCTIONS.lower()
+    assert "analyze_video" in ins and "summarize" in ins
+    assert "watch" in ins  # explicitly tells the model not to claim it'll watch
+
+
 def test_tools_are_registered():
     # FastMCP keeps the decorated function callable AND registers it.
     import asyncio
     tools = asyncio.run(mcp_server.mcp.list_tools())
     names = {t.name for t in tools}
-    assert {"fetch", "show", "search", "save_summary", "discover"} <= names
+    assert {"analyze_video", "fetch", "show", "search", "save_summary", "discover"} <= names

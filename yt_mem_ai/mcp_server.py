@@ -22,7 +22,36 @@ from . import settings as settings_mod
 from .store import db as store
 from .transcript import CaptionsBlocked, TranscriptUnavailable
 
-mcp = FastMCP("yt-mem-ai")
+# Server instructions — MCP clients (Claude Desktop, Cursor, …) inject this into
+# the model's context on connect. It's the closest thing to a "skill" for hosts
+# that can't run SKILL.md: it tells the model WHEN to reach for these tools and
+# the multi-step workflow, so "summarize this video" actually triggers them.
+_INSTRUCTIONS = """\
+yt-mem-ai ingests YouTube videos (transcript via captions→whisper, stored in a
+local LanceDB) so you can summarize, highlight, answer questions about, or digest
+them — grounded in the transcript.
+
+USE THESE TOOLS whenever the user asks to summarize / highlight / get key points
+or Q&A / make a presentation / analyze a YouTube video, channel, or their
+subscriptions. Do NOT reply that you'll "watch" or "take a look at" the video —
+you can't play it, but `analyze_video` fetches its transcript for you.
+
+One video (summary / highlights / Q&A / presentation):
+  1. Call analyze_video(url) — ingests (idempotent) and returns the transcript.
+  2. If it already has a `summary`, reuse it unless a fresh one is asked for.
+  3. Write the artifact YOURSELF from the transcript, in the video's ORIGINAL
+     language (a Russian video → a Russian summary): a 2–4 sentence exec summary +
+     key bullets; highlights as `MM:SS — label`; 3–6 Q&A pairs.
+  4. For each highlight, call search(phrase, mode="vector", k=3) and take start_s
+     from a hit whose video_id matches — never invent timestamps.
+  5. Persist with save_summary(video_id, summary_md, highlights_json, qa_json).
+
+Subscriptions digest: discover() → fetch_pending() → analyze each of the day's
+transcribed videos. Reconfigure (Webshare proxy, embedding model, cookies
+browser) from chat with config_set(key, value).
+"""
+
+mcp = FastMCP("yt-mem-ai", instructions=_INSTRUCTIONS)
 
 
 # --------------------------------------------------------------------------- #
@@ -44,8 +73,49 @@ def _open(cfg):
 
 
 # --------------------------------------------------------------------------- #
-# tools — one per CLI op
+# tools
 # --------------------------------------------------------------------------- #
+@mcp.tool()
+def analyze_video(url: str, prefer_whisper: bool = False) -> dict:
+    """Ingest a YouTube video and return its transcript so you can summarize,
+    highlight, answer questions about, or make a presentation from it.
+
+    CALL THIS FIRST whenever the user asks to summarize / highlight / analyze /
+    get key points or Q&A of a YouTube video — it's the one-step entry point
+    (fetch + transcript, idempotent, captions→whisper fallback). Then write the
+    summary/highlights/Q&A yourself from the returned `transcript` in its original
+    language, anchor highlight timestamps with search(), and save_summary().
+
+    Returns {video_id, title, channel, transcript, transcript_lang, summary
+    (if one already exists), duration_s, status}. status "captions_blocked" =
+    YouTube rate-limited the transcript API; "stream" = a live stream (skipped).
+    """
+    cfg = cli.load_config()
+    try:
+        vid = cli.run_fetch(url, cfg, captions_only=not prefer_whisper,
+                            force_whisper=prefer_whisper, include_streams=True)
+    except TranscriptUnavailable:
+        try:  # captions unavailable → fall back to whisper (downloads audio)
+            vid = cli.run_fetch(url, cfg, force_whisper=True, include_streams=True)
+        except CaptionsBlocked as exc:
+            return {"status": "captions_blocked", "message": str(exc)}
+    except CaptionsBlocked as exc:
+        return {"status": "captions_blocked", "message": str(exc)}
+    db = _open(cfg)
+    v = store.get_video(db, vid)
+    if not v:
+        return {"status": "error", "message": "ingest failed", "video_id": vid}
+    if v.status == "stream":
+        return {"status": "stream", "video_id": vid,
+                "message": "live stream — not transcribed"}
+    out = _video_dict(v)
+    out["transcript"] = store.get_transcript_text(db, vid) or ""
+    out["transcript_lang"] = store.get_transcript_lang(db, vid)
+    out["summary"] = store.get_summary(db, vid)
+    out["status"] = "ok"
+    return out
+
+
 @mcp.tool()
 def fetch(url: str, force: bool = False, captions_only: bool = False,
           whisper: bool = False) -> dict:

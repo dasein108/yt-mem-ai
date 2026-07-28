@@ -29,10 +29,22 @@ Any host that speaks MCP over stdio:
 
 ## Tools
 
-`fetch`, `show`, `status`, `list_videos`, `search`, `save_summary`, `discover`,
-`fetch_pending`, `channel_list`, `like`, `dislike`, `recommend`, `compile`,
-`supercut`, `frame`, `reembed`, and the config tools `config_list`,
-`config_get`, `config_set`, `config_unset`.
+**`analyze_video(url)`** — the one-step entry point: ingest a video and return
+its transcript so the model can summarize / highlight / Q&A it. This is what a
+host like Claude Desktop calls on "summarize this video."
+
+Plus the granular ops: `fetch`, `show`, `status`, `list_videos`, `search`,
+`save_summary`, `discover`, `fetch_pending`, `channel_list`, `like`, `dislike`,
+`recommend`, `compile`, `supercut`, `frame`, `reembed`, and the config tools
+`config_list`, `config_get`, `config_set`, `config_unset`.
+
+## Server instructions (the "skill" for MCP hosts)
+
+The server sends an `instructions` string on connect that MCP clients (Claude
+Desktop, Cursor, …) inject into the model's context — telling it *when* to reach
+for these tools and the ingest→transcript→summarize→save workflow. This is why a
+plain "summarize this YouTube video" actually triggers the tools on hosts that
+can't run a SKILL.md skill.
 
 ## Reconfigure from chat
 
