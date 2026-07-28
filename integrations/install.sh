@@ -1,20 +1,21 @@
 #!/bin/sh
 # yt-mem-ai — interactive multi-select installer.
 #
-# Installs the yt-ai-mcp MCP server and/or host plugins for Claude Code,
-# Claude Desktop, Codex, and Gemini — any combination in one run.
+# Installs native skills/plugins and/or the yt-ai-mcp MCP server for Claude Code,
+# Claude Desktop, Codex, Cursor, and Antigravity — any combination in one run.
 #
 # Interactive (from a checkout):   sh integrations/install.sh
 # One-liner / CI (non-interactive): pass matrix flags, e.g.
 #   curl -LsSf https://raw.githubusercontent.com/dasein108/yt-mem-ai/main/integrations/install.sh \
-#     | sh -s -- --claude-desktop=plugin --codex=mcp
+#     | sh -s -- --cursor=skills --codex=plugin
 #
 # Flags:
-#   --claude-code=plugin,mcp      --claude-desktop=plugin,mcp
-#   --codex=plugin,mcp            --gemini=extension,mcp
+#   --claude-code=plugin,mcp      --claude-desktop=bundle,mcp
+#   --codex=plugin,mcp            --cursor=skills,mcp
+#   --antigravity=skills,mcp      (alias: --gravity=…)
 #   --all-plugins   --all-mcp     -y (assume yes)   -h/--help
-# Legacy: a single positional host (claude-code|claude-desktop|codex|gemini)
-# selects that host's plugin/extension method.
+# Legacy: a single positional host (claude-code|claude-desktop|codex|cursor|
+# antigravity) selects that host's native (skills/plugin) method.
 set -eu
 
 REPO="dasein108/yt-mem-ai"
@@ -50,20 +51,23 @@ if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/claude-code/.claude-plugin/plugin.j
 fi
 
 # --------------------------------------------------------------------------- #
-# item matrix (1..8): host + method + label
+# item matrix (1..10): host + method + label
 # --------------------------------------------------------------------------- #
-item_host()   { case "$1" in 1|2) echo claude-code;; 3|4) echo claude-desktop;; 5|6) echo codex;; 7|8) echo gemini;; esac; }
-item_method() { case "$1" in 1) echo plugin;; 2) echo mcp;; 3) echo plugin;; 4) echo mcp;; 5) echo plugin;; 6) echo mcp;; 7) echo extension;; 8) echo mcp;; esac; }
+ITEM_IDS="1 2 3 4 5 6 7 8 9 10"
+item_host()   { case "$1" in 1|2) echo claude-code;; 3|4) echo claude-desktop;; 5|6) echo codex;; 7|8) echo cursor;; 9|10) echo antigravity;; esac; }
+item_method() { case "$1" in 1) echo plugin;; 2) echo mcp;; 3) echo bundle;; 4) echo mcp;; 5) echo plugin;; 6) echo mcp;; 7) echo skills;; 8) echo mcp;; 9) echo skills;; 10) echo mcp;; esac; }
 item_label()  {
   case "$1" in
-    1) echo "Claude Code    (Plugin: skills + commands)";;
-    2) echo "Claude Code    (MCP only)";;
-    3) echo "Claude Desktop (Bundle .mcpb)";;
-    4) echo "Claude Desktop (MCP config)";;
-    5) echo "Codex          (Plugin: skills + prompts + AGENTS.md)";;
-    6) echo "Codex          (MCP only)";;
-    7) echo "Gemini CLI     (Extension: skills + commands)";;
-    8) echo "Gemini CLI     (MCP only)";;
+    1)  echo "Claude Code    (Plugin: skills + commands)";;
+    2)  echo "Claude Code    (MCP only)";;
+    3)  echo "Claude Desktop (Bundle .mcpb)";;
+    4)  echo "Claude Desktop (MCP config)";;
+    5)  echo "Codex          (Plugin: skills + prompts + AGENTS.md)";;
+    6)  echo "Codex          (MCP only)";;
+    7)  echo "Cursor         (Skills)";;
+    8)  echo "Cursor         (MCP only)";;
+    9)  echo "Antigravity    (Skills)";;
+    10) echo "Antigravity    (MCP only)";;
   esac
 }
 DESKTOP_CFG=""
@@ -71,13 +75,18 @@ case "$(uname -s 2>/dev/null || echo unknown)" in
   Darwin) DESKTOP_CFG="$HOME/Library/Application Support/Claude/claude_desktop_config.json" ;;
   *)      DESKTOP_CFG="$HOME/.config/Claude/claude_desktop_config.json" ;;
 esac
+CURSOR_MCP="$HOME/.cursor/mcp.json"
+CURSOR_SKILLS="$HOME/.cursor/skills"
+GRAVITY_MCP="$HOME/.gemini/config/mcp_config.json"
+GRAVITY_SKILLS="$HOME/.gemini/skills"
 # Is the host present on the system? (probed once, cached in DET.)
 _probe_detected() {
   case "$(item_host "$1")" in
     claude-code)    have claude && echo yes || echo no ;;
     claude-desktop) [ -e "$(dirname "$DESKTOP_CFG")" ] && echo yes || echo no ;;
     codex)          have codex && echo yes || echo no ;;
-    gemini)         have gemini && echo yes || echo no ;;
+    cursor)         { have cursor || [ -d "$HOME/.cursor" ]; } && echo yes || echo no ;;
+    antigravity)    { have antigravity || [ -d "$HOME/.gemini" ]; } && echo yes || echo no ;;
   esac
 }
 
@@ -90,10 +99,12 @@ _probe_installed() {
     2) grep -qs 'yt-mem-ai' "$HOME/.claude.json" 2>/dev/null && echo yes || echo no ;;  # claude-code mcp (best-effort)
     3) grep -qs '"yt-mem-ai"' "$DESKTOP_CFG" 2>/dev/null && echo yes || echo no ;;       # claude-desktop bundle
     4) grep -qs '"yt-mem-ai"' "$DESKTOP_CFG" 2>/dev/null && echo yes || echo no ;;       # claude-desktop mcp
-    5) [ -e "$HOME/.codex/skills/yt/SKILL.md" ] && echo yes || echo no ;;   # codex plugin = native skills (no MCP)
+    5) [ -e "$HOME/.codex/skills/yt/SKILL.md" ] && echo yes || echo no ;;   # codex plugin = native skills
     6) grep -qs '^\[mcp_servers\.yt-mem-ai\]' "$HOME/.codex/config.toml" 2>/dev/null && echo yes || echo no ;;
-    7) [ -d "$HOME/.gemini/extensions/yt-mem-ai" ] && echo yes || echo no ;;             # gemini extension
-    8) grep -qs 'yt-mem-ai' "$HOME/.gemini/settings.json" 2>/dev/null && echo yes || echo no ;;  # gemini mcp
+    7) [ -e "$CURSOR_SKILLS/yt/SKILL.md" ] && echo yes || echo no ;;                     # cursor skills
+    8) grep -qs 'yt-mem-ai' "$CURSOR_MCP" 2>/dev/null && echo yes || echo no ;;          # cursor mcp
+    9) [ -e "$GRAVITY_SKILLS/yt/SKILL.md" ] && echo yes || echo no ;;                    # antigravity skills
+    10) grep -qs 'yt-mem-ai' "$GRAVITY_MCP" 2>/dev/null && echo yes || echo no ;;        # antigravity mcp
   esac
 }
 
@@ -102,12 +113,12 @@ DET=" "; INST=" "
 item_detected() { case "$DET"  in *" $1 "*) echo yes;; *) echo no;; esac; }
 item_installed(){ case "$INST" in *" $1 "*) echo yes;; *) echo no;; esac; }
 compute_states() {
-  for _i in 1 2 3 4 5 6 7 8; do
+  for _i in $ITEM_IDS; do
     [ "$(_probe_detected "$_i")"  = yes ] && DET="$DET$_i "
     [ "$(_probe_installed "$_i")" = yes ] && INST="$INST$_i "
   done
   # Pre-check whatever is already installed so its box shows [x] ("remember").
-  for _i in 1 2 3 4 5 6 7 8; do case "$INST" in *" $_i "*) add_sel "$_i";; esac; done
+  for _i in $ITEM_IDS; do case "$INST" in *" $_i "*) add_sel "$_i";; esac; done
 }
 
 # --------------------------------------------------------------------------- #
@@ -129,7 +140,7 @@ INTERACTIVE_PICKED=0
 add_host_methods() { # host  csv-of-methods
   _h=$1; _methods=$2
   IFS=,; for _m in $_methods; do IFS=' '
-    for _i in 1 2 3 4 5 6 7 8; do
+    for _i in $ITEM_IDS; do
       [ "$(item_host "$_i")" = "$_h" ] || continue
       [ "$(item_method "$_i")" = "$_m" ] || continue
       add_sel "$_i"; NONINTERACTIVE=1
@@ -142,17 +153,20 @@ for arg in "$@"; do
   case "$arg" in
     -h|--help) usage ;;
     -y|--yes) ASSUME_YES=1 ;;
-    --all-plugins) for i in 1 3 5 7; do add_sel "$i"; done; NONINTERACTIVE=1 ;;
-    --all-mcp)     for i in 2 4 6 8; do add_sel "$i"; done; NONINTERACTIVE=1 ;;
+    --all-plugins) for i in 1 5 7 9; do add_sel "$i"; done; NONINTERACTIVE=1 ;;   # native skills installs
+    --all-mcp)     for i in 2 4 6 8 10; do add_sel "$i"; done; NONINTERACTIVE=1 ;;
     --claude-code=*)    add_host_methods claude-code    "${arg#*=}" ;;
     --claude-desktop=*) add_host_methods claude-desktop "${arg#*=}" ;;
     --codex=*)          add_host_methods codex          "${arg#*=}" ;;
-    --gemini=*)         add_host_methods gemini         "${arg#*=}" ;;
-    # legacy single-host positional → that host's plugin/extension method
+    --cursor=*)         add_host_methods cursor         "${arg#*=}" ;;
+    --antigravity=*)    add_host_methods antigravity    "${arg#*=}" ;;
+    --gravity=*)        add_host_methods antigravity    "${arg#*=}" ;;
+    # legacy single-host positional → that host's native (skills/plugin) method
     claude-code)    add_sel 1; NONINTERACTIVE=1 ;;
     claude-desktop) add_sel 3; NONINTERACTIVE=1 ;;
     codex)          add_sel 5; NONINTERACTIVE=1 ;;
-    gemini)         add_sel 7; NONINTERACTIVE=1 ;;
+    cursor)         add_sel 7; NONINTERACTIVE=1 ;;
+    antigravity|gravity) add_sel 9; NONINTERACTIVE=1 ;;
     *) die "unknown argument: $arg (try --help)" ;;
   esac
 done
@@ -167,12 +181,12 @@ fi
 # --------------------------------------------------------------------------- #
 picker_whiptail() {
   _args=""
-  for i in 1 2 3 4 5 6 7 8; do
+  for i in $ITEM_IDS; do
     _on=off; [ "$(item_installed "$i")" = yes ] && _on=on   # pre-check installed
     _args="$_args $i \"$(item_label "$i")\" $_on"
   done
   _chosen=$(eval whiptail --title "'yt-mem-ai installer'" \
-    --checklist "'Select targets (space toggles, enter confirms):'" 20 74 8 $_args \
+    --checklist "'Select targets (space toggles, enter confirms):'" 22 74 10 $_args \
     3>&1 1>&2 2>&3) || return 1
   SEL=" "                                                    # whiptail result is authoritative
   for c in $_chosen; do add_sel "$(printf '%s' "$c" | tr -d '"')"; done
@@ -181,7 +195,7 @@ picker_whiptail() {
 picker_plain() {
   while :; do
     printf '\n  yt-mem-ai installer — select targets\n\n'
-    for i in 1 2 3 4 5 6 7 8; do
+    for i in $ITEM_IDS; do
       mark=" "; is_sel "$i" && mark="X"
       det=""
       if [ "$(item_installed "$i")" = yes ]; then det="  (installed)"
@@ -192,7 +206,7 @@ picker_plain() {
     read -r choice || choice=q
     case "$choice" in
       [1-8]) toggle "$choice" ;;
-      a|A) for i in 1 2 3 4 5 6 7 8; do [ "$(item_detected "$i")" = yes ] && add_sel "$i"; done ;;
+      a|A) for i in $ITEM_IDS; do [ "$(item_detected "$i")" = yes ] && add_sel "$i"; done ;;
       i|I) break ;;
       q|Q) msg "aborted."; exit 0 ;;
       *) : ;;
@@ -201,12 +215,12 @@ picker_plain() {
 }
 
 # Arrow-key / space checkbox TUI (bash: works on macOS + Linux, no deps).
-TUI_ROWS=11
+TUI_ROWS=13
 tui_render() {
   _c=$1
   printf '  %syt-mem-ai installer%s\n' "$C_HEAD" "$C_RESET"
   printf '  %s↑/↓ move  ·  space toggle  ·  a all detected  ·  enter install  ·  q quit%s\n\n' "$C_DIM" "$C_RESET"
-  for _i in 1 2 3 4 5 6 7 8; do
+  for _i in $ITEM_IDS; do
     if is_sel "$_i"; then _box="${C_SEL}[x]${C_RESET}"; else _box="[ ]"; fi
     _lab=$(item_label "$_i")
     if [ "$(item_installed "$_i")" = yes ]; then _lab="$_lab ${C_SEL}(installed)${C_RESET}"
@@ -235,13 +249,13 @@ tui_bash() {
       "$ESC")
         IFS= read -rsn2 -t 1 _r 2>/dev/null || _r=""
         case "$_r" in
-          "[A") _cur=$(( _cur > 1 ? _cur - 1 : 8 )) ;;
-          "[B") _cur=$(( _cur < 8 ? _cur + 1 : 1 )) ;;
+          "[A") _cur=$(( _cur > 1 ? _cur - 1 : 10 )) ;;
+          "[B") _cur=$(( _cur < 10 ? _cur + 1 : 1 )) ;;
         esac ;;
-      k|K) _cur=$(( _cur > 1 ? _cur - 1 : 8 )) ;;
-      j|J) _cur=$(( _cur < 8 ? _cur + 1 : 1 )) ;;
+      k|K) _cur=$(( _cur > 1 ? _cur - 1 : 10 )) ;;
+      j|J) _cur=$(( _cur < 10 ? _cur + 1 : 1 )) ;;
       " ") toggle "$_cur" ;;
-      a|A) for _i in 1 2 3 4 5 6 7 8; do [ "$(item_detected "$_i")" = yes ] && add_sel "$_i"; done ;;
+      a|A) for _i in $ITEM_IDS; do [ "$(item_detected "$_i")" = yes ] && add_sel "$_i"; done ;;
       q|Q) trap - EXIT INT; printf '\033[?25h\n'; msg "aborted."; exit 0 ;;
       # enter → confirm when there's anything to act on (a selection to install,
       # or installed state to diff against — e.g. unticking all = remove all).
@@ -273,7 +287,7 @@ fi
 # remove) — unchanged additive behavior.
 # --------------------------------------------------------------------------- #
 INSTALL=" "; UNINSTALL=" "
-for i in 1 2 3 4 5 6 7 8; do
+for i in $ITEM_IDS; do
   if is_sel "$i"; then
     in_set "$i" "$INST" || INSTALL="$INSTALL$i "
   else
@@ -284,8 +298,8 @@ _any "$INSTALL" || _any "$UNINSTALL" || { msg "no changes."; exit 0; }
 
 echo
 msg "plan:"
-for i in 1 2 3 4 5 6 7 8; do in_set "$i" "$INSTALL"   && printf '   %s+ install%s %s\n' "$C_SEL" "$C_RESET" "$(item_label "$i")"; done
-for i in 1 2 3 4 5 6 7 8; do in_set "$i" "$UNINSTALL" && printf '   %s- remove %s %s\n' "$C_CUR" "$C_RESET" "$(item_label "$i")"; done
+for i in $ITEM_IDS; do in_set "$i" "$INSTALL"   && printf '   %s+ install%s %s\n' "$C_SEL" "$C_RESET" "$(item_label "$i")"; done
+for i in $ITEM_IDS; do in_set "$i" "$UNINSTALL" && printf '   %s- remove %s %s\n' "$C_CUR" "$C_RESET" "$(item_label "$i")"; done
 
 # Confirm. Removals are destructive → always confirm (default No), even after a
 # picker. Install-only after an interactive pick needs no re-confirm.
@@ -314,7 +328,7 @@ ensure_uv() {
 PY=$(command -v python3 2>/dev/null || true)
 UVX=""; MCP_BIN=""
 
-mcp_selected() { for _i in 2 3 4 6 8; do in_set "$_i" "$INSTALL" && return 0; done; return 1; }
+mcp_selected() { for _i in 2 3 4 6 8 10; do in_set "$_i" "$INSTALL" && return 0; done; return 1; }
 
 # For any MCP target, install the server as a persistent, absolute-path binary.
 # This avoids the two Claude-Desktop failure modes: (1) a heavy `uvx` cold start
@@ -521,16 +535,36 @@ do_codex_plugin() {
   msg "Codex: installed skills (yt, yt-manager) + prompts + ~/.codex/AGENTS.md. CLI runs via uvx."
 }
 
-do_gemini_mcp() { json_merge_server "$HOME/.gemini/settings.json" "yt-mem-ai"; msg "Gemini: MCP server merged into ~/.gemini/settings.json. Restart gemini."; }
-
-do_gemini_extension() {
-  if ! have gemini; then warn "Gemini: 'gemini' not on PATH — install the CLI, then re-run."; return; fi
-  _src=$(src_dir gemini)
-  if [ -n "$_src" ]; then
-    gemini extensions install "$_src" && msg "Gemini: extension installed (restart gemini)." || warn "Gemini: install failed."
+# shared: copy the yt + yt-manager SKILL.md skills into a host's skills dir
+# (local checkout, else fetch each SKILL.md from GitHub).
+install_yt_skills() {  # dest_skills_dir  local_integration_dir(may be empty)
+  _dest=$1; _isrc=$2
+  mkdir -p "$_dest"
+  if [ -n "$_isrc" ] && [ -d "$_isrc/skills" ]; then
+    cp -RL "$_isrc/skills/yt" "$_isrc/skills/yt-manager" "$_dest/" 2>/dev/null || true
   else
-    warn "Gemini extension needs the repo checkout (manifest lives in integrations/gemini/). Clone and re-run, or use --gemini=mcp."
+    for s in yt yt-manager; do
+      mkdir -p "$_dest/$s"
+      curl -LsSf "$RAW_ROOT/skills/$s/SKILL.md" -o "$_dest/$s/SKILL.md" 2>/dev/null || true
+    done
   fi
+}
+
+do_cursor_skills() {
+  install_yt_skills "$CURSOR_SKILLS" "$(src_dir cursor)"
+  msg "Cursor: installed skills → ~/.cursor/skills/ (reload Cursor). Skills run the yt-ai CLI via uvx."
+}
+do_cursor_mcp() {
+  json_merge_server "$CURSOR_MCP" "yt-mem-ai"
+  msg "Cursor: MCP server merged into ~/.cursor/mcp.json (reload Cursor)."
+}
+do_antigravity_skills() {
+  install_yt_skills "$GRAVITY_SKILLS" "$(src_dir antigravity)"
+  msg "Antigravity: installed skills → ~/.gemini/skills/. Skills run the yt-ai CLI via uvx."
+}
+do_antigravity_mcp() {
+  json_merge_server "$GRAVITY_MCP" "yt-mem-ai"
+  msg "Antigravity: MCP server merged into ~/.gemini/config/mcp_config.json (restart Antigravity)."
 }
 
 # --------------------------------------------------------------------------- #
@@ -564,37 +598,45 @@ undo_codex_plugin() {
   done
   msg "Codex: removed skills + prompts. (Left ~/.codex/AGENTS.md untouched — delete it by hand if it's ours.)"
 }
-undo_gemini_extension() {
-  if have gemini; then
-    gemini extensions uninstall yt-mem-ai >/dev/null 2>&1 && msg "Gemini: extension uninstalled (restart gemini)." \
-      || warn "Gemini: 'gemini extensions uninstall yt-mem-ai' failed (maybe not installed)."
-  else warn "Gemini: 'gemini' not on PATH — remove ~/.gemini/extensions/yt-mem-ai by hand."; fi
+undo_cursor_skills() {
+  rm -rf "$CURSOR_SKILLS/yt" "$CURSOR_SKILLS/yt-manager" 2>/dev/null || true
+  msg "Cursor: removed skills from ~/.cursor/skills/."
 }
-undo_gemini_mcp() {
-  json_remove_server "$HOME/.gemini/settings.json" "yt-mem-ai"
-  msg "Gemini: removed MCP server from ~/.gemini/settings.json. Restart gemini."
+undo_cursor_mcp() {
+  json_remove_server "$CURSOR_MCP" "yt-mem-ai"
+  msg "Cursor: removed MCP server from ~/.cursor/mcp.json."
+}
+undo_antigravity_skills() {
+  rm -rf "$GRAVITY_SKILLS/yt" "$GRAVITY_SKILLS/yt-manager" 2>/dev/null || true
+  msg "Antigravity: removed skills from ~/.gemini/skills/."
+}
+undo_antigravity_mcp() {
+  json_remove_server "$GRAVITY_MCP" "yt-mem-ai"
+  msg "Antigravity: removed MCP server from ~/.gemini/config/mcp_config.json."
 }
 
 # --------------------------------------------------------------------------- #
 # dispatch: removals first, then installs
 # --------------------------------------------------------------------------- #
 echo
-for i in 1 2 3 4 5 6 7 8; do
+for i in $ITEM_IDS; do
   in_set "$i" "$UNINSTALL" || continue
   case "$i" in
     1) undo_claude_code_plugin ;;   2) undo_claude_code_mcp ;;
     3) undo_claude_desktop_plugin ;;4) undo_claude_desktop_mcp ;;
     5) undo_codex_plugin ;;         6) undo_codex_mcp ;;
-    7) undo_gemini_extension ;;     8) undo_gemini_mcp ;;
+    7) undo_cursor_skills ;;        8) undo_cursor_mcp ;;
+    9) undo_antigravity_skills ;;   10) undo_antigravity_mcp ;;
   esac
 done
-for i in 1 2 3 4 5 6 7 8; do
+for i in $ITEM_IDS; do
   in_set "$i" "$INSTALL" || continue
   case "$i" in
     1) do_claude_code_plugin ;;   2) do_claude_code_mcp ;;
     3) do_claude_desktop_plugin ;;4) do_claude_desktop_mcp ;;
     5) do_codex_plugin ;;         6) do_codex_mcp ;;
-    7) do_gemini_extension ;;     8) do_gemini_mcp ;;
+    7) do_cursor_skills ;;        8) do_cursor_mcp ;;
+    9) do_antigravity_skills ;;   10) do_antigravity_mcp ;;
   esac
 done
 

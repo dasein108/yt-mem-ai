@@ -1,6 +1,0 @@
-{
-  "name": "yt-mem-ai",
-  "version": "0.1.0",
-  "description": "YouTube AI: ingest, transcribe, embed, search, and summarize/highlight/digest videos. The yt + yt-manager skills drive the yt-ai CLI (via uvx).",
-  "contextFileName": "GEMINI.md"
-}

@@ -135,13 +135,13 @@ Single video on demand: `yt-ai fetch <url>` then the `/yt` skill (summarize / hi
 
 Two ways to reach the engine, per host:
 
-- **Native plugins/extensions** for Claude Code, Codex, and Gemini ship the
-  `yt` / `yt-manager` **skills** (+ slash commands). The skills drive the `yt-ai`
-  CLI via `uvx yt-mem-ai <cmd>` — zero-install, the idiomatic path per each
-  platform, **no MCP**.
-- **The `yt-ai-mcp` MCP server** (`uvx --from 'yt-mem-ai[mcp]' yt-ai-mcp`) is
-  **Claude Desktop's** only path (it can't run skills) and an optional typed-tool
-  surface for headless / other MCP hosts (Cursor, tool runners).
+- **Native skills** for Claude Code, Codex, Cursor, and Antigravity ship the
+  `yt` / `yt-manager` **skills** (+ slash commands where available). The skills
+  drive the `yt-ai` CLI via `uvx yt-mem-ai <cmd>` — zero-install, the idiomatic
+  path per platform.
+- **The `yt-ai-mcp` MCP server** is **Claude Desktop's** only path (it can't run
+  skills) and an optional typed-tool surface elsewhere. Cursor and Antigravity
+  support **both** skills and MCP.
 
 One interactive installer wires up whichever you pick — arrow-key checkbox UI,
 pre-checks already-installed targets, untick to uninstall:
@@ -149,7 +149,7 @@ pre-checks already-installed targets, untick to uninstall:
 ```bash
 sh integrations/install.sh                      # checkbox picker (Windows: install.ps1)
 # non-interactive:
-sh integrations/install.sh --claude-code=plugin --claude-desktop=mcp
+sh integrations/install.sh --cursor=skills,mcp --claude-desktop=mcp
 ```
 
 See [`integrations/README.md`](integrations/README.md) (and

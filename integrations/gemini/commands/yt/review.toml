@@ -1,9 +1,0 @@
-description = "Cross-video subscriptions review — one themes essay to reviews/<DATE>.md."
-prompt = """
-Write a cross-video subscriptions review. {{args}}
-
-Use the yt-mem-ai MCP tools. Select the period's videos (list_videos
-status=summarized, since=…; analyze any still transcribed first), then write ONE
-essay to reviews/<DATE>.md — common threads, contradictions, emerging trends — no
-per-video sections. Cite specific moments with the video title + a MM:SS deep link.
-"""

@@ -2,13 +2,13 @@
 
 Two ways to reach the engine, per host:
 
-- **Native plugins/extensions** (Claude Code, Codex, Gemini) ship the `yt` /
-  `yt-manager` **skills** (+ slash commands). The skills drive the `yt-ai` CLI by
-  shelling out — run via `uvx yt-mem-ai <cmd>`, zero-install. This is the
-  idiomatic path for each platform; **no MCP involved.**
-- **The `yt-ai-mcp` MCP server** (in the package) is for **Claude Desktop** —
-  which can't run skills — and for headless / other MCP hosts (Cursor, tool
-  runners) that want a typed tool surface. Optional everywhere else.
+- **Native skills/plugins** (Claude Code, Codex, Cursor, Antigravity) ship the
+  `yt` / `yt-manager` **skills** (+ slash commands where the host has them). The
+  skills drive the `yt-ai` CLI by shelling out — run via `uvx yt-mem-ai <cmd>`,
+  zero-install. This is the idiomatic path for each platform.
+- **The `yt-ai-mcp` MCP server** (in the package) is **Claude Desktop's** only
+  path (it can't run skills), and an optional typed-tool surface on the other
+  hosts (Cursor and Antigravity expose both skills *and* MCP).
 
 ## Install (interactive)
 
@@ -34,25 +34,27 @@ curl -LsSf https://raw.githubusercontent.com/dasein108/yt-mem-ai/main/integratio
   | sh -s -- --claude-desktop=plugin --codex=mcp
 ```
 
-Flags: `--claude-code=plugin,mcp`, `--claude-desktop=plugin,mcp`,
-`--codex=plugin,mcp`, `--gemini=extension,mcp`, `--all-plugins`, `--all-mcp`,
-`-y`. The zero-effort path is [`PROMPT.md`](PROMPT.md) — paste it into any agent.
+Flags: `--claude-code=plugin,mcp`, `--claude-desktop=bundle,mcp`,
+`--codex=plugin,mcp`, `--cursor=skills,mcp`, `--antigravity=skills,mcp`
+(alias `--gravity`), `--all-plugins`, `--all-mcp`, `-y`. The zero-effort path is
+[`PROMPT.md`](PROMPT.md) — paste it into any agent.
 
 ## Host × delivery matrix
 
-| Host | Native plugin (skills + CLI) | MCP (optional) |
+| Host | Native (skills) | MCP |
 |---|---|---|
 | **Claude Code** ([docs](claude-code/README.md)) | skills + `/yt-*` commands | `claude mcp add` |
 | **Claude Desktop** ([docs](claude-desktop/README.md)) | — (no native skills) | `.mcpb` bundle **or** `claude_desktop_config.json` |
-| **Codex** ([docs](codex/README.md)) | `.codex-plugin` skills + prompts + AGENTS.md | `~/.codex/config.toml` server |
-| **Gemini CLI** ([docs](gemini/README.md)) | extension: skills + `/yt:*` commands | merge `~/.gemini/settings.json` |
+| **Codex** ([docs](codex/README.md)) | `~/.codex/skills/` + prompts + AGENTS.md | `~/.codex/config.toml` |
+| **Cursor** ([docs](cursor/README.md)) | `~/.cursor/skills/` | merge `~/.cursor/mcp.json` |
+| **Antigravity** ([docs](antigravity/README.md)) | `~/.gemini/skills/` | merge `~/.gemini/config/mcp_config.json` |
 
 The same `yt` / `yt-manager` **SKILL.md** skills run natively on Claude Code,
-Codex (v0.117.0+, `~/.codex/skills/`), and Gemini extensions — and they call the
-`yt-ai` CLI via `uvx` (no package or MCP server needed). **Claude Desktop** is
-the one host without native skills, so it uses the **MCP** column (its scenarios
-come through MCP prompts). The MCP column is also there for anyone who wants the
-typed tool surface on the other hosts — it's optional, not required.
+Codex (v0.117.0+), Cursor, and Antigravity — all discovered from each host's
+skills directory, all calling the `yt-ai` CLI via `uvx` (no package needed).
+**Claude Desktop** is the one host without native skills, so it uses the **MCP**
+column. Cursor and Antigravity expose **both** — pick skills, MCP, or both. Any
+MCP install uses a fast, pre-installed `yt-ai-mcp` binary (`uv tool install`).
 
 ## The server itself
 

@@ -1,7 +1,7 @@
 # Zero-effort install prompt
 
-Paste this into any coding agent (Claude Code, Codex, Gemini, Cursor, …) and it
-will download and wire up yt-mem-ai for the host(s) you name — no manual steps.
+Paste this into any coding agent (Claude Code, Codex, Cursor, Antigravity, …) and
+it will download and wire up yt-mem-ai for the host(s) you name — no manual steps.
 
 ---
 
@@ -23,8 +23,8 @@ Install the **yt-mem-ai** YouTube AI engine for me. It ships an MCP server
    ```
 
    Valid flags (mix freely): `--claude-code=plugin,mcp`,
-   `--claude-desktop=plugin,mcp`, `--codex=plugin,mcp`, `--gemini=extension,mcp`,
-   `--all-plugins`, `--all-mcp`.
+   `--claude-desktop=bundle,mcp`, `--codex=plugin,mcp`, `--cursor=skills,mcp`,
+   `--antigravity=skills,mcp`, `--all-plugins`, `--all-mcp`.
 
 2. If a step prints an in-app command (Claude Code's `/plugin marketplace add …`
    / `/plugin install …`), run it for me in that host.
