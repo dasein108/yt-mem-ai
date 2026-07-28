@@ -117,6 +117,8 @@ SEL=" "
 is_sel()  { case "$SEL" in *" $1 "*) return 0;; esac; return 1; }
 add_sel() { is_sel "$1" || SEL="$SEL$1 "; }
 toggle()  { if is_sel "$1"; then SEL=$(printf '%s' "$SEL" | sed "s/ $1 / /"); else SEL="$SEL$1 "; fi; }
+in_set()  { case " $2 " in *" $1 "*) return 0;; esac; return 1; }   # id, set-string
+_any()    { [ -n "$(printf '%s' "$1" | tr -d ' ')" ]; }
 
 # --------------------------------------------------------------------------- #
 # argument parsing → selection + mode
@@ -241,7 +243,9 @@ tui_bash() {
       " ") toggle "$_cur" ;;
       a|A) for _i in 1 2 3 4 5 6 7 8; do [ "$(item_detected "$_i")" = yes ] && add_sel "$_i"; done ;;
       q|Q) trap - EXIT INT; printf '\033[?25h\n'; msg "aborted."; exit 0 ;;
-      "")  [ -n "$(printf '%s' "$SEL" | tr -d ' ')" ] && break ;;   # enter → confirm if any selected
+      # enter → confirm when there's anything to act on (a selection to install,
+      # or installed state to diff against — e.g. unticking all = remove all).
+      "")  { _any "$SEL" || _any "$INST"; } && break ;;
     esac
   done
   trap - EXIT INT
@@ -261,15 +265,34 @@ if [ "$NONINTERACTIVE" -eq 0 ]; then
   fi
 fi
 
-# normalize + guard
-SEL=$(printf '%s' "$SEL" | tr -s ' ')
-[ "$SEL" != " " ] && [ -n "$(printf '%s' "$SEL" | tr -d ' ')" ] || die "nothing selected."
+# --------------------------------------------------------------------------- #
+# diff: selection vs. currently-installed → INSTALL set + UNINSTALL set
+#   selected & not installed → install ;  installed & unselected → uninstall
+#   selected & installed → leave as-is  ;  neither → ignore
+# In flag/non-interactive mode INST is empty, so UNINSTALL is empty (flags never
+# remove) — unchanged additive behavior.
+# --------------------------------------------------------------------------- #
+INSTALL=" "; UNINSTALL=" "
+for i in 1 2 3 4 5 6 7 8; do
+  if is_sel "$i"; then
+    in_set "$i" "$INST" || INSTALL="$INSTALL$i "
+  else
+    in_set "$i" "$INST" && UNINSTALL="$UNINSTALL$i "
+  fi
+done
+_any "$INSTALL" || _any "$UNINSTALL" || { msg "no changes."; exit 0; }
 
 echo
-msg "will install:"
-for i in 1 2 3 4 5 6 7 8; do is_sel "$i" && printf '   - %s\n' "$(item_label "$i")"; done
-# Confirm only for flag-driven runs; an interactive picker already confirmed on enter/install.
-if [ "$ASSUME_YES" -eq 0 ] && [ "$INTERACTIVE_PICKED" -eq 0 ] && [ -t 0 ]; then
+msg "plan:"
+for i in 1 2 3 4 5 6 7 8; do in_set "$i" "$INSTALL"   && printf '   %s+ install%s %s\n' "$C_SEL" "$C_RESET" "$(item_label "$i")"; done
+for i in 1 2 3 4 5 6 7 8; do in_set "$i" "$UNINSTALL" && printf '   %s- remove %s %s\n' "$C_CUR" "$C_RESET" "$(item_label "$i")"; done
+
+# Confirm. Removals are destructive → always confirm (default No), even after a
+# picker. Install-only after an interactive pick needs no re-confirm.
+if _any "$UNINSTALL" && [ "$ASSUME_YES" -eq 0 ] && [ -t 0 ]; then
+  printf '\nApply this plan (includes removals)? [y/N] '; read -r ok || ok=n
+  case "$ok" in y*|Y*) : ;; *) msg "aborted."; exit 0 ;; esac
+elif ! _any "$UNINSTALL" && [ "$ASSUME_YES" -eq 0 ] && [ "$INTERACTIVE_PICKED" -eq 0 ] && [ -t 0 ]; then
   printf '\nProceed? [Y/n] '; read -r ok || ok=n
   case "$ok" in n*|N*) msg "aborted."; exit 0 ;; esac
 fi
@@ -288,11 +311,14 @@ ensure_uv() {
   uv cache clean yt-mem-ai >/dev/null 2>&1 || true
   uvx --refresh-package yt-mem-ai --from "yt-mem-ai[mcp]" yt-ai-mcp --help >/dev/null 2>&1 || true
 }
-ensure_uv
-UVX=$(command -v uvx)
-mkdir -p "$DATA_DIR/lance" "$DATA_DIR/logs" "$DATA_DIR/downloads"
-
 PY=$(command -v python3 2>/dev/null || true)
+UVX=""
+# Only bootstrap uv + the data dir when we're actually installing something.
+if _any "$INSTALL"; then
+  ensure_uv
+  UVX=$(command -v uvx)
+  mkdir -p "$DATA_DIR/lance" "$DATA_DIR/logs" "$DATA_DIR/downloads"
+fi
 
 # merge one stdio MCP server into a JSON config file's mcpServers map.
 # args: FILE  SERVER_NAME   (uses $UVX and $DATA_DIR from env)
@@ -336,6 +362,38 @@ EOF
     warn "python3 not found and $_file already exists — add this server manually:"
     warn '  "yt-mem-ai": {"command": "'"$UVX"'", "args": ["--from","yt-mem-ai[mcp]","yt-ai-mcp"]}'
   fi
+}
+
+# delete one server from a JSON config's mcpServers map. args: FILE NAME
+json_remove_server() {
+  _file=$1; _name=$2
+  [ -f "$_file" ] || return 0
+  if [ -n "$PY" ]; then
+    YT_FILE="$_file" YT_NAME="$_name" "$PY" - <<'PYEOF'
+import json, os
+f, name = os.environ["YT_FILE"], os.environ["YT_NAME"]
+try:
+    cfg = json.load(open(f))
+except Exception:
+    cfg = None
+if isinstance(cfg, dict) and isinstance(cfg.get("mcpServers"), dict) and name in cfg["mcpServers"]:
+    del cfg["mcpServers"][name]
+    json.dump(cfg, open(f, "w"), indent=2)
+    print("removed", name, "from", f)
+PYEOF
+  else
+    warn "python3 not found — remove the \"$_name\" server from $_file by hand."
+  fi
+}
+
+# delete the [mcp_servers.yt-mem-ai] (+ .env) sections from a Codex config.toml.
+toml_remove_yt() {
+  _file=$1
+  [ -f "$_file" ] || return 0
+  awk '
+    /^[[:space:]]*\[/ { skip = ($0 ~ /^[[:space:]]*\[mcp_servers\.yt-mem-ai([].]|$)/) ? 1 : 0 }
+    skip != 1 { print }
+  ' "$_file" > "$_file.tmp" 2>/dev/null && mv "$_file.tmp" "$_file"
 }
 
 # --------------------------------------------------------------------------- #
@@ -445,23 +503,71 @@ do_gemini_extension() {
 }
 
 # --------------------------------------------------------------------------- #
-# dispatch
+# per-target uninstallers
+# --------------------------------------------------------------------------- #
+undo_claude_code_plugin() {
+  msg "Claude Code plugin — remove inside Claude Code:  /plugin uninstall yt-mem-ai@yt-mem-ai"
+}
+undo_claude_code_mcp() {
+  if have claude; then
+    claude mcp remove yt-mem-ai >/dev/null 2>&1 && msg "Claude Code: removed MCP server 'yt-mem-ai'." \
+      || warn "Claude Code: 'claude mcp remove yt-mem-ai' failed (maybe not present)."
+  else warn "Claude Code: 'claude' not on PATH — run: claude mcp remove yt-mem-ai"; fi
+}
+undo_claude_desktop_plugin() {
+  msg "Claude Desktop bundle — remove in the app: Settings → Extensions → yt-mem-ai → Uninstall."
+}
+undo_claude_desktop_mcp() {
+  json_remove_server "$DESKTOP_CFG" "yt-mem-ai"
+  msg "Claude Desktop: removed MCP server from $(basename "$DESKTOP_CFG"). Restart Claude Desktop."
+}
+undo_codex_mcp() {
+  toml_remove_yt "$HOME/.codex/config.toml"
+  msg "Codex: removed MCP server from config.toml."
+}
+undo_codex_plugin() {
+  undo_codex_mcp
+  rm -rf "$HOME/.codex/skills/yt" "$HOME/.codex/skills/yt-manager" 2>/dev/null || true
+  for p in yt-summarize yt-highlights yt-qa yt-presentation yt-digest yt-review yt-group; do
+    rm -f "$HOME/.codex/prompts/$p.md" 2>/dev/null || true
+  done
+  msg "Codex: removed skills + prompts. (Left ~/.codex/AGENTS.md untouched — delete it by hand if it's ours.)"
+}
+undo_gemini_extension() {
+  if have gemini; then
+    gemini extensions uninstall yt-mem-ai >/dev/null 2>&1 && msg "Gemini: extension uninstalled (restart gemini)." \
+      || warn "Gemini: 'gemini extensions uninstall yt-mem-ai' failed (maybe not installed)."
+  else warn "Gemini: 'gemini' not on PATH — remove ~/.gemini/extensions/yt-mem-ai by hand."; fi
+}
+undo_gemini_mcp() {
+  json_remove_server "$HOME/.gemini/settings.json" "yt-mem-ai"
+  msg "Gemini: removed MCP server from ~/.gemini/settings.json. Restart gemini."
+}
+
+# --------------------------------------------------------------------------- #
+# dispatch: removals first, then installs
 # --------------------------------------------------------------------------- #
 echo
 for i in 1 2 3 4 5 6 7 8; do
-  is_sel "$i" || continue
+  in_set "$i" "$UNINSTALL" || continue
   case "$i" in
-    1) do_claude_code_plugin ;;
-    2) do_claude_code_mcp ;;
-    3) do_claude_desktop_plugin ;;
-    4) do_claude_desktop_mcp ;;
-    5) do_codex_plugin ;;
-    6) do_codex_mcp ;;
-    7) do_gemini_extension ;;
-    8) do_gemini_mcp ;;
+    1) undo_claude_code_plugin ;;   2) undo_claude_code_mcp ;;
+    3) undo_claude_desktop_plugin ;;4) undo_claude_desktop_mcp ;;
+    5) undo_codex_plugin ;;         6) undo_codex_mcp ;;
+    7) undo_gemini_extension ;;     8) undo_gemini_mcp ;;
+  esac
+done
+for i in 1 2 3 4 5 6 7 8; do
+  in_set "$i" "$INSTALL" || continue
+  case "$i" in
+    1) do_claude_code_plugin ;;   2) do_claude_code_mcp ;;
+    3) do_claude_desktop_plugin ;;4) do_claude_desktop_mcp ;;
+    5) do_codex_plugin ;;         6) do_codex_mcp ;;
+    7) do_gemini_extension ;;     8) do_gemini_mcp ;;
   esac
 done
 
 echo
-msg "done. Data dir: $DATA_DIR (override with YT_MEM_AI_HOME)."
-msg "Set proxy/cookies/embedding vars in each host's config or .env — see integrations/mcp/README.md."
+_any "$INSTALL" && msg "done. Data dir: $DATA_DIR (override with YT_MEM_AI_HOME)."
+_any "$INSTALL" && msg "Set proxy/cookies/embedding vars from chat with 'yt-ai config set', or in each host's config — see integrations/mcp/README.md."
+_any "$UNINSTALL" && ! _any "$INSTALL" && msg "done — removed the selected integration(s)."

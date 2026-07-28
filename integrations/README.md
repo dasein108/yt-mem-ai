@@ -15,9 +15,12 @@ You get an **arrow-key checkbox UI** — `↑`/`↓` (or `j`/`k`) to move, **spa
 toggle, `a` to select all detected hosts, **enter** to install, `q` to quit —
 so you can tick, e.g., `[x] Claude Desktop (Bundle)` **and** `[x] Codex (MCP)` in
 one run. Undetected hosts are dimmed but still selectable. **Already-installed
-targets are auto-detected, pre-checked `[x]`, and labeled `(installed)`** — untick
-to skip them, or just add new ones (re-installing is idempotent). (Falls back to a
-numbered menu on terminals without cursor addressing.) Non-interactive / piped:
+targets are auto-detected, pre-checked `[x]`, and labeled `(installed)`.** The
+picker is a **diff**: tick a new target to install it, **untick an installed one
+to remove it** (uninstall), leave it checked to keep it. On enter you get a plan
+(`+ install` / `- remove`); any removals require an extra confirm. (Falls back to
+a numbered menu on terminals without cursor addressing.) Non-interactive / piped
+runs are install-only. Piped:
 
 ```
 curl -LsSf https://raw.githubusercontent.com/dasein108/yt-mem-ai/main/integrations/install.sh \
