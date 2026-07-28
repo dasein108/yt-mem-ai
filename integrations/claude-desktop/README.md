@@ -4,15 +4,20 @@ Claude Desktop only loads MCP servers (not Claude Code skills), so this packages
 the `yt-ai-mcp` server as a one-click `.mcpb` bundle. Scenario playbooks are
 available as MCP **prompts** (summarize / highlights / digest / review / group).
 
-## Option A — Bundle (recommended)
+## Option A — Bundle
 
 ```
-sh integrations/claude-desktop/build.sh      # needs: npm i -g @anthropic-ai/mcpb
+sh integrations/claude-desktop/build.sh      # no mcpb CLI needed — a .mcpb is just a zip
 ```
 
-Then double-click `yt-mem-ai.mcpb` (or Claude Desktop → Settings → Extensions →
-Install from file). Claude Desktop prompts for the data directory and optional
-proxy/cookies config.
+`build.sh` uses the `mcpb` CLI if you have it, otherwise plain `zip` (a `.mcpb`
+is a ZIP with `manifest.json` at the root). Then double-click `yt-mem-ai.mcpb`
+(or Claude Desktop → Settings → Extensions → Install from file). Claude Desktop
+prompts for the data directory and optional proxy/cookies config.
+
+> The bundle is a thin launcher — the server runs the published package via
+> `uvx` at startup (no bundled Python), so `uv`/`uvx` must be on PATH. If the
+> bundle is fussy, **Option B (MCP config) is simpler and just as capable.**
 
 ## Option B — MCP config (no bundle)
 

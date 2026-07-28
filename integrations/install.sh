@@ -433,16 +433,18 @@ do_claude_desktop_mcp() {
 do_claude_desktop_plugin() {
   _src=$(src_dir claude-desktop)
   if [ -z "$_src" ]; then
-    warn "Claude Desktop bundle needs the repo checkout. Clone it and re-run, or use --claude-desktop=mcp."
-    return
+    warn "Claude Desktop bundle needs the repo checkout — falling back to MCP config."
+    do_claude_desktop_mcp; return
   fi
-  if ! have mcpb; then
-    warn "Claude Desktop bundle needs the mcpb CLI: npm install -g @anthropic-ai/mcpb — then re-run, or use --claude-desktop=mcp."
-    return
+  # build.sh uses the mcpb CLI if present, else plain `zip` (a .mcpb is a zip).
+  if ( cd "$_src" && sh build.sh ); then
+    _out="$_src/yt-mem-ai.mcpb"
+    if have open; then open "$_out" && msg "Claude Desktop: opened $_out to install."
+    else msg "Built $_out — open it in Claude Desktop → Settings → Extensions."; fi
+  else
+    warn "Bundle build failed — falling back to MCP config."
+    do_claude_desktop_mcp
   fi
-  ( cd "$_src" && sh build.sh )
-  _out="$_src/yt-mem-ai.mcpb"
-  if have open; then open "$_out" && msg "Claude Desktop: opened $_out to install."; else msg "Built $_out — open it in Claude Desktop → Settings → Extensions."; fi
 }
 
 CODEX_CFG="$HOME/.codex/config.toml"

@@ -12,6 +12,7 @@
   "keywords": ["youtube", "transcription", "summarization", "mcp"],
   "server": {
     "type": "binary",
+    "entry_point": "uvx",
     "mcp_config": {
       "command": "uvx",
       "args": ["--from", "yt-mem-ai[mcp]", "yt-ai-mcp"],
@@ -50,6 +51,7 @@
     "webshare_password": {
       "type": "string",
       "title": "Webshare proxy password (optional)",
+      "description": "Password for the Webshare rotating proxy (only if enabled).",
       "sensitive": true,
       "required": false
     },
