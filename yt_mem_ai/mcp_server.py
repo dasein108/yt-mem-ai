@@ -18,6 +18,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 from . import cli
+from . import settings as settings_mod
 from .store import db as store
 from .transcript import CaptionsBlocked, TranscriptUnavailable
 
@@ -247,6 +248,54 @@ def frame(video_id: str, at: str, out: str | None = None) -> dict:
     cfg = cli.load_config()
     path = cli.run_frame(cfg, video_id, at, out)
     return {"path": str(path)}
+
+
+@mcp.tool()
+def config_list(reveal: bool = False) -> list[dict]:
+    """List every yt-mem-ai setting with its effective value, source, and description.
+
+    Source is env | project | global | default. Secret values (API keys, proxy
+    password) are masked unless reveal=True. Use this to see what's configurable
+    and what's currently set before changing anything.
+    """
+    return settings_mod.list_settings(reveal=reveal)
+
+
+@mcp.tool()
+def config_get(key: str, reveal: bool = False) -> dict:
+    """Get one setting's effective value and where it comes from (env/project/global/default)."""
+    try:
+        return settings_mod.get_setting(key, reveal=reveal)
+    except settings_mod.UnknownKey:
+        return {"error": "unknown setting", "key": key}
+
+
+@mcp.tool()
+def config_set(key: str, value: str, scope: str = "global") -> dict:
+    """Set a yt-mem-ai setting (e.g. WEBSHARE_PROXY_USERNAME, YT_EMBEDDING_MODEL).
+
+    Persists to the global config file (`~/.yt-mem-ai/config.env`) by default so
+    it applies to this server regardless of working directory; pass scope="project"
+    to write ./.env instead. Takes effect on the next tool call (no restart) unless
+    the same key is set as a process env var — the returned `warning` flags that.
+    Only known keys are accepted (see config_list).
+    """
+    try:
+        return settings_mod.set_setting(key, value, scope=scope)
+    except settings_mod.UnknownKey:
+        return {"error": "unknown setting", "key": key,
+                "hint": "call config_list to see valid keys"}
+    except ValueError as exc:
+        return {"error": str(exc), "key": key}
+
+
+@mcp.tool()
+def config_unset(key: str, scope: str = "global") -> dict:
+    """Remove a setting from the global (or scope="project") config file."""
+    try:
+        return settings_mod.unset_setting(key, scope=scope)
+    except settings_mod.UnknownKey:
+        return {"error": "unknown setting", "key": key}
 
 
 @mcp.tool()

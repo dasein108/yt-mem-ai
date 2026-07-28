@@ -15,6 +15,16 @@ not an API) to keep it free and high-quality.
 - `config.py` — `.env` loading (`Config`). Secrets only from `.env` (gitignored).
   `use_webshare` (`YT_USE_WEBSHARE`, default **off**) gates the Webshare proxy;
   `discover_feed_limit`/`discover_overlap_s` tune incremental discovery.
+  `load_config` precedence is **global config file < project `.env` < process
+  env**: the global file (`$YT_MEM_AI_HOME/config.env`, default
+  `~/.yt-mem-ai/config.env`) lets settings applied from chat persist for the MCP
+  server no matter its cwd.
+- `settings.py` — runtime get/set of the `.env` variables, powering `yt-ai
+  config {list,get,set,unset,path}` and the MCP `config_*` tools (so an agent/user
+  can set Webshare creds, swap the embedding model, etc. from chat). `KNOWN`
+  registry mirrors `.env.example` (validates keys + choices, masks secrets);
+  `set_setting` writes the global config file by default (`scope="project"` →
+  `./.env`) and flags when a process env var would override the write.
 - `obs.py` — unified logging. `log_event(source, event, level="info", msg="", *,
   log_file=None, **ctx)` never raises (append fails silently); `blog(...)` is the
   `source="backend"` shorthand used across `cli.py`. Writes one JSON line

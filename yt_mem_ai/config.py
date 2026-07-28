@@ -76,6 +76,14 @@ def load_config(env_path: Path | None = None) -> Config:
     if env_path is None:
         env_path = Path(".env")
     data: dict[str, str | None] = {}
+    # Precedence (low → high): global config file < project .env < process env.
+    # The global file (~/.yt-mem-ai/config.env) is what `yt-ai config set` writes
+    # by default, so settings applied from chat persist for the MCP server
+    # regardless of its working directory.
+    from .settings import global_config_path
+    gpath = global_config_path()
+    if gpath.exists():
+        data.update(dotenv_values(gpath))
     if Path(env_path).exists():
         data.update(dotenv_values(env_path))
     # process env overrides file

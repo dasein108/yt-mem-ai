@@ -24,3 +24,9 @@ group (resolve set → `fetch` each → `groups/<label>.md`).
 
 Produce artifacts in the video's **original language** (`transcript_lang`);
 translate only on request. Dates are `YYYY-MM-DD`. Report what ran + output paths.
+
+**Reconfigure on request:** to change settings (Webshare proxy login, embedding
+model/backend, cookies browser, caption languages) use `config_set(key, value)`
+/ `config_list()` — persists to `~/.yt-mem-ai/config.env`, effective next call.
+Only known `.env` keys are accepted; after changing the embedding model, run
+`reembed`.

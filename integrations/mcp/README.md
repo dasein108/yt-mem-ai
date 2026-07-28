@@ -31,7 +31,25 @@ Any host that speaks MCP over stdio:
 
 `fetch`, `show`, `status`, `list_videos`, `search`, `save_summary`, `discover`,
 `fetch_pending`, `channel_list`, `like`, `dislike`, `recommend`, `compile`,
-`supercut`, `frame`, `reembed`.
+`supercut`, `frame`, `reembed`, and the config tools `config_list`,
+`config_get`, `config_set`, `config_unset`.
+
+## Reconfigure from chat
+
+Any agent can read and change settings live via the config tools — e.g. set the
+Webshare proxy login, switch the embedding model, or point at a cookies browser:
+
+```
+config_set("WEBSHARE_PROXY_USERNAME", "…")     # + WEBSHARE_PROXY_PASSWORD
+config_set("YT_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
+config_list()                                   # see every key, value, source
+```
+
+`config_set` writes the global config file (`~/.yt-mem-ai/config.env`) by default
+and takes effect on the next tool call (no restart). It only accepts known keys
+(the `.env` variables); secrets are masked in output unless `reveal=true`. If a
+key is also set as a process env var in the host config, that wins — `config_set`
+returns a `warning` saying so. Equivalent CLI: `yt-ai config set/get/list/unset`.
 
 ## Prompts (scenarios)
 

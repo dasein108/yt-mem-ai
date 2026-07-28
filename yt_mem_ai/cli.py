@@ -17,6 +17,7 @@ from .compile import compile_highlights, render_markdown
 from .supercut import build_supercut
 from .frame import parse_timestamp, grab_frame, FrameError
 from . import memory
+from . import settings as settings_mod
 from .obs import blog
 
 app = typer.Typer(help="YouTube AI CLI — download, transcribe, embed, search.")
@@ -576,6 +577,72 @@ def reembed():
         typer.echo("no chunks to re-embed")
     else:
         typer.echo(f"re-embedded {n} chunks with {cfg.embedding_backend}:{_embedding_model_name(cfg)}")
+
+
+config_app = typer.Typer(help="Get/set yt-mem-ai settings (the .env variables).")
+app.add_typer(config_app, name="config")
+
+
+@config_app.command("list")
+def config_list(as_json: bool = typer.Option(False, "--json"),
+                reveal: bool = typer.Option(False, "--reveal", help="Show secret values in full")):
+    """Show every known setting with its effective value and source."""
+    rows = settings_mod.list_settings(reveal=reveal)
+    if as_json:
+        typer.echo(json.dumps(rows))
+        return
+    for r in rows:
+        val = r["value"] if r["value"] not in (None, "") else "(unset)"
+        typer.echo(f"{r['key']:26} = {val:32}  [{r['source']}]  {r['description']}")
+
+
+@config_app.command("get")
+def config_get(key: str, reveal: bool = typer.Option(False, "--reveal"),
+               as_json: bool = typer.Option(False, "--json")):
+    """Show one setting's effective value and where it comes from."""
+    try:
+        r = settings_mod.get_setting(key, reveal=reveal)
+    except settings_mod.UnknownKey:
+        typer.echo(f"unknown setting: {key}", err=True)
+        raise typer.Exit(1)
+    typer.echo(json.dumps(r) if as_json else f"{r['key']} = {r['value']}  [{r['source']}]")
+
+
+@config_app.command("set")
+def config_set(key: str, value: str,
+               project: bool = typer.Option(False, "--project", help="Write to ./.env instead of the global config")):
+    """Set a setting (global by default; --project writes ./.env)."""
+    try:
+        r = settings_mod.set_setting(key, value, scope="project" if project else "global")
+    except settings_mod.UnknownKey:
+        typer.echo(f"unknown setting: {key} (see `yt-ai config list`)", err=True)
+        raise typer.Exit(1)
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(2)
+    typer.echo(f"set {key} in {r['written_to']}")
+    if r.get("warning"):
+        typer.echo(f"warning: {r['warning']}", err=True)
+
+
+@config_app.command("unset")
+def config_unset(key: str,
+                 project: bool = typer.Option(False, "--project", help="Remove from ./.env instead of the global config")):
+    """Remove a setting from the global (or --project) config file."""
+    try:
+        r = settings_mod.unset_setting(key, scope="project" if project else "global")
+    except settings_mod.UnknownKey:
+        typer.echo(f"unknown setting: {key}", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"unset {key} from {r['removed_from']}")
+
+
+@config_app.command("path")
+def config_path():
+    """Show the global and project config file locations."""
+    p = settings_mod.config_paths()
+    typer.echo(f"global : {p['global']}  (exists: {p['global_exists']})")
+    typer.echo(f"project: {p['project']}  (exists: {p['project_exists']})")
 
 
 if __name__ == "__main__":

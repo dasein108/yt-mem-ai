@@ -29,6 +29,23 @@ Config (`.env`): `YT_STORE_PATH` (LanceDB dir), `YT_EMBEDDING_BACKEND=local|open
 `YT_EMBEDDING_MODEL`, `YT_CHUNK_TARGET_S`, `OPENAI_API_KEY` (openai backend),
 `WEBSHARE_PROXY_*`, `YT_COOKIES_BROWSER`.
 
+**Configure from the CLI or an agent** — instead of editing `.env` by hand, use
+`yt-ai config` (or the MCP `config_*` tools, so an agent can reconfigure itself
+from chat):
+
+```bash
+yt-ai config list                  # every setting, value, and source
+yt-ai config set WEBSHARE_PROXY_USERNAME <user>
+yt-ai config set WEBSHARE_PROXY_PASSWORD <pass>
+yt-ai config set YT_EMBEDDING_MODEL paraphrase-multilingual-MiniLM-L12-v2
+yt-ai config get OPENAI_API_KEY    # secrets masked (--reveal to show)
+```
+
+`set` writes the global config file (`~/.yt-mem-ai/config.env`) by default so the
+MCP server picks it up regardless of its working directory; `--project` writes
+`./.env`. Precedence: process env > project `.env` > global config file, and
+`config list` shows which one each value comes from.
+
 **Embeddings:** `YT_EMBEDDING_BACKEND=local|openai`. Local uses
 sentence-transformers (`YT_EMBEDDING_MODEL`, default `all-MiniLM-L6-v2`) — for
 non-English libraries set `paraphrase-multilingual-MiniLM-L12-v2` (384-d, 50+

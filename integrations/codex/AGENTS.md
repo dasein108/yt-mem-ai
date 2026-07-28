@@ -33,6 +33,19 @@ directly, and never invent highlight timestamps.
 - **Group** (arbitrary set): resolve via a comma list / `channel_list` / date
   range → `fetch` each → per-video analysis → `groups/<label>.md`.
 
+## Reconfigure on request
+
+If the user asks to change settings ("set my Webshare proxy login", "use the
+multilingual embedding model", "pull cookies from Brave"), use the config tools —
+don't ask them to edit files:
+
+- `config_list()` — every setting, its value, and source.
+- `config_set(key, value)` — persists to `~/.yt-mem-ai/config.env`; takes effect
+  next call. Only known `.env` keys (e.g. `WEBSHARE_PROXY_USERNAME`,
+  `WEBSHARE_PROXY_PASSWORD`, `YT_EMBEDDING_MODEL`, `YT_EMBEDDING_BACKEND`,
+  `YT_COOKIES_BROWSER`, `YT_CAPTION_LANGS`). After switching the embedding
+  model/backend, run `reembed` to migrate the library.
+
 ## Conventions
 
 - Produce artifacts in each video's **original language** (from `transcript_lang`

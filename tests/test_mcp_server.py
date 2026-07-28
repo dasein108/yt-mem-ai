@@ -185,6 +185,32 @@ def test_prompts_include_playbook_and_target():
     assert isinstance(mcp_server.yt_review(), str)
 
 
+def test_config_tools_roundtrip(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("YT_EMBEDDING_MODEL", raising=False)
+    rows = mcp_server.config_list()
+    assert any(r["key"] == "YT_EMBEDDING_MODEL" for r in rows)
+    _json_safe(rows)
+    out = mcp_server.config_set("YT_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
+    assert out["value"] == "paraphrase-multilingual-MiniLM-L12-v2"
+    assert mcp_server.config_get("YT_EMBEDDING_MODEL")["value"] == "paraphrase-multilingual-MiniLM-L12-v2"
+    mcp_server.config_unset("YT_EMBEDDING_MODEL")
+    assert mcp_server.config_get("YT_EMBEDDING_MODEL")["source"] == "default"
+
+
+def test_config_set_unknown_key_returns_error():
+    out = mcp_server.config_set("BOGUS", "x")
+    assert out["error"] == "unknown setting"
+
+
+def test_config_set_secret_masked(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("WEBSHARE_PROXY_PASSWORD", raising=False)
+    out = mcp_server.config_set("WEBSHARE_PROXY_PASSWORD", "hunter2")
+    assert out["value"] == "••••••••"
+    assert mcp_server.config_get("WEBSHARE_PROXY_PASSWORD", reveal=True)["value"] == "hunter2"
+
+
 def test_tools_are_registered():
     # FastMCP keeps the decorated function callable AND registers it.
     import asyncio
