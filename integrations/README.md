@@ -11,8 +11,11 @@ From a checkout, run the multi-select installer and tick the targets you want:
 sh integrations/install.sh        # macOS/Linux  (Windows: integrations\install.ps1)
 ```
 
-You get a checkbox matrix — e.g. `[X] Claude Desktop (Bundle)` **and**
-`[X] Codex (MCP)` in one run. Non-interactive / piped:
+You get an **arrow-key checkbox UI** — `↑`/`↓` (or `j`/`k`) to move, **space** to
+toggle, `a` to select all detected hosts, **enter** to install, `q` to quit —
+so you can tick, e.g., `[x] Claude Desktop (Bundle)` **and** `[x] Codex (MCP)` in
+one run. Undetected hosts are dimmed but still selectable. (Falls back to a
+numbered menu on terminals without cursor addressing.) Non-interactive / piped:
 
 ```
 curl -LsSf https://raw.githubusercontent.com/dasein108/yt-mem-ai/main/integrations/install.sh \

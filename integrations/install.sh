@@ -30,6 +30,15 @@ warn() { printf '%s\n' "yt-mem-ai: $*" >&2; }
 die()  { warn "$*"; exit 1; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# ANSI palette (only when stdout is a terminal).
+if [ -t 1 ]; then
+  C_RESET=$(printf '\033[0m'); C_HEAD=$(printf '\033[1;36m'); C_SEL=$(printf '\033[1;32m')
+  C_DIM=$(printf '\033[2m');   C_CUR=$(printf '\033[1;33m')
+else
+  C_RESET=; C_HEAD=; C_SEL=; C_DIM=; C_CUR=
+fi
+ESC=$(printf '\033')
+
 # Where does this script live, and are the integration files next to it?
 SCRIPT_DIR=""
 case "${0:-}" in
@@ -84,6 +93,7 @@ toggle()  { if is_sel "$1"; then SEL=$(printf '%s' "$SEL" | sed "s/ $1 / /"); el
 # --------------------------------------------------------------------------- #
 ASSUME_YES=0
 NONINTERACTIVE=0
+INTERACTIVE_PICKED=0
 add_host_methods() { # host  csv-of-methods
   _h=$1; _methods=$2
   IFS=,; for _m in $_methods; do IFS=' '
@@ -155,11 +165,64 @@ picker_plain() {
   done
 }
 
+# Arrow-key / space checkbox TUI (bash: works on macOS + Linux, no deps).
+TUI_ROWS=11
+tui_render() {
+  _c=$1
+  printf '  %syt-mem-ai installer%s\n' "$C_HEAD" "$C_RESET"
+  printf '  %s↑/↓ move  ·  space toggle  ·  a all detected  ·  enter install  ·  q quit%s\n\n' "$C_DIM" "$C_RESET"
+  for _i in 1 2 3 4 5 6 7 8; do
+    if is_sel "$_i"; then _box="${C_SEL}[x]${C_RESET}"; else _box="[ ]"; fi
+    _lab=$(item_label "$_i")
+    [ "$(item_detected "$_i")" = no ] && _lab="$_lab ${C_DIM}(not detected)${C_RESET}"
+    if [ "$_i" = "$_c" ]; then
+      printf '  %s❯%s %s %s%s%s\n' "$C_CUR" "$C_RESET" "$_box" "$C_CUR" "$_lab" "$C_RESET"
+    else
+      printf '    %s %s\n' "$_box" "$_lab"
+    fi
+  done
+}
+
+tui_bash() {
+  _cur=1; _first=1
+  printf '\033[?25l'                                  # hide cursor
+  trap 'printf "\033[?25h\n"' EXIT
+  trap 'printf "\033[?25h\n"; exit 130' INT
+  while :; do
+    if [ "$_first" = 1 ]; then _first=0; else printf '\033[%dA' "$TUI_ROWS"; fi
+    tui_render "$_cur"
+    # A failed read = EOF / Ctrl-D → quit cleanly (never spin the redraw loop).
+    if ! IFS= read -rsn1 _k 2>/dev/null; then
+      trap - EXIT INT; printf '\033[?25h\n'; msg "aborted."; exit 0
+    fi
+    case "$_k" in
+      "$ESC")
+        IFS= read -rsn2 -t 1 _r 2>/dev/null || _r=""
+        case "$_r" in
+          "[A") _cur=$(( _cur > 1 ? _cur - 1 : 8 )) ;;
+          "[B") _cur=$(( _cur < 8 ? _cur + 1 : 1 )) ;;
+        esac ;;
+      k|K) _cur=$(( _cur > 1 ? _cur - 1 : 8 )) ;;
+      j|J) _cur=$(( _cur < 8 ? _cur + 1 : 1 )) ;;
+      " ") toggle "$_cur" ;;
+      a|A) for _i in 1 2 3 4 5 6 7 8; do [ "$(item_detected "$_i")" = yes ] && add_sel "$_i"; done ;;
+      q|Q) trap - EXIT INT; printf '\033[?25h\n'; msg "aborted."; exit 0 ;;
+      "")  [ -n "$(printf '%s' "$SEL" | tr -d ' ')" ] && break ;;   # enter → confirm if any selected
+    esac
+  done
+  trap - EXIT INT
+  printf '\033[?25h'                                  # show cursor
+}
+
 if [ "$NONINTERACTIVE" -eq 0 ]; then
-  if have whiptail && [ -t 0 ]; then
-    picker_whiptail || picker_plain
+  if [ -t 0 ] && [ -t 1 ] && [ -n "${BASH_VERSION:-}" ]; then
+    tui_bash; INTERACTIVE_PICKED=1                    # rich arrow-key checkbox UI
+  elif [ -t 0 ] && [ -t 1 ] && have bash; then
+    exec bash "$0" "$@"                               # re-exec under bash for the TUI
+  elif have whiptail && [ -t 0 ]; then
+    picker_whiptail || picker_plain; INTERACTIVE_PICKED=1
   else
-    picker_plain
+    picker_plain; INTERACTIVE_PICKED=1                # portable numbered fallback
   fi
 fi
 
@@ -170,7 +233,8 @@ SEL=$(printf '%s' "$SEL" | tr -s ' ')
 echo
 msg "will install:"
 for i in 1 2 3 4 5 6 7 8; do is_sel "$i" && printf '   - %s\n' "$(item_label "$i")"; done
-if [ "$ASSUME_YES" -eq 0 ] && [ -t 0 ]; then
+# Confirm only for flag-driven runs; an interactive picker already confirmed on enter/install.
+if [ "$ASSUME_YES" -eq 0 ] && [ "$INTERACTIVE_PICKED" -eq 0 ] && [ -t 0 ]; then
   printf '\nProceed? [Y/n] '; read -r ok || ok=n
   case "$ok" in n*|N*) msg "aborted."; exit 0 ;; esac
 fi
