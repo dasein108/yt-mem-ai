@@ -423,3 +423,29 @@ def test_run_channel_list_delegates(tmp_path, monkeypatch):
     assert [v.video_id for v in out] == ["v3"]
     assert captured == {"url": "https://youtube.com/@chan", "limit": 5,
                         "after": "2026-07-01", "before": "2026-07-26"}
+
+
+def _invoke_fetch(monkeypatch, tmp_path, exc):
+    """Run `fetch` through the Typer runner with run_fetch raising `exc`."""
+    from typer.testing import CliRunner
+
+    def boom(*a, **kw):
+        raise exc
+
+    monkeypatch.setattr(cli, "load_config", lambda: _cfg(tmp_path))
+    monkeypatch.setattr(cli, "run_fetch", boom)
+    return CliRunner().invoke(cli.app, ["fetch", "https://y/abc"])
+
+
+def test_fetch_bot_check_prints_cookie_hint(tmp_path, monkeypatch):
+    from yt_mem_ai.download import SignInRequired
+    res = _invoke_fetch(monkeypatch, tmp_path, SignInRequired("Sign in to confirm"))
+    assert res.exit_code == 4
+    assert "YT_COOKIES_BROWSER" in res.output
+    assert "config set" in res.output
+
+
+def test_fetch_captions_blocked_hint_points_at_captions_webshare(tmp_path, monkeypatch):
+    res = _invoke_fetch(monkeypatch, tmp_path, T.CaptionsBlocked("ip blocked"))
+    assert res.exit_code == 3
+    assert "YT_CAPTIONS_USE_WEBSHARE" in res.output

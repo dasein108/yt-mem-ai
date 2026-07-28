@@ -5,59 +5,58 @@ description: Use when the user wants to run any yt-ai operation from Claude Code
 
 # yt-manager
 
-Single entry point for driving the `yt-ai` CLI (the yt-mem-ai YouTube pipeline)
-from Claude Code. Every data operation goes through the CLI — never touch the
-LanceDB store directly.
+Single entry point for driving the yt-mem-ai YouTube pipeline CLI. Every data
+operation goes through the CLI — never touch the LanceDB store directly.
 
 ## Prereqs
 
-- The `yt-ai` command ships in the **yt-mem-ai** package. **Every `yt-ai <cmd>`
-  example below runs equivalently as `uvx yt-mem-ai <cmd>`** — zero-install,
-  cached, always latest. If `yt-ai` isn't on PATH (the native plugins don't
-  install a package, they run the CLI via uvx), just prefix with `uvx`:
-  `uvx yt-mem-ai fetch <url>`, `uvx yt-mem-ai search "<q>"`, etc. (A source
-  checkout can also use `uv run yt-ai <cmd>`.)
-- `.env` must be filled (Webshare proxy + cookies for yt-dlp, embedding backend).
-  You don't have to hand-edit it: inspect and set any setting from here with
-  `yt-ai config list` / `yt-ai config set KEY VALUE` (see **Configure & maintain**).
+- **Always invoke the CLI as `uvx yt-mem-ai <cmd>`** — zero-install, cached,
+  always latest. **Nothing is installed on PATH**: the native plugins ship skills
+  only, so do NOT go hunting for a `yt-ai` binary, a wrapper script, or a venv.
+  (Only inside a source checkout of this repo may you use `uv run yt-ai <cmd>`.)
+- Settings live in a global config file, not a `.env` you hand-edit: inspect and
+  change anything with `uvx yt-mem-ai config list` / `uvx yt-mem-ai config set
+  KEY VALUE` (see **Configure & maintain**). Prefer `config set` over exporting
+  env vars — each `uvx` run is a fresh process, so an env var only applies to the
+  one command you prefixed it to.
 - Video lifecycle status: `discovered → transcribed → summarized` (live streams
   get a terminal `stream` and skip transcription).
 
 ```bash
-yt-ai <command> [args]        # (or: uvx yt-mem-ai <command> [args])
+uvx yt-mem-ai <command> [args]
 ```
 
 ## Decide what the user wants, then run
 
 ### Ingest one video
 ```bash
-uv run yt-ai fetch <url>        # download audio + transcribe + embed + store
-uv run yt-ai transcript <url>   # same pipeline (alias intent)
+uvx yt-mem-ai fetch <url>        # download audio + transcribe + embed + store
+uvx yt-mem-ai transcript <url>   # same pipeline (alias intent)
 ```
 
 ### Discover + batch ingest (subscriptions)
 ```bash
-uv run yt-ai discover [--after <DATE>] [--deep] [--min-duration <s>] [--json]
-uv run yt-ai fetch-pending [--since <DATE>] [--limit <N>]   # ingest 'discovered' videos
+uvx yt-mem-ai discover [--after <DATE>] [--deep] [--min-duration <s>] [--json]
+uvx yt-mem-ai fetch-pending [--since <DATE>] [--limit <N>]   # ingest 'discovered' videos
 ```
 
 ### Enumerate a channel (does not ingest)
 ```bash
-uv run yt-ai channel-list <url> [--limit <N>] [--from <DATE>] [--to <DATE>] [--json]
+uvx yt-mem-ai channel-list <url> [--limit <N>] [--from <DATE>] [--to <DATE>] [--json]
 # newest uploads for a channel URL/@handle; feed the URLs to `fetch` to ingest a group.
 ```
 
 ### Read / query the library
 ```bash
-uv run yt-ai list [--status <s>] [--since <DATE>] [--json]
-uv run yt-ai show <video_id> [--json]     # metadata + full transcript
-uv run yt-ai status                        # counts by status
-uv run yt-ai search "<query>" [--hybrid|--fts|--vector] [-k <N>]
+uvx yt-mem-ai list [--status <s>] [--since <DATE>] [--json]
+uvx yt-mem-ai show <video_id> [--json]     # metadata + full transcript
+uvx yt-mem-ai status                        # counts by status
+uvx yt-mem-ai search "<query>" [--hybrid|--fts|--vector] [-k <N>]
 ```
 
 ### Summaries (skills generate the analysis; CLI persists it)
 ```bash
-uv run yt-ai save-summary <video_id> "<summary_md>" \
+uvx yt-mem-ai save-summary <video_id> "<summary_md>" \
   --highlights '<json>' --qa '<json>'
 ```
 Do **not** write summaries free-hand here. For the model-generated analysis
@@ -70,17 +69,17 @@ a separate OpenRouter-based summarize path; it is not used here.)
 
 ### Taste / recommendations
 ```bash
-uv run yt-ai like <video_id>      # feedback table (latest signal per video wins)
-uv run yt-ai dislike <video_id>
-uv run yt-ai recommend [--limit <N>] [--json]   # rank unrated fetched videos by taste
+uvx yt-mem-ai like <video_id>      # feedback table (latest signal per video wins)
+uvx yt-mem-ai dislike <video_id>
+uvx yt-mem-ai recommend [--limit <N>] [--json]   # rank unrated fetched videos by taste
 ```
 
 ### Configure & maintain
 ```bash
-uv run yt-ai config list                     # every setting, value, and source
-uv run yt-ai config set KEY VALUE            # e.g. WEBSHARE_PROXY_USERNAME, YT_EMBEDDING_MODEL
-uv run yt-ai config get KEY [--reveal]       # secrets masked unless --reveal
-uv run yt-ai config unset KEY                # remove from the config file
+uvx yt-mem-ai config list                     # every setting, value, and source
+uvx yt-mem-ai config set KEY VALUE            # e.g. WEBSHARE_PROXY_USERNAME, YT_EMBEDDING_MODEL
+uvx yt-mem-ai config get KEY [--reveal]       # secrets masked unless --reveal
+uvx yt-mem-ai config unset KEY                # remove from the config file
 ```
 Use this to reconfigure the engine on request — set Webshare proxy creds, switch
 the embedding model/backend, point at a cookies browser, change caption languages
@@ -89,20 +88,20 @@ the embedding model/backend, point at a cookies browser, change caption language
 `.env` keys are accepted. After changing the embedding model/backend, migrate the
 existing library:
 ```bash
-uv run yt-ai reembed                          # re-embed all chunks with the current YT_EMBEDDING_* config
+uvx yt-mem-ai reembed                          # re-embed all chunks with the current YT_EMBEDDING_* config
 ```
 
 ### Compile / video output
 ```bash
-uv run yt-ai compile [--since <DATE>] [--max-minutes <N>] [--out <path>] [--json]
+uvx yt-mem-ai compile [--since <DATE>] [--max-minutes <N>] [--out <path>] [--json]
 # Deep-linked highlights doc from summarized videos. Fast, no download. Prints the
 # markdown to stdout by default; pass --out compilations/<DATE>.md to save a file.
 
-uv run yt-ai supercut [--since <DATE>] [--max-minutes <N>] [--out <path>] [--keep-clips]
+uvx yt-mem-ai supercut [--since <DATE>] [--max-minutes <N>] [--out <path>] [--keep-clips]
 # → actual video reel supercuts/<date>.mp4 + .refs.md sidecar.
 # Slow: re-downloads each clip (720p) + ffmpeg concat. Needs network + local ffmpeg.
 
-uv run yt-ai frame <video_id> --at <seconds|H:M:S> [--out <path>]
+uvx yt-mem-ai frame <video_id> --at <seconds|H:M:S> [--out <path>]
 # Grab one still frame from an ingested video (needs yt-dlp + ffmpeg).
 # → frames/<id>_<s>s.png by default.
 ```
@@ -110,22 +109,37 @@ uv run yt-ai frame <video_id> --at <seconds|H:M:S> [--out <path>]
 > The REST API / `serve` command moved to the **yt-mem-ai-desktop** repo
 > (`yt-ai-desktop-serve`); it is not part of this engine CLI.
 
+## When YouTube blocks a fetch
+
+Two different blocks with two different fixes — read the message, don't guess.
+
+| Error | Cause | Fix |
+|---|---|---|
+| `YouTube bot check: ... Sign in to confirm you're not a bot` (exit 4) | yt-dlp (audio/metadata) needs a logged-in session | `uvx yt-mem-ai config set YT_COOKIES_BROWSER chrome` (or `brave`/`firefox`/`edge`/`safari`), then re-run |
+| `captions blocked by YouTube (IP rate-limited)` (exit 3) | the transcript API is IP-blocked | cookies do **not** help — retry later, or set `YT_CAPTIONS_USE_WEBSHARE true` + `WEBSHARE_PROXY_USERNAME`/`WEBSHARE_PROXY_PASSWORD` |
+| `no captions available` (exit 1) | video has no caption track | re-run with `--whisper` (downloads audio, slower) |
+
+Set these with `config set`, not `KEY=value uvx …`: the config file persists
+across runs, an env var only covers the single command you prefixed.
+On macOS the first Chrome-cookie read may raise a Keychain prompt — if a command
+hangs, tell the user to approve it.
+
 ## Pipelines
 
 **Daily routine** (subscriptions → digest → clickable highlights):
 ```bash
-uv run yt-ai discover          # new uploads → 'discovered'
-uv run yt-ai fetch-pending     # download+transcribe+embed today's batch (skips failures)
+uvx yt-mem-ai discover          # new uploads → 'discovered'
+uvx yt-mem-ai fetch-pending     # download+transcribe+embed today's batch (skips failures)
 ```
 then invoke **[[yt]]** (process subscriptions → per-video summaries + `digests/<DATE>.md`), then:
 ```bash
-uv run yt-ai compile           # deep-linked highlights doc for the day
-# optionally: uv run yt-ai supercut   # shareable video reel
+uvx yt-mem-ai compile           # deep-linked highlights doc for the day
+# optionally: uvx yt-mem-ai supercut   # shareable video reel
 ```
 
 **Single video on demand:**
 ```bash
-uv run yt-ai fetch <url>
+uvx yt-mem-ai fetch <url>
 ```
 then invoke **[[yt]]** (single-video summary / highlights / Q&A / presentation).
 
@@ -133,7 +147,7 @@ then invoke **[[yt]]** (single-video summary / highlights / Q&A / presentation).
 
 - Skills-primary summarization: the CLI stores data; skills read via
   `show --json` / `search` and write via `save-summary`. Never invent
-  highlight timestamps — anchor them with `uv run yt-ai search "<phrase>" --vector -k 3`.
+  highlight timestamps — anchor them with `uvx yt-mem-ai search "<phrase>" --vector -k 3`.
 - Dates are `YYYY-MM-DD` strings; string comparison is date comparison.
 - `is_seen` is status-based (`transcribed`/`summarized`), so ingest is retry-safe;
   re-running `fetch`/`fetch-pending` is safe.

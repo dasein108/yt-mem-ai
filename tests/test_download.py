@@ -28,6 +28,48 @@ def test_build_opts_no_proxy_when_webshare_disabled(tmp_path):
     assert "proxy" not in opts
     assert opts["cookiesfrombrowser"] == ("chrome",)  # cookies still ride direct
 
+class _BotCheckYDL:
+    """yt-dlp stand-in that raises YouTube's bot-check DownloadError."""
+    MSG = ("ERROR: [youtube] abc: Sign in to confirm you’re not a bot. "
+           "Use --cookies-from-browser or --cookies for the authentication.")
+
+    def __init__(self, opts):
+        self.opts = opts
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def extract_info(self, url, **kw):
+        raise RuntimeError(self.MSG)
+
+
+def test_download_maps_bot_check_to_sign_in_required(tmp_path):
+    import pytest
+    with pytest.raises(download.SignInRequired):
+        download.download("https://y/abc", _cfg(tmp_path), ydl_factory=_BotCheckYDL)
+
+
+def test_download_metadata_maps_bot_check_to_sign_in_required(tmp_path):
+    import pytest
+    with pytest.raises(download.SignInRequired):
+        download.download_metadata("https://y/abc", _cfg(tmp_path), ydl_factory=_BotCheckYDL)
+
+
+def test_download_reraises_unrelated_errors(tmp_path):
+    import pytest
+
+    class _Boom(_BotCheckYDL):
+        def extract_info(self, url, **kw):
+            raise RuntimeError("ERROR: unrelated network failure")
+
+    with pytest.raises(RuntimeError) as err:
+        download.download_metadata("https://y/abc", _cfg(tmp_path), ydl_factory=_Boom)
+    assert not isinstance(err.value, download.SignInRequired)
+
+
 def test_video_from_info_maps_fields():
     info = {"id": "abc", "title": "T", "duration": 120,
             "channel_id": "chan", "upload_date": "20260721",

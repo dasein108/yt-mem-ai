@@ -38,7 +38,10 @@ not an API) to keep it free and high-quality.
 - `download.py` — yt-dlp download + metadata; `build_opts(cfg, download_audio)`.
   `download_metadata(url, cfg)` fetches metadata only (no audio) for the
   captions-only path; uses `process=False` so meta survives the missing JS
-  challenge solver (which otherwise fails format selection).
+  challenge solver (which otherwise fails format selection). Both extract calls
+  go through `_extract`, which maps YouTube's bot check ("Sign in to confirm
+  you're not a bot") to `SignInRequired` so `cli.fetch` can print the
+  `config set YT_COOKIES_BROWSER <browser>` fix (exit 4) instead of a traceback.
 - `transcript/` — `captions.py` (youtube-transcript-api) → `whisper.py` (faster-whisper)
   fallback, orchestrated by `get_transcript`. `fetch_captions` tries `cfg.caption_langs`
   (`YT_CAPTION_LANGS`, default `en`) then falls back to ANY available track (manual
@@ -105,20 +108,22 @@ not an API) to keep it free and high-quality.
   SKILL.md files (`_load_skill`: source `skills/<name>/SKILL.md`, or the
   `force-include`d `yt_mem_ai/_skills/*.md` in a built wheel) — single source of
   truth, no drift. Host packaging lives under `integrations/` (see below).
-- `integrations/` — host packaging. **Native plugins are skills-only**: the
-  `yt`/`yt-manager` skills (symlinked, never copied, into each plugin) drive the
-  `yt-ai` CLI by shelling out via `uvx yt-mem-ai <cmd>` — **no bundled MCP**.
+- `integrations/` — host packaging. **Native skills** (symlinked, never copied,
+  from the canonical `skills/`) drive the `yt-ai` CLI via `uvx yt-mem-ai <cmd>`:
   `claude-code/` (`.claude-plugin/{plugin,marketplace}.json` + `commands/` +
   `skills/`), `codex/` (`.codex-plugin/plugin.json` + `skills/` + `prompts/` +
-  `AGENTS.md`; installed to `~/.codex/skills/`), `gemini/`
-  (`gemini-extension.json` + `skills/` + `commands/*.toml` + `GEMINI.md`).
-  **MCP (`yt-ai-mcp`) is Claude Desktop's only path** (`claude-desktop/`: `.mcpb`
-  `manifest.json` + `build.sh`, or a plain `claude_desktop_config.json` entry)
-  and an **optional** typed-tool surface elsewhere; `mcp/` documents the raw
-  server. `install.sh`/`install.ps1` is the interactive host×method multi-select
-  installer (arrow-key checkbox UI; pre-checks already-installed targets; untick
-  to uninstall); `PROMPT.md` is the paste-into-any-agent installer. Every MCP
-  config invokes `uvx --from 'yt-mem-ai[mcp]' yt-ai-mcp` (no source checkout).
+  `AGENTS.md`; → `~/.codex/skills/`), `cursor/` (`skills/` → `~/.cursor/skills/`
+  + MCP `~/.cursor/mcp.json`), `antigravity/` (`skills/` → `~/.gemini/skills/` +
+  MCP `~/.gemini/config/mcp_config.json`). **MCP (`yt-ai-mcp`) is Claude
+  Desktop's only path** (`claude-desktop/`: `.mcpb` `manifest.json` + `build.sh`,
+  or a `claude_desktop_config.json` entry) and an optional surface on the others;
+  Cursor + Antigravity expose both skills and MCP; `mcp/` documents the raw
+  server. Any MCP install uses a persistent, absolute-path `yt-ai-mcp` binary
+  (`uv tool install 'yt-mem-ai[mcp]'`) so GUI hosts start it instantly without a
+  uvx cold-start. `install.sh`/`install.ps1` is the interactive host×method
+  multi-select installer (arrow-key checkbox UI; pre-checks installed targets;
+  untick to uninstall — diff-based); `PROMPT.md` is the paste-into-any-agent
+  installer.
 - REST API — **moved out** to the [`yt-mem-ai-desktop`](https://github.com/dasein108/yt-mem-ai-desktop)
   repo (FastAPI backend that imports this package and reuses `cli.py`'s `run_*`/
   `open_store` cores). This repo is the engine: library + data/pipeline CLI only.

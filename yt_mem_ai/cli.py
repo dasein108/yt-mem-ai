@@ -9,7 +9,7 @@ from .config import load_config
 from .store import db as store
 from .store.models import TranscriptRow, Video, is_stream
 from .store.embeddings import build_embedder, chunk_segments
-from .download import download, download_metadata
+from .download import SignInRequired, download, download_metadata
 from .transcript import get_transcript, TranscriptUnavailable, CaptionsBlocked
 from .discovery import discover as discover_videos, channel_videos
 from .recommend import recommend as recommend_videos
@@ -106,9 +106,20 @@ def fetch(url: str, force: bool = typer.Option(False, "--force"),
         typer.echo(f"no captions available: {exc}")
         raise typer.Exit(1)
     except CaptionsBlocked as exc:
-        typer.echo(f"captions blocked by YouTube (rate-limited): {exc}\n"
-                   "Retry later, or set YT_USE_WEBSHARE=true to route through a proxy.")
+        typer.echo(f"captions blocked by YouTube (IP rate-limited): {exc}\n"
+                   "Browser cookies do NOT help here — the transcript API needs a "
+                   "different IP. Retry later, or route it through Webshare:\n"
+                   "  yt-mem-ai config set YT_CAPTIONS_USE_WEBSHARE true\n"
+                   "  yt-mem-ai config set WEBSHARE_PROXY_USERNAME <user>\n"
+                   "  yt-mem-ai config set WEBSHARE_PROXY_PASSWORD <pass>")
         raise typer.Exit(3)
+    except SignInRequired as exc:
+        typer.echo(f"YouTube bot check: {exc}\n"
+                   "yt-dlp needs browser cookies. Set them once (persists globally, "
+                   "so every later run picks them up):\n"
+                   "  yt-mem-ai config set YT_COOKIES_BROWSER chrome"
+                   "   # or brave / firefox / edge / safari")
+        raise typer.Exit(4)
     typer.echo(f"stored {vid}")
 
 

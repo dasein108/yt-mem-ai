@@ -6,6 +6,29 @@ from .cookies import cookie_opts
 from .store.models import Video
 
 
+class SignInRequired(RuntimeError):
+    """yt-dlp hit YouTube's bot check ("Sign in to confirm you're not a bot").
+
+    The fix is browser cookies (`YT_COOKIES_BROWSER`), not a retry — so this is
+    a distinct type the CLI turns into an actionable hint."""
+
+
+# YouTube renders the apostrophe as U+2019 in some locales; match on the parts
+# that don't vary rather than the whole sentence.
+_BOT_MARKERS = ("sign in to confirm", "not a bot", "cookies-from-browser")
+
+
+def _extract(ydl, url: str, **kwargs) -> dict:
+    """`ydl.extract_info` with YouTube's bot check mapped to SignInRequired."""
+    try:
+        return ydl.extract_info(url, **kwargs)
+    except Exception as exc:  # noqa: BLE001 - re-raised unless it's the bot check
+        text = str(exc).lower()
+        if any(marker in text for marker in _BOT_MARKERS):
+            raise SignInRequired(str(exc)) from exc
+        raise
+
+
 def build_opts(cfg: Config, download_audio: bool) -> dict:
     opts: dict = {
         "quiet": True,
@@ -67,7 +90,7 @@ def download(url: str, cfg: Config, ydl_factory=None) -> tuple[Video, str | None
     cfg.downloads_dir.mkdir(parents=True, exist_ok=True)
     opts = build_opts(cfg, download_audio=True)
     with ydl_factory(opts) as ydl:
-        info = ydl.extract_info(url, download=True)
+        info = _extract(ydl, url, download=True)
     video = video_from_info(info, url)
     audio = _audio_path(info)
     video.audio_path = audio
@@ -85,5 +108,5 @@ def download_metadata(url: str, cfg: Config, ydl_factory=None) -> Video:
         # process=False skips format selection, which needs the JS challenge
         # solver and otherwise raises "Requested format is not available" —
         # metadata (title/description/tags/upload_date) is still returned.
-        info = ydl.extract_info(url, download=False, process=False) or {}
+        info = _extract(ydl, url, download=False, process=False) or {}
     return video_from_info(info, url)

@@ -6,11 +6,13 @@ description: One skill for any YouTube request over the yt-mem-ai CLI — one-sh
 # yt — summarize / highlights / Q&A / presentation / digest / review
 
 One entry point for turning YouTube into artifacts. All data access goes through
-the `yt-ai` CLI (see [[yt-manager]] for the full command surface) — never touch
-the LanceDB store directly. If `yt-ai` isn't on PATH, run it as
-`uvx yt-mem-ai <cmd>` (zero-install; every `yt-ai <cmd>` below works that way).
+the **`uvx yt-mem-ai <cmd>`** CLI (see [[yt-manager]] for the full command
+surface) — never touch the LanceDB store directly. Always invoke it exactly that
+way: zero-install and cached, so nothing has to be on PATH. **Do not go looking
+for a `yt-ai` binary** — the native plugins install no package. (Only inside a
+source checkout may you use `uv run yt-ai <cmd>`.)
 Everything is grounded in the transcript; highlight timestamps come from
-`yt-ai search`, never invented. The analysis is done by **this agent** — no API
+`uvx yt-mem-ai search`, never invented. The analysis is done by **this agent** — no API
 key, no OpenRouter.
 
 ## Pick the scenario
@@ -29,20 +31,24 @@ key, no OpenRouter.
 
 Given a `video_id` (and a URL if it may not be ingested yet):
 
-1. **Ensure ingested** (idempotent): `yt-ai show <video_id> --json`.
-   - `not found` and you have a URL → `yt-ai fetch <url> --captions-only`. If that
-     prints `no captions available: ...`, fall back to `yt-ai fetch <url> --whisper`
+1. **Ensure ingested** (idempotent): `uvx yt-mem-ai show <video_id> --json`.
+   - `not found` and you have a URL → `uvx yt-mem-ai fetch <url> --captions-only`. If that
+     prints `no captions available: ...`, fall back to `uvx yt-mem-ai fetch <url> --whisper`
      (downloads audio + transcribes — slower, always yields a transcript).
+   - Blocked instead? `Sign in to confirm you're not a bot` → run
+     `uvx yt-mem-ai config set YT_COOKIES_BROWSER chrome` and retry;
+     `captions blocked ... IP rate-limited` → cookies won't help, see
+     [[yt-manager]]'s **When YouTube blocks a fetch**.
    - Already ingested → instant, no download (`is_seen` skips it).
 2. **Reuse if present:** if the `show --json` output has a non-null `summary`,
    reuse it — skip generation unless the user asked for a fresh artifact.
 3. **Anchor highlights:** for each candidate highlight phrase, run
-   `yt-ai search "<phrase>" --vector -k 3` and use the `MM:SS` from a returned
+   `uvx yt-mem-ai search "<phrase>" --vector -k 3` and use the `MM:SS` from a returned
    line whose `video_id` matches. Never invent timestamps.
 4. **Produce** (you, the model — no API): `summary_md` (2–4 sentence exec summary
    + key bullets), `highlights` JSON `[{"start_s": <seconds>, "label": "..."}]`
    (3–8, seconds from step 3), `qa` JSON `[{"q": "...", "a": "..."}]` (3–6).
-5. **Persist:** `yt-ai save-summary <video_id> "<summary_md>" --highlights '<json>' --qa '<json>'`.
+5. **Persist:** `uvx yt-mem-ai save-summary <video_id> "<summary_md>" --highlights '<json>' --qa '<json>'`.
 
 ## A — single-video artifacts
 
@@ -64,16 +70,16 @@ Run the core, then deliver the artifact the phrasing asked for:
 ## B — process latest subscriptions (daily digest)
 
 ```bash
-yt-ai discover           # new uploads → 'discovered'
-yt-ai fetch-pending      # download + transcribe + embed today's batch (skips failures)
+uvx yt-mem-ai discover           # new uploads → 'discovered'
+uvx yt-mem-ai fetch-pending      # download + transcribe + embed today's batch (skips failures)
 ```
 Live streams are auto-detected and marked `status=stream` — `fetch-pending` skips
-them (long + usually caption-less). List them with `yt-ai list --status stream`;
-to transcribe one on demand, fetch it directly (`yt-ai fetch <url>`, optionally
+them (long + usually caption-less). List them with `uvx yt-mem-ai list --status stream`;
+to transcribe one on demand, fetch it directly (`uvx yt-mem-ai fetch <url>`, optionally
 `--whisper`).
 
 Then for each of the day's transcribed videos
-(`yt-ai list --status transcribed --since <DATE> --json`), run the **core**
+(`uvx yt-mem-ai list --status transcribed --since <DATE> --json`), run the **core**
 analysis. Compose `digests/<DATE>.md`:
 - Top **executive digest**: cross-video themes and what's worth the user's time.
 - One **section per video**: `## <title>` + link, the 2–4 sentence summary, top
@@ -84,7 +90,7 @@ Idempotent — re-running overwrites each `summaries` row and rewrites the file.
 
 ## C — subscriptions review (cross-video themes)
 
-Select the period's videos: `yt-ai list --status summarized --since <DATE> --json`
+Select the period's videos: `uvx yt-mem-ai list --status summarized --since <DATE> --json`
 (analyze any still `transcribed` via the core first). Then write **one essay** to
 `reviews/<DATE>.md` — no per-video sections:
 - Common threads across the videos, contradictions / disagreements, emerging trends.
@@ -100,11 +106,11 @@ analysis + a top-level synthesis.
 
 1. **Resolve the set → ids/URLs:**
    - comma list (`id1,id2,https://youtu.be/id3`) → parse directly;
-   - channel (URL/@handle) → `yt-ai channel-list <url> --limit N [--from D] [--to D] --json`;
+   - channel (URL/@handle) → `uvx yt-mem-ai channel-list <url> --limit N [--from D] [--to D] --json`;
    - date range over a channel → same with `--from/--to`.
    Report the resolved count first; if it's large (> ~15), say so and confirm/cap
    before mass-ingesting (whisper is slow).
-2. **Ingest each:** `yt-ai fetch <url>` (captions→whisper; streams auto-marked
+2. **Ingest each:** `uvx yt-mem-ai fetch <url>` (captions→whisper; streams auto-marked
    `status=stream` and skipped; continue past failures — note any skipped).
 3. **Per-video:** run the **core** analysis (summary + search-anchored highlights +
    Q&A, `presentation` → `slides/<id>.md` if asked), persisted via `save-summary`,
@@ -120,9 +126,9 @@ themes-only essay with no per-video sections.
 
 ## Conventions
 
-- All data via the `yt-ai` CLI ([[yt-manager]] has the full surface). Never touch
+- All data via the `uvx yt-mem-ai` CLI ([[yt-manager]] has the full surface). Never touch
   the store directly.
-- Grounded strictly in transcripts; highlight timestamps only from `yt-ai search`.
+- Grounded strictly in transcripts; highlight timestamps only from `uvx yt-mem-ai search`.
 - **Language / translation:** transcripts may be in ANY language — the source
   language is stored and returned by `show --json` as `transcript_lang`. **Default:
   produce each artifact in the video's OWN original language** (Russian video →
@@ -133,9 +139,9 @@ themes-only essay with no per-video sections.
   search is language-sensitive — search with a phrase in the transcript's original
   language, then write the label in the chosen output language. (For heavily
   multilingual libraries, a multilingual `YT_EMBEDDING_MODEL` improves search —
-  switch it from chat with `yt-ai config set YT_EMBEDDING_MODEL
-  paraphrase-multilingual-MiniLM-L12-v2`, then `yt-ai reembed` to migrate the
-  library. `yt-ai config set/list` reconfigures any `.env` setting — Webshare
+  switch it from chat with `uvx yt-mem-ai config set YT_EMBEDDING_MODEL
+  paraphrase-multilingual-MiniLM-L12-v2`, then `uvx yt-mem-ai reembed` to migrate the
+  library. `uvx yt-mem-ai config set/list` reconfigures any `.env` setting — Webshare
   creds, cookies browser, backend — see [[yt-manager]].)
 - `is_seen` is status-based, so re-fetch is a no-op → follow-ups ("now highlight
   it", "make slides") and re-runs never re-download.

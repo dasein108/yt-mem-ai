@@ -3,13 +3,14 @@
 For any YouTube task (summarize / highlights / Q&A / a subscriptions digest or
 review / analyzing a channel or set of videos), use the installed **`yt` and
 `yt-manager` skills** — they contain the full workflow. Everything runs through
-the **`yt-ai` CLI**; never touch the LanceDB store directly, and never invent
-highlight timestamps (anchor them with `yt-ai search`).
+the **`uvx yt-mem-ai` CLI**; never touch the LanceDB store directly, and never
+invent highlight timestamps (anchor them with `uvx yt-mem-ai search`).
 
 ## Running the CLI
 
-`yt-ai` ships in the `yt-mem-ai` package. If it isn't on PATH, run every command
-as **`uvx yt-mem-ai <cmd>`** (zero-install, cached):
+Run every command as **`uvx yt-mem-ai <cmd>`** (zero-install, cached). **Nothing
+is installed on PATH** — this plugin ships skills only, so don't look for a
+`yt-ai` binary, a wrapper, or a venv, and don't fall back to raw `yt-dlp`:
 
 ```
 uvx yt-mem-ai show <video_id> --json          # ingested? metadata + transcript
@@ -36,6 +37,18 @@ uvx yt-mem-ai config set KEY VALUE        # e.g. WEBSHARE_PROXY_USERNAME, YT_EMB
 
 Only known `.env` keys are accepted; secrets are masked. After changing the
 embedding model/backend, run `uvx yt-mem-ai reembed` to migrate the library.
+
+Use `config set` rather than `KEY=value uvx …` — each `uvx` run is a fresh
+process, so an env var only applies to that one command.
+
+## When YouTube blocks a fetch
+
+- `YouTube bot check: ... Sign in to confirm you're not a bot` (exit 4) → yt-dlp
+  needs a browser session: `uvx yt-mem-ai config set YT_COOKIES_BROWSER chrome`
+  (or `brave`/`firefox`/`edge`/`safari`), then re-run the same fetch.
+- `captions blocked by YouTube (IP rate-limited)` (exit 3) → cookies don't help;
+  retry later or set `YT_CAPTIONS_USE_WEBSHARE true` + the `WEBSHARE_PROXY_*` creds.
+- `no captions available` (exit 1) → re-run with `--whisper`.
 
 ## Conventions
 
