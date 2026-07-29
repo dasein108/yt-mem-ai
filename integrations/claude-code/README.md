@@ -21,8 +21,12 @@ Or from GitHub once pushed:
 /plugin install yt-mem-ai@yt-mem-ai
 ```
 
-The interactive installer does this for you: `integrations/install.sh` →
-select **Claude Code (Plugin)**.
+The interactive installer does this for you (non-interactively, via the `claude`
+CLI): `integrations/install.sh` → select **Claude Code (Plugin)**. It runs
+`claude plugin marketplace add … && claude plugin install yt-mem-ai@yt-mem-ai`.
+If your Claude Desktop shares the same `~/.claude` plugin store, the plugin (and
+its skills) shows up in Desktop chat too; otherwise add it via Customize →
+Plugins in Desktop.
 
 ## What you get
 

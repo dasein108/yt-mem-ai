@@ -95,7 +95,7 @@ _probe_detected() {
 # records elsewhere may under-detect (shown unchecked; re-install is idempotent).
 _probe_installed() {
   case "$1" in
-    1) grep -qs 'yt-mem-ai' "$HOME/.claude.json" 2>/dev/null && echo yes || echo no ;;  # claude-code plugin (best-effort)
+    1) { grep -qs 'yt-mem-ai' "$HOME/.claude/settings.json" 2>/dev/null || grep -qs 'yt-mem-ai' "$HOME/.claude.json" 2>/dev/null || [ -d "$HOME/.claude/plugins/cache/yt-mem-ai" ]; } && echo yes || echo no ;;  # claude-code plugin
     2) grep -qs 'yt-mem-ai' "$HOME/.claude.json" 2>/dev/null && echo yes || echo no ;;  # claude-code mcp (best-effort)
     3) grep -qs '"yt-mem-ai"' "$DESKTOP_CFG" 2>/dev/null && echo yes || echo no ;;       # claude-desktop bundle
     4) grep -qs '"yt-mem-ai"' "$DESKTOP_CFG" 2>/dev/null && echo yes || echo no ;;       # claude-desktop mcp
@@ -461,11 +461,22 @@ do_claude_code_mcp() {
 }
 
 do_claude_code_plugin() {
+  # Local checkout → the plugin dir; else the GitHub repo (root marketplace.json).
   _src=$(src_dir claude-code); [ -n "$_src" ] || _src="$REPO"
-  msg "Claude Code plugin — run these inside Claude Code (no stable CLI for /plugin):"
-  printf '     /plugin marketplace add %s\n' "$_src"
-  printf '     /plugin install yt-mem-ai@yt-mem-ai\n'
-  msg "(Ships the yt + yt-manager skills and /yt-* commands; they drive the yt-ai CLI via uvx. For MCP tools instead, pick 'Claude Code (MCP only)'.)"
+  if have claude; then
+    claude plugin marketplace add "$_src" >/dev/null 2>&1 || true
+    if claude plugin install yt-mem-ai@yt-mem-ai >/dev/null 2>&1; then
+      msg "Claude Code: plugin installed (yt + yt-manager skills, /yt-* commands)."
+      msg "(Unified plugin store — if your Claude Desktop shares ~/.claude it shows there too; else add it via Customize → Plugins.)"
+    else
+      warn "Claude Code: auto-install failed. Run inside Claude Code:"
+      warn "  /plugin marketplace add $_src   →   /plugin install yt-mem-ai@yt-mem-ai"
+    fi
+  else
+    msg "Plugin — 'claude' CLI not on PATH. In the app:"
+    msg "  Claude Code:    /plugin marketplace add $_src ; /plugin install yt-mem-ai@yt-mem-ai"
+    msg "  Claude Desktop: Customize → Plugins → Add marketplace → $_src → Install"
+  fi
 }
 
 do_claude_desktop_mcp() {
@@ -571,7 +582,13 @@ do_antigravity_mcp() {
 # per-target uninstallers
 # --------------------------------------------------------------------------- #
 undo_claude_code_plugin() {
-  msg "Claude Code plugin — remove inside Claude Code:  /plugin uninstall yt-mem-ai@yt-mem-ai"
+  if have claude; then
+    claude plugin uninstall yt-mem-ai@yt-mem-ai >/dev/null 2>&1 \
+      && msg "Claude Code: plugin uninstalled." \
+      || warn "Claude Code: uninstall failed — run: claude plugin uninstall yt-mem-ai@yt-mem-ai"
+  else
+    msg "Claude Code plugin — remove in-app: /plugin uninstall yt-mem-ai@yt-mem-ai"
+  fi
 }
 undo_claude_code_mcp() {
   if have claude; then
