@@ -34,7 +34,7 @@ curl -LsSf https://raw.githubusercontent.com/dasein108/yt-mem-ai/main/integratio
   | sh -s -- --claude-desktop=plugin --codex=mcp
 ```
 
-Flags: `--claude-code=plugin,mcp`, `--claude-desktop=bundle,mcp`,
+Flags: `--claude-code=plugin,mcp`, `--claude-desktop=mcp`,
 `--codex=plugin,mcp`, `--cursor=skills,mcp`, `--antigravity=skills,mcp`
 (alias `--gravity`), `--all-plugins`, `--all-mcp`, `-y`. The zero-effort path is
 [`PROMPT.md`](PROMPT.md) — paste it into any agent.
@@ -44,7 +44,7 @@ Flags: `--claude-code=plugin,mcp`, `--claude-desktop=bundle,mcp`,
 | Host | Native (skills) | MCP |
 |---|---|---|
 | **Claude Code** ([docs](claude-code/README.md)) | skills + `/yt-*` commands | `claude mcp add` |
-| **Claude Desktop** ([docs](claude-desktop/README.md)) | **Plugin** (skills, Customize → Plugins) | `.mcpb` Extension **or** `claude_desktop_config.json` |
+| **Claude Desktop** ([docs](claude-desktop/README.md)) | **Plugin** (skills, Customize → Plugins) | merge `claude_desktop_config.json` |
 | **Codex** ([docs](codex/README.md)) | `~/.codex/skills/` + prompts + AGENTS.md | `~/.codex/config.toml` |
 | **Cursor** ([docs](cursor/README.md)) | `~/.cursor/skills/` | merge `~/.cursor/mcp.json` |
 | **Antigravity** ([docs](antigravity/README.md)) | `~/.gemini/skills/` | merge `~/.gemini/config/mcp_config.json` |

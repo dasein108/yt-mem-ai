@@ -135,13 +135,13 @@ Single video on demand: `yt-ai fetch <url>` then the `/yt` skill (summarize / hi
 
 Two ways to reach the engine, per host:
 
-- **Native skills** for Claude Code, Codex, Cursor, and Antigravity ship the
-  `yt` / `yt-manager` **skills** (+ slash commands where available). The skills
-  drive the `yt-ai` CLI via `uvx yt-mem-ai <cmd>` — zero-install, the idiomatic
-  path per platform.
-- **The `yt-ai-mcp` MCP server** is **Claude Desktop's** only path (it can't run
-  skills) and an optional typed-tool surface elsewhere. Cursor and Antigravity
-  support **both** skills and MCP.
+- **Native skills** for Claude Code, Codex, Cursor, Antigravity — and **Claude
+  Desktop** (via a plugin; 2026 plugin-bundled skills work in Desktop chat /
+  claude.ai / Cowork). The `yt` / `yt-manager` skills drive the `yt-ai` CLI via
+  `uvx yt-mem-ai <cmd>` (zero-install) and auto-trigger on "summarize this video".
+- **The `yt-ai-mcp` MCP server** is an optional typed-tool surface on any host
+  (Cursor, Antigravity, Claude Code/Desktop config, headless). The plugin/skills
+  is the recommended path; MCP is there if you want the raw tools.
 
 One interactive installer wires up whichever you pick — arrow-key checkbox UI,
 pre-checks already-installed targets, untick to uninstall:
@@ -155,6 +155,128 @@ sh integrations/install.sh --cursor=skills,mcp --claude-desktop=mcp
 See [`integrations/README.md`](integrations/README.md) (and
 [`integrations/PROMPT.md`](integrations/PROMPT.md) for a paste-into-any-agent
 installer).
+
+### Install as an MCP plugin (any host)
+
+The engine ships one MCP server — `yt-ai-mcp`, stdio transport — so any
+MCP-capable host (Claude Desktop/Code, Cursor, Antigravity, Codex, Zed,
+Continue, LibreChat, your own client…) can use it with a single config entry.
+
+```bash
+# persistent binary (recommended for GUI hosts — no uvx cold start)
+uv tool install 'yt-mem-ai[mcp]'
+which yt-ai-mcp        # → absolute path used in the config below
+
+# or run it zero-install (fine for CLI hosts)
+uvx --from 'yt-mem-ai[mcp]' yt-ai-mcp
+```
+
+Generic `mcpServers` entry — the shape every host accepts (file location
+differs: `~/.cursor/mcp.json`, `~/.gemini/config/mcp_config.json`,
+`claude_desktop_config.json`, `.mcp.json`, …):
+
+```json
+{
+  "mcpServers": {
+    "yt-mem-ai": {
+      "command": "/absolute/path/to/yt-ai-mcp",
+      "args": [],
+      "env": { "YT_STORE_PATH": "/absolute/path/to/.yt-mem-ai/lance" }
+    }
+  }
+}
+```
+
+Zero-install variant (no `uv tool install`): `"command": "uvx"`,
+`"args": ["--from", "yt-mem-ai[mcp]", "yt-ai-mcp"]`.
+
+Use **absolute paths** — GUI hosts launch the server with an arbitrary cwd and a
+minimal `PATH`. No `env` block is required: settings are read from
+`~/.yt-mem-ai/config.env`, which the agent itself can write via the `config_set`
+tool (or you via `yt-ai config set`).
+
+**Tools:** `fetch`, `show`, `status`, `list_videos`, `search`, `save_summary`,
+`discover`, `fetch_pending`, `channel_list`, `like`, `dislike`, `recommend`,
+`compile`, `supercut`, `frame`, `reembed`, `config_list`, `config_get`,
+`config_set`, `config_unset`.
+**Prompts:** `yt_summarize`, `yt_highlights`, `yt_qa`, `yt_presentation`,
+`yt_digest`, `yt_review`, `yt_group` — the same playbooks as the skills, so
+hosts without skill support still get the full workflows.
+
+Details: [`integrations/mcp/README.md`](integrations/mcp/README.md).
+
+## Use as a Python package
+
+`yt-mem-ai` is a normal library — the CLI is a thin Typer shell over `run_*`
+cores you can call directly. Everything is local: no server, no API key (unless
+you pick the `openai` embedding backend).
+
+```bash
+pip install yt-mem-ai     # or: uv add yt-mem-ai
+```
+
+```python
+from dataclasses import replace
+from pathlib import Path
+
+from yt_mem_ai.config import load_config
+from yt_mem_ai.cli import open_store, run_fetch, run_search, run_list, run_save_summary
+from yt_mem_ai.store import db as store
+
+# Config comes from ~/.yt-mem-ai/config.env < ./.env < process env.
+# Override any field in code (Config is a frozen dataclass):
+cfg = replace(load_config(), store_path=Path("~/.yt-mem-ai/lance").expanduser())
+
+db = open_store(cfg)          # opens LanceDB + creates tables/indexes once
+                              # pass db=... to every run_* call to reuse it
+
+# 1. Ingest: download → transcribe (captions → whisper) → chunk → embed → store
+video_id = run_fetch("https://www.youtube.com/watch?v=dQw4w9WgXcQ", cfg, db=db)
+# captions only (no audio download, no whisper):
+# video_id = run_fetch(url, cfg, db=db, captions_only=True)
+
+# 2. Read what was stored
+video = store.get_video(db, video_id)
+text = store.get_transcript_text(db, video_id)
+print(video.title, video.channel, video.duration_s, len(text or ""))
+
+for c in store.list_chunks(db, video_id)[:3]:
+    print(f"[{c['start_s']:.0f}s] {c['text'][:80]}")
+
+# 3. Semantic search across the whole library (hybrid | vector | fts)
+for hit in run_search(cfg, "retrieval augmented generation", mode="hybrid", k=5, db=db):
+    print(hit["video_id"], hit["start_s"], hit["text"][:100])
+
+# 4. Bring your own LLM: summarize the transcript however you like, then persist
+summary_md = my_llm(text)                       # any model / provider
+run_save_summary(
+    cfg, video_id, summary_md,
+    highlights_json='[{"t": 42, "text": "key moment"}]',
+    qa_json='[{"q": "What is it about?", "a": "..."}]',
+    db=db,
+)
+print(store.get_summary(db, video_id))
+
+# 5. Library queries
+for v in run_list(cfg, status="transcribed", since="2026-01-01", db=db):
+    print(v.video_id, v.published_at, v.title)
+```
+
+Other cores, same shape (`run_x(cfg, ..., db=db)`): `run_discover`,
+`run_fetch_pending`, `run_channel_list`, `run_recommend`, `run_feedback`,
+`run_compile`, `run_supercut`, `run_frame`, `run_reembed`. Lower-level pieces
+are importable too — `yt_mem_ai.download.download`, `yt_mem_ai.transcript.get_transcript`,
+`yt_mem_ai.store.embeddings.build_embedder` / `chunk_segments`,
+`yt_mem_ai.store.db` (LanceDB CRUD + `search_chunks`).
+
+The store is plain LanceDB, so you can also open it directly:
+
+```python
+import lancedb
+from pathlib import Path
+tbl = lancedb.connect(Path("~/.yt-mem-ai/lance").expanduser()).open_table("chunks")
+df = tbl.to_pandas()      # video_id, start_s, end_s, text, vector
+```
 
 ## Logging
 

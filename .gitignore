@@ -20,5 +20,3 @@ slides/
 reviews/
 groups/
 
-# Claude Desktop extension build artifact
-integrations/claude-desktop/*.mcpb

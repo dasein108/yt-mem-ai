@@ -25,22 +25,21 @@ function Have($c) { $null -ne (Get-Command $c -ErrorAction SilentlyContinue) }
 
 # ---- selection matrix ------------------------------------------------------
 $Items = @(
-  @{ id=1;  host="claude-code";    method="plugin"; label="Claude Code    (Plugin: skills + commands)" },
-  @{ id=2;  host="claude-code";    method="mcp";    label="Claude Code    (MCP only)" },
-  @{ id=3;  host="claude-desktop"; method="bundle"; label="Claude Desktop (Bundle .mcpb)" },
-  @{ id=4;  host="claude-desktop"; method="mcp";    label="Claude Desktop (MCP config)" },
-  @{ id=5;  host="codex";          method="plugin"; label="Codex          (Plugin: skills + prompts + AGENTS.md)" },
-  @{ id=6;  host="codex";          method="mcp";    label="Codex          (MCP only)" },
-  @{ id=7;  host="cursor";         method="skills"; label="Cursor         (Skills)" },
-  @{ id=8;  host="cursor";         method="mcp";    label="Cursor         (MCP only)" },
-  @{ id=9;  host="antigravity";    method="skills"; label="Antigravity    (Skills)" },
-  @{ id=10; host="antigravity";    method="mcp";    label="Antigravity    (MCP only)" }
+  @{ id=1; host="claude-code";    method="plugin"; label="Claude Code    (Plugin: skills + commands)" },
+  @{ id=2; host="claude-code";    method="mcp";    label="Claude Code    (MCP only)" },
+  @{ id=3; host="claude-desktop"; method="mcp";    label="Claude Desktop (MCP config)  [for skills, install the Plugin - item 1]" },
+  @{ id=4; host="codex";          method="plugin"; label="Codex          (Plugin: skills + prompts + AGENTS.md)" },
+  @{ id=5; host="codex";          method="mcp";    label="Codex          (MCP only)" },
+  @{ id=6; host="cursor";         method="skills"; label="Cursor         (Skills)" },
+  @{ id=7; host="cursor";         method="mcp";    label="Cursor         (MCP only)" },
+  @{ id=8; host="antigravity";    method="skills"; label="Antigravity    (Skills)" },
+  @{ id=9; host="antigravity";    method="mcp";    label="Antigravity    (MCP only)" }
 )
 $Sel = New-Object System.Collections.Generic.HashSet[int]
 function AddHost($h, $methods) { foreach ($m in $methods) { foreach ($it in $Items) { if ($it.host -eq $h -and $it.method -eq $m) { [void]$Sel.Add($it.id) } } } }
 
-if ($AllPlugins) { 1,5,7,9  | ForEach-Object { [void]$Sel.Add($_) } }
-if ($AllMcp)     { 2,4,6,8,10 | ForEach-Object { [void]$Sel.Add($_) } }
+if ($AllPlugins) { 1,4,6,8  | ForEach-Object { [void]$Sel.Add($_) } }
+if ($AllMcp)     { 2,3,5,7,9 | ForEach-Object { [void]$Sel.Add($_) } }
 if ($ClaudeCode)    { AddHost "claude-code"    $ClaudeCode }
 if ($ClaudeDesktop) { AddHost "claude-desktop" $ClaudeDesktop }
 if ($Codex)         { AddHost "codex"          $Codex }
@@ -68,7 +67,7 @@ New-Item -ItemType Directory -Force -Path (Join-Path $DataDir "lance"),(Join-Pat
 # For any MCP target, install a persistent absolute-path yt-ai-mcp binary
 # (fast start; avoids the uvx cold-start timeout and GUI PATH issues).
 $McpBin = $null
-$mcpIds = 2,3,4,6,8,10
+$mcpIds = 2,3,5,7,9
 if ($mcpIds | Where-Object { $Sel.Contains($_) }) {
   Info "installing the yt-ai-mcp server (uv tool install 'yt-mem-ai[mcp]') — first run pulls ML deps…"
   uv tool install --force "yt-mem-ai[mcp]" 2>$null
@@ -138,16 +137,15 @@ function CopyCodexExtras {
 
 foreach ($it in ($Items | Where-Object { $Sel.Contains($_.id) })) {
   switch ($it.id) {
-    1 { Info "Claude Code plugin — run in Claude Code:  /plugin marketplace add $([string]($(if($Local){$ScriptDir+'\claude-code'}else{'dasein108/yt-mem-ai'})));  /plugin install yt-mem-ai@yt-mem-ai" }
+    1 { if (Have "claude") { claude plugin marketplace add $(if($Local){Join-Path $ScriptDir 'claude-code'}else{'dasein108/yt-mem-ai'}) 2>$null; claude plugin install yt-mem-ai@yt-mem-ai; Info "Claude Code: plugin installed (skills + /yt-* commands; may also show in Desktop)." } else { Info "Claude Code plugin — in-app: /plugin marketplace add dasein108/yt-mem-ai ; /plugin install yt-mem-ai@yt-mem-ai (or Claude Desktop → Customize → Plugins)." } }
     2 { if (Have "claude") { $svr = if ($McpBin) { @($McpBin) } else { @($Uvx,"--from","yt-mem-ai[mcp]","yt-ai-mcp") }; claude mcp add yt-mem-ai -e "YT_STORE_PATH=$DataDir\lance" -- @svr; Info "Claude Code: MCP added." } else { Info "Claude Code: 'claude' not found." } }
-    3 { Info "Claude Desktop bundle: build with integrations/claude-desktop/build.sh (or add the MCP config, -ClaudeDesktop mcp)." }
-    4 { MergeServer $DesktopCfg; Info "Restart Claude Desktop." }
-    5 { CopySkills (Join-Path $HOME ".codex\skills"); CopyCodexExtras; Info "Codex: skills installed (skills run yt-ai via uvx)." }
-    6 { MergeCodex }
-    7 { CopySkills (Join-Path $HOME ".cursor\skills"); Info "Cursor: skills installed → ~/.cursor/skills (reload Cursor)." }
-    8 { MergeServer $CursorMcp; Info "Cursor: MCP added to ~/.cursor/mcp.json (reload Cursor)." }
-    9 { CopySkills (Join-Path $HOME ".gemini\skills"); Info "Antigravity: skills installed → ~/.gemini/skills (restart Antigravity)." }
-    10 { MergeServer $GravityMcp; Info "Antigravity: MCP added to ~/.gemini/config/mcp_config.json (restart Antigravity)." }
+    3 { MergeServer $DesktopCfg; Info "Claude Desktop: MCP config written. Restart Desktop. (For skills, install the Plugin — item 1.)" }
+    4 { CopySkills (Join-Path $HOME ".codex\skills"); CopyCodexExtras; Info "Codex: skills installed (skills run yt-ai via uvx)." }
+    5 { MergeCodex }
+    6 { CopySkills (Join-Path $HOME ".cursor\skills"); Info "Cursor: skills installed → ~/.cursor/skills (reload Cursor)." }
+    7 { MergeServer $CursorMcp; Info "Cursor: MCP added to ~/.cursor/mcp.json (reload Cursor)." }
+    8 { CopySkills (Join-Path $HOME ".gemini\skills"); Info "Antigravity: skills installed → ~/.gemini/skills (restart Antigravity)." }
+    9 { MergeServer $GravityMcp; Info "Antigravity: MCP added to ~/.gemini/config/mcp_config.json (restart Antigravity)." }
   }
 }
 Info "done. Data dir: $DataDir"

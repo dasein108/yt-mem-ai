@@ -114,16 +114,21 @@ not an API) to keep it free and high-quality.
   `skills/`), `codex/` (`.codex-plugin/plugin.json` + `skills/` + `prompts/` +
   `AGENTS.md`; → `~/.codex/skills/`), `cursor/` (`skills/` → `~/.cursor/skills/`
   + MCP `~/.cursor/mcp.json`), `antigravity/` (`skills/` → `~/.gemini/skills/` +
-  MCP `~/.gemini/config/mcp_config.json`). **MCP (`yt-ai-mcp`) is Claude
-  Desktop's only path** (`claude-desktop/`: `.mcpb` `manifest.json` + `build.sh`,
-  or a `claude_desktop_config.json` entry) and an optional surface on the others;
-  Cursor + Antigravity expose both skills and MCP; `mcp/` documents the raw
-  server. Any MCP install uses a persistent, absolute-path `yt-ai-mcp` binary
-  (`uv tool install 'yt-mem-ai[mcp]'`) so GUI hosts start it instantly without a
-  uvx cold-start. `install.sh`/`install.ps1` is the interactive host×method
-  multi-select installer (arrow-key checkbox UI; pre-checks installed targets;
-  untick to uninstall — diff-based); `PROMPT.md` is the paste-into-any-agent
-  installer.
+  MCP `~/.gemini/config/mcp_config.json`). **Claude Desktop also runs the skills
+  via a plugin** (2026: plugin-bundled skills work in Desktop chat / claude.ai /
+  Cowork) — installed from the **repo-root `.claude-plugin/marketplace.json`**
+  (→ the `claude-code/` plugin) via `claude plugin install` or Customize →
+  Plugins; `claude-desktop/` keeps only a bare `claude_desktop_config.json` MCP
+  entry (the `.mcpb` bundle was dropped as redundant/fussy). MCP (`yt-ai-mcp`) is
+  an optional typed-tool surface on any host; `mcp/` documents it, and the server
+  ships an `instructions` string so MCP-only hosts still know the workflow. Any
+  MCP install uses a persistent, absolute-path `yt-ai-mcp` binary (`uv tool
+  install 'yt-mem-ai[mcp]'`) so GUI hosts start it instantly. The `claude plugin`
+  CLI (marketplace add + install/uninstall) automates the Claude Code plugin;
+  Codex/Cursor/Antigravity skills are copied into each host's skills dir.
+  `install.sh`/`install.ps1` is the interactive host×method multi-select
+  installer (arrow-key checkbox UI; pre-checks installed targets; untick to
+  uninstall — diff-based); `PROMPT.md` is the paste-into-any-agent installer.
 - REST API — **moved out** to the [`yt-mem-ai-desktop`](https://github.com/dasein108/yt-mem-ai-desktop)
   repo (FastAPI backend that imports this package and reuses `cli.py`'s `run_*`/
   `open_store` cores). This repo is the engine: library + data/pipeline CLI only.

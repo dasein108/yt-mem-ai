@@ -10,7 +10,7 @@
 #     | sh -s -- --cursor=skills --codex=plugin
 #
 # Flags:
-#   --claude-code=plugin,mcp      --claude-desktop=bundle,mcp
+#   --claude-code=plugin,mcp      --claude-desktop=mcp
 #   --codex=plugin,mcp            --cursor=skills,mcp
 #   --antigravity=skills,mcp      (alias: --gravity=…)
 #   --all-plugins   --all-mcp     -y (assume yes)   -h/--help
@@ -51,23 +51,25 @@ if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/claude-code/.claude-plugin/plugin.j
 fi
 
 # --------------------------------------------------------------------------- #
-# item matrix (1..10): host + method + label
+# item matrix (1..9): host + method + label
+# (Claude Desktop's recommended path is the Plugin — installed via the Claude
+#  Code plugin CLI, item 1, on the shared plugin store — so Desktop keeps only a
+#  bare MCP-config escape hatch here; the fussy .mcpb bundle was dropped.)
 # --------------------------------------------------------------------------- #
-ITEM_IDS="1 2 3 4 5 6 7 8 9 10"
-item_host()   { case "$1" in 1|2) echo claude-code;; 3|4) echo claude-desktop;; 5|6) echo codex;; 7|8) echo cursor;; 9|10) echo antigravity;; esac; }
-item_method() { case "$1" in 1) echo plugin;; 2) echo mcp;; 3) echo bundle;; 4) echo mcp;; 5) echo plugin;; 6) echo mcp;; 7) echo skills;; 8) echo mcp;; 9) echo skills;; 10) echo mcp;; esac; }
+ITEM_IDS="1 2 3 4 5 6 7 8 9"
+item_host()   { case "$1" in 1|2) echo claude-code;; 3) echo claude-desktop;; 4|5) echo codex;; 6|7) echo cursor;; 8|9) echo antigravity;; esac; }
+item_method() { case "$1" in 1) echo plugin;; 2) echo mcp;; 3) echo mcp;; 4) echo plugin;; 5) echo mcp;; 6) echo skills;; 7) echo mcp;; 8) echo skills;; 9) echo mcp;; esac; }
 item_label()  {
   case "$1" in
-    1)  echo "Claude Code    (Plugin: skills + commands)";;
-    2)  echo "Claude Code    (MCP only)";;
-    3)  echo "Claude Desktop (Bundle .mcpb)";;
-    4)  echo "Claude Desktop (MCP config)";;
-    5)  echo "Codex          (Plugin: skills + prompts + AGENTS.md)";;
-    6)  echo "Codex          (MCP only)";;
-    7)  echo "Cursor         (Skills)";;
-    8)  echo "Cursor         (MCP only)";;
-    9)  echo "Antigravity    (Skills)";;
-    10) echo "Antigravity    (MCP only)";;
+    1) echo "Claude Code    (Plugin: skills + commands)";;
+    2) echo "Claude Code    (MCP only)";;
+    3) echo "Claude Desktop (MCP config)  [for skills, install the Plugin — item 1]";;
+    4) echo "Codex          (Plugin: skills + prompts + AGENTS.md)";;
+    5) echo "Codex          (MCP only)";;
+    6) echo "Cursor         (Skills)";;
+    7) echo "Cursor         (MCP only)";;
+    8) echo "Antigravity    (Skills)";;
+    9) echo "Antigravity    (MCP only)";;
   esac
 }
 DESKTOP_CFG=""
@@ -97,14 +99,13 @@ _probe_installed() {
   case "$1" in
     1) { grep -qs 'yt-mem-ai' "$HOME/.claude/settings.json" 2>/dev/null || grep -qs 'yt-mem-ai' "$HOME/.claude.json" 2>/dev/null || [ -d "$HOME/.claude/plugins/cache/yt-mem-ai" ]; } && echo yes || echo no ;;  # claude-code plugin
     2) grep -qs 'yt-mem-ai' "$HOME/.claude.json" 2>/dev/null && echo yes || echo no ;;  # claude-code mcp (best-effort)
-    3) grep -qs '"yt-mem-ai"' "$DESKTOP_CFG" 2>/dev/null && echo yes || echo no ;;       # claude-desktop bundle
-    4) grep -qs '"yt-mem-ai"' "$DESKTOP_CFG" 2>/dev/null && echo yes || echo no ;;       # claude-desktop mcp
-    5) [ -e "$HOME/.codex/skills/yt/SKILL.md" ] && echo yes || echo no ;;   # codex plugin = native skills
-    6) grep -qs '^\[mcp_servers\.yt-mem-ai\]' "$HOME/.codex/config.toml" 2>/dev/null && echo yes || echo no ;;
-    7) [ -e "$CURSOR_SKILLS/yt/SKILL.md" ] && echo yes || echo no ;;                     # cursor skills
-    8) grep -qs 'yt-mem-ai' "$CURSOR_MCP" 2>/dev/null && echo yes || echo no ;;          # cursor mcp
-    9) [ -e "$GRAVITY_SKILLS/yt/SKILL.md" ] && echo yes || echo no ;;                    # antigravity skills
-    10) grep -qs 'yt-mem-ai' "$GRAVITY_MCP" 2>/dev/null && echo yes || echo no ;;        # antigravity mcp
+    3) grep -qs '"yt-mem-ai"' "$DESKTOP_CFG" 2>/dev/null && echo yes || echo no ;;       # claude-desktop mcp config
+    4) [ -e "$HOME/.codex/skills/yt/SKILL.md" ] && echo yes || echo no ;;   # codex plugin = native skills
+    5) grep -qs '^\[mcp_servers\.yt-mem-ai\]' "$HOME/.codex/config.toml" 2>/dev/null && echo yes || echo no ;;
+    6) [ -e "$CURSOR_SKILLS/yt/SKILL.md" ] && echo yes || echo no ;;                     # cursor skills
+    7) grep -qs 'yt-mem-ai' "$CURSOR_MCP" 2>/dev/null && echo yes || echo no ;;          # cursor mcp
+    8) [ -e "$GRAVITY_SKILLS/yt/SKILL.md" ] && echo yes || echo no ;;                    # antigravity skills
+    9) grep -qs 'yt-mem-ai' "$GRAVITY_MCP" 2>/dev/null && echo yes || echo no ;;         # antigravity mcp
   esac
 }
 
@@ -153,8 +154,8 @@ for arg in "$@"; do
   case "$arg" in
     -h|--help) usage ;;
     -y|--yes) ASSUME_YES=1 ;;
-    --all-plugins) for i in 1 5 7 9; do add_sel "$i"; done; NONINTERACTIVE=1 ;;   # native skills installs
-    --all-mcp)     for i in 2 4 6 8 10; do add_sel "$i"; done; NONINTERACTIVE=1 ;;
+    --all-plugins) for i in 1 4 6 8; do add_sel "$i"; done; NONINTERACTIVE=1 ;;   # native skills installs
+    --all-mcp)     for i in 2 3 5 7 9; do add_sel "$i"; done; NONINTERACTIVE=1 ;;
     --claude-code=*)    add_host_methods claude-code    "${arg#*=}" ;;
     --claude-desktop=*) add_host_methods claude-desktop "${arg#*=}" ;;
     --codex=*)          add_host_methods codex          "${arg#*=}" ;;
@@ -163,17 +164,17 @@ for arg in "$@"; do
     --gravity=*)        add_host_methods antigravity    "${arg#*=}" ;;
     # legacy single-host positional → that host's native (skills/plugin) method
     claude-code)    add_sel 1; NONINTERACTIVE=1 ;;
-    claude-desktop) add_sel 3; NONINTERACTIVE=1 ;;
-    codex)          add_sel 5; NONINTERACTIVE=1 ;;
-    cursor)         add_sel 7; NONINTERACTIVE=1 ;;
-    antigravity|gravity) add_sel 9; NONINTERACTIVE=1 ;;
+    claude-desktop) add_sel 3; NONINTERACTIVE=1 ;;   # Desktop has only the MCP config here
+    codex)          add_sel 4; NONINTERACTIVE=1 ;;
+    cursor)         add_sel 6; NONINTERACTIVE=1 ;;
+    antigravity|gravity) add_sel 8; NONINTERACTIVE=1 ;;
     *) die "unknown argument: $arg (try --help)" ;;
   esac
 done
 
 # No TTY (piped) and nothing selected → we can't show a checklist.
 if [ "$NONINTERACTIVE" -eq 0 ] && [ ! -t 0 ]; then
-  die "no selection and no TTY. Pass flags, e.g.: sh -s -- --claude-desktop=plugin --codex=mcp"
+  die "no selection and no TTY. Pass flags, e.g.: sh -s -- --codex=plugin --cursor=skills,mcp"
 fi
 
 # --------------------------------------------------------------------------- #
@@ -215,7 +216,7 @@ picker_plain() {
 }
 
 # Arrow-key / space checkbox TUI (bash: works on macOS + Linux, no deps).
-TUI_ROWS=13
+TUI_ROWS=12
 tui_render() {
   _c=$1
   printf '  %syt-mem-ai installer%s\n' "$C_HEAD" "$C_RESET"
@@ -249,11 +250,11 @@ tui_bash() {
       "$ESC")
         IFS= read -rsn2 -t 1 _r 2>/dev/null || _r=""
         case "$_r" in
-          "[A") _cur=$(( _cur > 1 ? _cur - 1 : 10 )) ;;
-          "[B") _cur=$(( _cur < 10 ? _cur + 1 : 1 )) ;;
+          "[A") _cur=$(( _cur > 1 ? _cur - 1 : 9 )) ;;
+          "[B") _cur=$(( _cur < 9 ? _cur + 1 : 1 )) ;;
         esac ;;
-      k|K) _cur=$(( _cur > 1 ? _cur - 1 : 10 )) ;;
-      j|J) _cur=$(( _cur < 10 ? _cur + 1 : 1 )) ;;
+      k|K) _cur=$(( _cur > 1 ? _cur - 1 : 9 )) ;;
+      j|J) _cur=$(( _cur < 9 ? _cur + 1 : 1 )) ;;
       " ") toggle "$_cur" ;;
       a|A) for _i in $ITEM_IDS; do [ "$(item_detected "$_i")" = yes ] && add_sel "$_i"; done ;;
       q|Q) trap - EXIT INT; printf '\033[?25h\n'; msg "aborted."; exit 0 ;;
@@ -328,7 +329,7 @@ ensure_uv() {
 PY=$(command -v python3 2>/dev/null || true)
 UVX=""; MCP_BIN=""
 
-mcp_selected() { for _i in 2 3 4 6 8 10; do in_set "$_i" "$INSTALL" && return 0; done; return 1; }
+mcp_selected() { for _i in 2 3 5 7 9; do in_set "$_i" "$INSTALL" && return 0; done; return 1; }
 
 # For any MCP target, install the server as a persistent, absolute-path binary.
 # This avoids the two Claude-Desktop failure modes: (1) a heavy `uvx` cold start
@@ -482,24 +483,7 @@ do_claude_code_plugin() {
 do_claude_desktop_mcp() {
   json_merge_server "$DESKTOP_CFG" "yt-mem-ai"
   msg "Claude Desktop: MCP server merged into $(basename "$DESKTOP_CFG"). Restart Claude Desktop."
-}
-
-do_claude_desktop_plugin() {
-  _src=$(src_dir claude-desktop)
-  if [ -z "$_src" ]; then
-    warn "Claude Desktop bundle needs the repo checkout — falling back to MCP config."
-    do_claude_desktop_mcp; return
-  fi
-  # build.sh bakes the absolute yt-ai-mcp binary path (YT_MCP_BIN) into the
-  # packed manifest so Desktop starts it instantly; falls back to zip if no mcpb.
-  if ( cd "$_src" && YT_MCP_BIN="$MCP_BIN" sh build.sh ); then
-    _out="$_src/yt-mem-ai.mcpb"
-    if have open; then open "$_out" && msg "Claude Desktop: opened $_out to install."
-    else msg "Built $_out — open it in Claude Desktop → Settings → Extensions."; fi
-  else
-    warn "Bundle build failed — falling back to MCP config."
-    do_claude_desktop_mcp
-  fi
+  msg "(For the auto-triggering skills instead, install the Plugin — pick 'Claude Code (Plugin)', or Customize → Plugins in Desktop.)"
 }
 
 CODEX_CFG="$HOME/.codex/config.toml"
@@ -596,9 +580,6 @@ undo_claude_code_mcp() {
       || warn "Claude Code: 'claude mcp remove yt-mem-ai' failed (maybe not present)."
   else warn "Claude Code: 'claude' not on PATH — run: claude mcp remove yt-mem-ai"; fi
 }
-undo_claude_desktop_plugin() {
-  msg "Claude Desktop bundle — remove in the app: Settings → Extensions → yt-mem-ai → Uninstall."
-}
 undo_claude_desktop_mcp() {
   json_remove_server "$DESKTOP_CFG" "yt-mem-ai"
   msg "Claude Desktop: removed MCP server from $(basename "$DESKTOP_CFG"). Restart Claude Desktop."
@@ -640,20 +621,20 @@ for i in $ITEM_IDS; do
   in_set "$i" "$UNINSTALL" || continue
   case "$i" in
     1) undo_claude_code_plugin ;;   2) undo_claude_code_mcp ;;
-    3) undo_claude_desktop_plugin ;;4) undo_claude_desktop_mcp ;;
-    5) undo_codex_plugin ;;         6) undo_codex_mcp ;;
-    7) undo_cursor_skills ;;        8) undo_cursor_mcp ;;
-    9) undo_antigravity_skills ;;   10) undo_antigravity_mcp ;;
+    3) undo_claude_desktop_mcp ;;   4) undo_codex_plugin ;;
+    5) undo_codex_mcp ;;            6) undo_cursor_skills ;;
+    7) undo_cursor_mcp ;;           8) undo_antigravity_skills ;;
+    9) undo_antigravity_mcp ;;
   esac
 done
 for i in $ITEM_IDS; do
   in_set "$i" "$INSTALL" || continue
   case "$i" in
-    1) do_claude_code_plugin ;;   2) do_claude_code_mcp ;;
-    3) do_claude_desktop_plugin ;;4) do_claude_desktop_mcp ;;
-    5) do_codex_plugin ;;         6) do_codex_mcp ;;
-    7) do_cursor_skills ;;        8) do_cursor_mcp ;;
-    9) do_antigravity_skills ;;   10) do_antigravity_mcp ;;
+    1) do_claude_code_plugin ;;     2) do_claude_code_mcp ;;
+    3) do_claude_desktop_mcp ;;     4) do_codex_plugin ;;
+    5) do_codex_mcp ;;              6) do_cursor_skills ;;
+    7) do_cursor_mcp ;;             8) do_antigravity_skills ;;
+    9) do_antigravity_mcp ;;
   esac
 done
 
