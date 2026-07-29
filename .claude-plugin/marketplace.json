@@ -1,0 +1,14 @@
+{
+  "name": "yt-mem-ai",
+  "owner": { "name": "dasein", "url": "https://github.com/dasein108" },
+  "metadata": {
+    "description": "yt-mem-ai — YouTube AI skills for Claude (Desktop chat, web, Cowork) and Claude Code."
+  },
+  "plugins": [
+    {
+      "name": "yt-mem-ai",
+      "source": "./integrations/claude-code",
+      "description": "Summarize, highlight, Q&A, and digest YouTube videos. Ships the yt + yt-manager skills and /yt-* commands; the skills drive the yt-ai CLI via uvx (no package or MCP server needed)."
+    }
+  ]
+}

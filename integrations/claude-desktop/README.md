@@ -1,10 +1,28 @@
-# yt-mem-ai — Claude Desktop extension (`.mcpb`)
+# yt-mem-ai — Claude Desktop
 
-Claude Desktop only loads MCP servers (not Claude Code skills), so this packages
-the `yt-ai-mcp` server as a one-click `.mcpb` bundle. Scenario playbooks are
-available as MCP **prompts** (summarize / highlights / digest / review / group).
+Claude Desktop has two mechanisms, and they're different:
 
-## Option A — Bundle
+- **Plugin** (Customize → **Plugins**) — bundles the `yt` / `yt-manager`
+  **skills**, which run in Desktop **chat**. This is the one that makes
+  "summarize this video" auto-trigger, exactly like Codex. **Recommended.**
+- **Extension** (`.mcpb`, Settings → **Extensions**) — an MCP-server bundle:
+  tools + prompts, **no skills**. The model calls tools but has no workflow
+  unless it reads the server `instructions`; use it if you specifically want the
+  typed MCP tool surface.
+
+## Recommended — install the Plugin (skills auto-trigger)
+
+In Claude Desktop: **Customize** (left sidebar) → **Plugins** → in *Personal
+plugins* click **+** → **Add marketplace** → **Add from a repository** →
+`https://github.com/dasein108/yt-mem-ai` → **Add**, then **Install** the
+`yt-mem-ai` plugin. The `yt`/`yt-manager` skills now work in chat; ask
+"summarize 'https://youtu.be/…'" and it runs the workflow (via `uvx yt-mem-ai`,
+so `uv`/`uvx` must be on PATH). Skills also work the same way on **claude.ai web**
+and **Claude Cowork**.
+
+## Alternative — the MCP Extension (`.mcpb`)
+
+### Option A — Bundle
 
 ```
 sh integrations/claude-desktop/build.sh      # no mcpb CLI needed — a .mcpb is just a zip

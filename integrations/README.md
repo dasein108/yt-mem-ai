@@ -44,17 +44,20 @@ Flags: `--claude-code=plugin,mcp`, `--claude-desktop=bundle,mcp`,
 | Host | Native (skills) | MCP |
 |---|---|---|
 | **Claude Code** ([docs](claude-code/README.md)) | skills + `/yt-*` commands | `claude mcp add` |
-| **Claude Desktop** ([docs](claude-desktop/README.md)) | — (no native skills) | `.mcpb` bundle **or** `claude_desktop_config.json` |
+| **Claude Desktop** ([docs](claude-desktop/README.md)) | **Plugin** (skills, Customize → Plugins) | `.mcpb` Extension **or** `claude_desktop_config.json` |
 | **Codex** ([docs](codex/README.md)) | `~/.codex/skills/` + prompts + AGENTS.md | `~/.codex/config.toml` |
 | **Cursor** ([docs](cursor/README.md)) | `~/.cursor/skills/` | merge `~/.cursor/mcp.json` |
 | **Antigravity** ([docs](antigravity/README.md)) | `~/.gemini/skills/` | merge `~/.gemini/config/mcp_config.json` |
 
-The same `yt` / `yt-manager` **SKILL.md** skills run natively on Claude Code,
-Codex (v0.117.0+), Cursor, and Antigravity — all discovered from each host's
-skills directory, all calling the `yt-ai` CLI via `uvx` (no package needed).
-**Claude Desktop** is the one host without native skills, so it uses the **MCP**
-column. Cursor and Antigravity expose **both** — pick skills, MCP, or both. Any
-MCP install uses a fast, pre-installed `yt-ai-mcp` binary (`uv tool install`).
+The same `yt` / `yt-manager` **SKILL.md** skills run on Claude Code, Codex
+(v0.117.0+), Cursor, Antigravity — and, via a **plugin**, on Claude Desktop
+chat / claude.ai web / Cowork (Anthropic added plugin-bundled skills to those
+in 2026). All call the `yt-ai` CLI via `uvx` (no package needed). Install the
+Desktop plugin from the repo's **root marketplace** (Customize → Plugins → Add
+marketplace → `github.com/dasein108/yt-mem-ai`). The **MCP** column is the
+alternative typed-tool surface — Claude Desktop can use either; Cursor and
+Antigravity expose both. Any MCP install uses a fast, pre-installed `yt-ai-mcp`
+binary (`uv tool install`).
 
 ## The server itself
 
