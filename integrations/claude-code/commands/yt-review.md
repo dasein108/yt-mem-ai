@@ -3,7 +3,7 @@ description: Cross-video subscriptions review — one themes essay to reviews/<D
 argument-hint: [since YYYY-MM-DD]
 ---
 
-Use the **yt** skill, scenario C (subscriptions review): $ARGUMENTS
+Use the **yt-agent** skill, scenario C (subscriptions review): $ARGUMENTS
 
 Write ONE cross-video essay to `reviews/<DATE>.md` — common threads,
 contradictions, emerging trends — no per-video sections. Cite specific moments

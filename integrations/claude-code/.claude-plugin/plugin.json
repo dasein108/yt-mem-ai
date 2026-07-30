@@ -1,7 +1,7 @@
 {
   "name": "yt-mem-ai",
   "version": "0.1.0",
-  "description": "YouTube AI: ingest, transcribe, embed, search, and summarize/highlight/digest videos. Ships the yt + yt-manager skills and /yt-* commands, which drive the yt-ai CLI (via uvx).",
+  "description": "YouTube AI: ingest, transcribe, embed, search, and summarize/highlight/digest videos. Ships the yt + yt-agent skills and /yt-* commands, which drive the yt-ai CLI (via uvx).",
   "author": { "name": "dasein" },
   "homepage": "https://github.com/dasein108/yt-mem-ai",
   "repository": "https://github.com/dasein108/yt-mem-ai",

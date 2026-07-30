@@ -1,7 +1,7 @@
 {
   "name": "yt-mem-ai",
   "version": "0.1.0",
-  "description": "YouTube AI: ingest, transcribe, embed, search, and summarize/highlight/digest videos. Ships the yt + yt-manager skills, which drive the yt-ai CLI (via uvx).",
+  "description": "YouTube AI: ingest, transcribe, embed, search, and summarize/highlight/digest videos. Ships the yt + yt-agent skills, which drive the yt-ai CLI (via uvx).",
   "author": {
     "name": "dasein",
     "url": "https://github.com/dasein108"
@@ -14,7 +14,7 @@
   "interface": {
     "displayName": "YouTube AI (yt-mem-ai)",
     "shortDescription": "Ingest, search, and summarize/highlight YouTube videos.",
-    "longDescription": "Local-first YouTube pipeline: captions→whisper transcription, per-chunk embeddings in LanceDB, semantic search, and skills for summaries, highlights, digests, and cross-video reviews. The yt and yt-manager skills drive the yt-ai CLI (run via uvx — no install).",
+    "longDescription": "Local-first YouTube pipeline: captions→whisper transcription, per-chunk embeddings in LanceDB, semantic search, and skills for summaries, highlights, digests, and cross-video reviews. The yt and yt-agent skills drive the yt-ai CLI (run via uvx — no install).",
     "developerName": "dasein",
     "category": "Productivity",
     "capabilities": ["Interactive", "Read", "Write"],

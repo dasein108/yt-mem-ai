@@ -67,7 +67,7 @@ returns a `warning` saying so. Equivalent CLI: `yt-ai config set/get/list/unset`
 
 `yt_summarize`, `yt_highlights`, `yt_qa`, `yt_presentation`, `yt_digest`,
 `yt_review`, `yt_group` — assembled from the checked-in `skills/yt` and
-`skills/yt-manager` playbooks, so hosts without Claude Code skills still get the
+`skills/yt-agent` playbooks, so hosts without Claude Code skills still get the
 full workflows.
 
 ## Config / secrets

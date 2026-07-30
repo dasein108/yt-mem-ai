@@ -8,7 +8,7 @@
     {
       "name": "yt-mem-ai",
       "source": "./integrations/claude-code",
-      "description": "Summarize, highlight, Q&A, and digest YouTube videos. Ships the yt + yt-manager skills and /yt-* commands; the skills drive the yt-ai CLI via uvx (no package or MCP server needed)."
+      "description": "Summarize, highlight, Q&A, and digest YouTube videos. Ships the yt + yt-agent skills and /yt-* commands; the skills drive the yt-ai CLI via uvx (no package or MCP server needed)."
     }
   ]
 }

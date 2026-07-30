@@ -410,7 +410,7 @@ def _load_skill(name: str) -> str:
     return _SKILL_FALLBACK
 
 
-def _playbook(instruction: str, skill: str = "yt") -> str:
+def _playbook(instruction: str, skill: str = "yt-agent") -> str:
     return (
         f"{instruction}\n\n"
         "All data access goes through the yt-mem-ai MCP tools (fetch, show, "

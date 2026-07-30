@@ -1,6 +1,6 @@
 # yt-mem-ai — Claude Code plugin
 
-A native Claude Code plugin: the `yt` and `yt-manager` **skills** + `/yt-*` slash
+A native Claude Code plugin: the `yt` and `yt-agent` **skills** + `/yt-*` slash
 commands. The skills drive the `yt-ai` CLI by shelling out (`uvx yt-mem-ai …`,
 zero-install) — **no MCP server involved**. If you'd rather have MCP tools, see
 *MCP-only* below; the two are independent.
@@ -21,16 +21,17 @@ Or from GitHub once pushed:
 /plugin install yt-mem-ai@yt-mem-ai
 ```
 
-The interactive installer does this for you (non-interactively, via the `claude`
-CLI): `integrations/install.sh` → select **Claude Code (Plugin)**. It runs
-`claude plugin marketplace add … && claude plugin install yt-mem-ai@yt-mem-ai`.
-If your Claude Desktop shares the same `~/.claude` plugin store, the plugin (and
-its skills) shows up in Desktop chat too; otherwise add it via Customize →
-Plugins in Desktop.
+The installer does this for you via the `claude` CLI:
+`sh install.sh --plugin --claude-code` runs
+`claude plugin marketplace add … && claude plugin install yt-mem-ai@yt-mem-ai`,
+installing into `~/.claude/plugins`. That store is **Claude Code's only** —
+Claude Desktop keeps its plugins on your Claude account, so add it there
+separately via Customize → Plugins (see
+[`../claude-desktop/README.md`](../claude-desktop/README.md)).
 
 ## What you get
 
-- **Skills**: `yt`, `yt-manager` (the full scenario playbooks).
+- **Skills**: `yt`, `yt-agent` (the full scenario playbooks).
 - **Commands**: `/yt-summarize`, `/yt-highlights`, `/yt-qa`, `/yt-presentation`,
   `/yt-digest`, `/yt-review`, `/yt-group`.
 

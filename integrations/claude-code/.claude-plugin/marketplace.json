@@ -8,7 +8,7 @@
     {
       "name": "yt-mem-ai",
       "source": ".",
-      "description": "Ingest/transcribe/embed/search YouTube + summarize, highlight, digest, review. Skills (yt, yt-manager) + the yt-ai-mcp tool server."
+      "description": "Ingest/transcribe/embed/search YouTube + summarize, highlight, digest, review. Skills (yt, yt-agent) + the yt-ai-mcp tool server."
     }
   ]
 }

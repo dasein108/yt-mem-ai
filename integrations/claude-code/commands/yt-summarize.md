@@ -3,7 +3,7 @@ description: Summarize a YouTube video (exec summary + key bullets), grounded in
 argument-hint: <url-or-video-id>
 ---
 
-Use the **yt** skill, scenario A (summarize), for: $ARGUMENTS
+Use the **yt-agent** skill, scenario A (summarize), for: $ARGUMENTS
 
 Ensure the video is ingested (captions → whisper), reuse a stored summary if
 present, and persist the result with `save-summary`. Produce the artifact in the

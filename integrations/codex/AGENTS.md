@@ -2,7 +2,7 @@
 
 For any YouTube task (summarize / highlights / Q&A / a subscriptions digest or
 review / analyzing a channel or set of videos), use the installed **`yt` and
-`yt-manager` skills** — they contain the full workflow. Everything runs through
+`yt-agent` skills** — they contain the full workflow. Everything runs through
 the **`uvx yt-mem-ai` CLI**; never touch the LanceDB store directly, and never
 invent highlight timestamps (anchor them with `uvx yt-mem-ai search`).
 
@@ -25,7 +25,7 @@ uvx yt-mem-ai channel-list '<url>' --limit N --json      # enumerate a channel
 job-control metacharacters, so a bare URL fails. Always
 `fetch 'https://www.youtube.com/watch?v=ID'`.
 
-See the `yt-manager` skill for the complete command surface (list, recommend,
+See the `yt-agent` skill for the complete command surface (list, recommend,
 compile, supercut, frame, reembed, …).
 
 ## Reconfigure on request

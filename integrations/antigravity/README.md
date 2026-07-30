@@ -6,11 +6,11 @@ shared across its CLI/IDE via the `~/.gemini/` config tree.
 ## Skills
 
 Antigravity auto-discovers skills from `~/.gemini/skills/<name>/SKILL.md` (shared
-across CLI, IDE, SDK). Drop the `yt` and `yt-manager` skills in:
+across CLI, IDE, SDK). Drop the `yt` and `yt-agent` skills in:
 
 ```
 mkdir -p ~/.gemini/skills
-cp -RL integrations/antigravity/skills/yt integrations/antigravity/skills/yt-manager ~/.gemini/skills/
+cp -RL integrations/antigravity/skills/yt integrations/antigravity/skills/yt-agent ~/.gemini/skills/
 ```
 
 They drive the `yt-ai` CLI via `uvx yt-mem-ai <cmd>` (zero-install). Restart
@@ -36,5 +36,6 @@ MCP store → Manage MCP Servers → View raw config.
 
 ## One command
 
-`integrations/install.sh` → **Antigravity (Skills)** and/or **Antigravity (MCP
-only)**. Non-interactive: `--antigravity=skills,mcp` (or `--gravity=…`).
+`sh install.sh --plugin --antigravity` (skills) and/or `sh install.sh --mcp
+--antigravity` (MCP server); `--gravity` is an alias. Bare `sh install.sh`
+shows the wizard.

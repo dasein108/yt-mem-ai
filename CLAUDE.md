@@ -103,7 +103,7 @@ not an API) to keep it free and high-quality.
 - `mcp_server.py` — `FastMCP` server (`yt-ai-mcp` console entry, optional `[mcp]`
   extra) exposing the engine to any MCP host. Thin protocol adapter: each
   `@mcp.tool()` loads config, opens the store, and calls the matching `run_*`
-  core, returning JSON-safe dicts (no business logic here). The `yt`/`yt-manager`
+  core, returning JSON-safe dicts (no business logic here). The `yt`/`yt-agent`
   scenarios ship as `@mcp.prompt()`s whose bodies are loaded from the checked-in
   SKILL.md files (`_load_skill`: source `skills/<name>/SKILL.md`, or the
   `force-include`d `yt_mem_ai/_skills/*.md` in a built wheel) — single source of
@@ -114,21 +114,40 @@ not an API) to keep it free and high-quality.
   `skills/`), `codex/` (`.codex-plugin/plugin.json` + `skills/` + `prompts/` +
   `AGENTS.md`; → `~/.codex/skills/`), `cursor/` (`skills/` → `~/.cursor/skills/`
   + MCP `~/.cursor/mcp.json`), `antigravity/` (`skills/` → `~/.gemini/skills/` +
-  MCP `~/.gemini/config/mcp_config.json`). **Claude Desktop also runs the skills
-  via a plugin** (2026: plugin-bundled skills work in Desktop chat / claude.ai /
-  Cowork) — installed from the **repo-root `.claude-plugin/marketplace.json`**
-  (→ the `claude-code/` plugin) via `claude plugin install` or Customize →
-  Plugins; `claude-desktop/` keeps only a bare `claude_desktop_config.json` MCP
-  entry (the `.mcpb` bundle was dropped as redundant/fussy). MCP (`yt-ai-mcp`) is
-  an optional typed-tool surface on any host; `mcp/` documents it, and the server
-  ships an `instructions` string so MCP-only hosts still know the workflow. Any
-  MCP install uses a persistent, absolute-path `yt-ai-mcp` binary (`uv tool
-  install 'yt-mem-ai[mcp]'`) so GUI hosts start it instantly. The `claude plugin`
-  CLI (marketplace add + install/uninstall) automates the Claude Code plugin;
-  Codex/Cursor/Antigravity skills are copied into each host's skills dir.
-  `install.sh`/`install.ps1` is the interactive host×method multi-select
-  installer (arrow-key checkbox UI; pre-checks installed targets; untick to
-  uninstall — diff-based); `PROMPT.md` is the paste-into-any-agent installer.
+  MCP `~/.gemini/config/mcp_config.json`). **Claude Desktop plugins are
+  account-side, not on disk** — `~/.claude/plugins` is Claude Code's store and
+  Desktop chat does not read it, so no script can install/uninstall a Desktop
+  plugin; the installer prints the in-app steps (Customize → Plugins → add the
+  repo-root marketplace) and `claude-desktop/` covers the scriptable path, a
+  `claude_desktop_config.json` MCP entry (the `.mcpb` bundle was dropped as
+  fussy). MCP (`yt-ai-mcp`) is an optional typed-tool surface on any host; `mcp/`
+  documents it, and the server ships an `instructions` string so MCP-only hosts
+  still know the workflow. Any MCP install uses a persistent, absolute-path
+  `yt-ai-mcp` binary (`uv tool install 'yt-mem-ai[mcp]'`) so GUI hosts start it
+  instantly. **One installer at the repo root** — `install.sh` (+ `install.ps1`),
+  self-contained, no helper files, so `curl … | sh` works: a **two-step wizard**
+  (step 1 = single choice plugin|mcp, step 2 = host checkboxes; menu rows are
+  ASCII and truncated to `tput cols` with a per-line `\033[2K`, since a wrapped
+  row desynced the cursor-up redraw) over the
+  five hosts, keyed by `method:host` pairs. Install detection is exact — an
+  `mcpServers` key lookup (`json_has_server`, recursing into Claude Code's
+  project-scoped maps) and `"yt-mem-ai@yt-mem-ai"` in `settings.json`, because a
+  loose name grep matched `githubRepoPaths` and made MCP look installed after a
+  plugin install; `claude mcp add/remove` use `-s user` so the server is global,
+  not bound to the cwd the installer ran in. `plugin` also runs `uv tool install yt-mem-ai` (the CLI
+  the skills shell out to); `mcp` runs `uv tool install 'yt-mem-ai[mcp]'`.
+  Installed pairs come pre-ticked and unticking removes (diff-based, extra
+  confirm); **a method not ticked in step 1 is never touched**, and flag runs
+  are additive-only. Anything unautomatable (Desktop plugins, a missing host
+  CLI, a skill fetch that failed) prints a bright `warnbox` with manual steps.
+  Flags: `--plugin --mcp | --claude-code --claude-desktop --codex --cursor
+  --antigravity | --all --all-hosts --all-methods -y --bootstrap`. `curl … | sh`
+  with no flags **re-execs itself**: stdin is the script text, so it re-downloads
+  a copy to a temp file and runs it with `< /dev/tty` (guarded by
+  `YT_INSTALL_REEXEC`; `YT_INSTALL_RAW_ROOT` overrides the source for tests) —
+  that's what makes the one-line install interactive. No TTY at all (CI, or the
+  refetch failed) falls back to bootstrapping the CLI only. `PROMPT.md` is the paste-into-any-agent
+  installer; `skills/README.md` documents installing/pasting the skills by hand.
 - REST API — **moved out** to the [`yt-mem-ai-desktop`](https://github.com/dasein108/yt-mem-ai-desktop)
   repo (FastAPI backend that imports this package and reuses `cli.py`'s `run_*`/
   `open_store` cores). This repo is the engine: library + data/pipeline CLI only.
@@ -185,9 +204,9 @@ Canonical skills live in `skills/<name>/SKILL.md` (checked in, any-LLM usable).
 Claude Code only discovers skills under `.claude/skills/`, so each is surfaced
 via a symlink `.claude/skills/<name> -> ../../skills/<name>` (thin ref, no drift).
 
-- `yt-manager` — umbrella entry point for any `yt-ai` CLI op + both pipelines;
-  delegates per-video analysis, digests, and reviews to `yt`.
-- `yt` — scenario skill: one video → summary/highlights/Q&A/presentation
+- `yt` — umbrella entry point for any `yt-ai` CLI op + both pipelines;
+  delegates per-video analysis, digests, and reviews to `yt-agent`.
+- `yt-agent` — scenario skill: one video → summary/highlights/Q&A/presentation
   (`slides/<id>.md`); process subscriptions → `digests/<DATE>.md`; cross-video
   subscriptions review → `reviews/<DATE>.md`. Persists via `save-summary`.
 

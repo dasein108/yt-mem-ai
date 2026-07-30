@@ -5,37 +5,40 @@ it will download and wire up yt-mem-ai for the host(s) you name — no manual st
 
 ---
 
-Install the **yt-mem-ai** YouTube AI engine for me. It ships an MCP server
-(`yt-ai-mcp`) plus host plugins. Do this:
+Install the **yt-mem-ai** YouTube AI engine for me. One installer at the repo
+root (`install.sh`) does both deliveries: `--plugin` = the `yt` / `yt-agent`
+**skills** + the `yt-ai` CLI, `--mcp` = the **`yt-ai-mcp` server**. Do this:
 
-1. Run the installer, selecting the targets I want (edit the flags):
+1. Download the installer and run it with what I asked for:
 
    **macOS/Linux:**
    ```
-   curl -LsSf https://raw.githubusercontent.com/dasein108/yt-mem-ai/main/integrations/install.sh \
-     | sh -s -- --claude-desktop=plugin --codex=mcp
+   curl -LsSf https://raw.githubusercontent.com/dasein108/yt-mem-ai/main/install.sh -o /tmp/yt-install.sh
+   sh /tmp/yt-install.sh --plugin --codex --cursor      # skills
+   sh /tmp/yt-install.sh --mcp --claude-desktop         # MCP server
    ```
 
-   **Windows (PowerShell):**
-   ```
-   irm https://raw.githubusercontent.com/dasein108/yt-mem-ai/main/integrations/install.ps1 \
-     | iex; # then re-run install.ps1 with -ClaudeDesktop plugin -Codex mcp
-   ```
+   **Windows (PowerShell):** download `install.ps1` from the same repo root and
+   run it with switches, e.g. `-Plugin -Codex -Cursor` / `-Mcp -ClaudeDesktop`.
 
-   Valid flags (mix freely): `--claude-code=plugin,mcp`,
-   `--claude-desktop=bundle,mcp`, `--codex=plugin,mcp`, `--cursor=skills,mcp`,
-   `--antigravity=skills,mcp`, `--all-plugins`, `--all-mcp`.
+   Methods: `--plugin`, `--mcp`. Hosts: `--claude-code`, `--claude-desktop`,
+   `--codex` (CLI + IDE), `--cursor`, `--antigravity`. Also `--all`, `-y`.
+   Run it with no flags in a terminal for the two-step wizard.
 
-2. If a step prints an in-app command (Claude Code's `/plugin marketplace add …`
-   / `/plugin install …`), run it for me in that host.
+2. If a step prints in-app instructions — Claude Code's `/plugin marketplace add
+   …` / `/plugin install …`, or Claude Desktop's Customize → Plugins flow — run
+   or relay them for me. Claude Desktop plugins are account-side and cannot be
+   scripted; its scriptable path is `install.sh --mcp --claude-desktop`.
 
-3. Confirm the `yt-mem-ai` MCP tools (`fetch`, `search`, `discover`, …) are
-   available, then stop — don't ingest anything yet.
+3. Confirm the result: skills → the host lists `yt` / `yt-agent`; MCP → the
+   `yt-mem-ai` tools (`fetch`, `search`, `discover`, …) are available. Then stop
+   — don't ingest anything yet.
 
-Targets I want: **<edit here, e.g. Claude Desktop as a plugin + Codex as MCP>**.
+Targets I want: **<edit here, e.g. skills for Codex + MCP for Claude Desktop>**.
 
 ---
 
-> The installer needs `uv`/`uvx` (it installs uv automatically) and, for the
-> Claude Desktop bundle, the `mcpb` CLI (`npm i -g @anthropic-ai/mcpb`). It
-> stores data under `~/.yt-mem-ai/` (override with `YT_MEM_AI_HOME`).
+> The installers need `uv`/`uvx` (they install uv automatically) and store data
+> under `~/.yt-mem-ai/` (override with `YT_MEM_AI_HOME`). To wire skills up by
+> hand instead, see `skills/README.md`; for a manual MCP config entry, see
+> `integrations/mcp/README.md`.

@@ -1,63 +1,68 @@
-# yt-mem-ai integrations — native plugins + MCP
+# yt-mem-ai integrations — skills + MCP
 
-Two ways to reach the engine, per host:
+Two ways to reach the engine, **one installer** at the repo root:
 
-- **Native skills/plugins** (Claude Code, Codex, Cursor, Antigravity) ship the
-  `yt` / `yt-manager` **skills** (+ slash commands where the host has them). The
-  skills drive the `yt-ai` CLI by shelling out — run via `uvx yt-mem-ai <cmd>`,
-  zero-install. This is the idiomatic path for each platform.
-- **The `yt-ai-mcp` MCP server** (in the package) is **Claude Desktop's** only
-  path (it can't run skills), and an optional typed-tool surface on the other
-  hosts (Cursor and Antigravity expose both skills *and* MCP).
+| | What it installs |
+|---|---|
+| **Plugin** (recommended) | the `yt` / `yt-agent` [skills](../skills/README.md) per host **+ the `yt-ai` CLI** they shell out to |
+| **MCP** | the `yt-ai-mcp` server (typed tools) merged into a host's MCP config |
 
-## Install (interactive)
-
-From a checkout, run the multi-select installer and tick the targets you want:
+## Install
 
 ```
-sh integrations/install.sh        # macOS/Linux  (Windows: integrations\install.ps1)
+sh install.sh          # macOS/Linux  (Windows: powershell -File install.ps1)
 ```
 
-You get an **arrow-key checkbox UI** — `↑`/`↓` (or `j`/`k`) to move, **space** to
-toggle, `a` to select all detected hosts, **enter** to install, `q` to quit —
-so you can tick, e.g., `[x] Claude Desktop (Bundle)` **and** `[x] Codex (MCP)` in
-one run. Undetected hosts are dimmed but still selectable. **Already-installed
-targets are auto-detected, pre-checked `[x]`, and labeled `(installed)`.** The
-picker is a **diff**: tick a new target to install it, **untick an installed one
-to remove it** (uninstall), leave it checked to keep it. On enter you get a plan
-(`+ install` / `- remove`); any removals require an extra confirm. (Falls back to
-a numbered menu on terminals without cursor addressing.) Non-interactive / piped
-runs are install-only. Piped:
+Two steps: **1)** what — a single choice, **Plugin** or **MCP** (run it twice,
+or pass `--all-methods`, to get both); **2)** where — tick hosts: Claude Code,
+Claude Desktop, Codex, Cursor, Antigravity. `↑`/`↓` (or `j`/`k`) move, **enter** selects/continues; on the host
+screen **space** toggles, `a` all, `n` none, `q` quits. Falls back to a numbered
+menu without bash/cursor addressing.
+
+Already-installed targets come **pre-ticked**; the second screen is a **diff** —
+untick an installed host to remove it. You get a plan (`+ install` / `- remove`)
+and removals need an extra confirm. A method you *don't* tick in step 1 is never
+touched, so choosing Plugin can't disturb your MCP configs.
+
+Anything that can't be automated prints a **bright warning with the exact manual
+steps** — Claude Desktop plugins (account-side), a host whose CLI isn't on PATH,
+or a skill file that couldn't be fetched.
+
+Non-interactive (never removes anything):
 
 ```
-curl -LsSf https://raw.githubusercontent.com/dasein108/yt-mem-ai/main/integrations/install.sh \
-  | sh -s -- --claude-desktop=plugin --codex=mcp
+sh install.sh --plugin --codex --cursor
+sh install.sh --mcp --claude-desktop
+sh install.sh --all                       # every method × every host
+curl -LsSf https://raw.githubusercontent.com/dasein108/yt-mem-ai/main/install.sh | sh   # CLI only
 ```
 
-Flags: `--claude-code=plugin,mcp`, `--claude-desktop=mcp`,
-`--codex=plugin,mcp`, `--cursor=skills,mcp`, `--antigravity=skills,mcp`
-(alias `--gravity`), `--all-plugins`, `--all-mcp`, `-y`. The zero-effort path is
-[`PROMPT.md`](PROMPT.md) — paste it into any agent.
+Flags: `--plugin` `--mcp` `--all-methods` · `--claude-code` `--claude-desktop`
+`--codex` `--cursor` `--antigravity` (alias `--gravity`) `--all-hosts` ·
+`--all` `-y` `--bootstrap` `-h`. Manual MCP config (any host, no script):
+[`mcp/README.md`](mcp/README.md). Manual skills: [`../skills/README.md`](../skills/README.md).
+The zero-effort path is [`PROMPT.md`](PROMPT.md) — paste it into any agent.
 
 ## Host × delivery matrix
 
-| Host | Native (skills) | MCP |
+| Host | Plugin (skills) | MCP |
 |---|---|---|
-| **Claude Code** ([docs](claude-code/README.md)) | skills + `/yt-*` commands | `claude mcp add` |
-| **Claude Desktop** ([docs](claude-desktop/README.md)) | **Plugin** (skills, Customize → Plugins) | merge `claude_desktop_config.json` |
-| **Codex** ([docs](codex/README.md)) | `~/.codex/skills/` + prompts + AGENTS.md | `~/.codex/config.toml` |
+| **Claude Code** ([docs](claude-code/README.md)) | plugin → `~/.claude/plugins` (skills + `/yt-*` commands) | `claude mcp add` |
+| **Claude Desktop** ([docs](claude-desktop/README.md)) | **in-app only** — Customize → Plugins (account-side, not scriptable) | merge `claude_desktop_config.json` |
+| **Codex** ([docs](codex/README.md)) — CLI *and* IDE, shared `~/.codex` | `~/.codex/skills/` + prompts + AGENTS.md | `~/.codex/config.toml` |
 | **Cursor** ([docs](cursor/README.md)) | `~/.cursor/skills/` | merge `~/.cursor/mcp.json` |
 | **Antigravity** ([docs](antigravity/README.md)) | `~/.gemini/skills/` | merge `~/.gemini/config/mcp_config.json` |
 
-The same `yt` / `yt-manager` **SKILL.md** skills run on Claude Code, Codex
-(v0.117.0+), Cursor, Antigravity — and, via a **plugin**, on Claude Desktop
-chat / claude.ai web / Cowork (Anthropic added plugin-bundled skills to those
-in 2026). All call the `yt-ai` CLI via `uvx` (no package needed). Install the
-Desktop plugin from the repo's **root marketplace** (Customize → Plugins → Add
-marketplace → `github.com/dasein108/yt-mem-ai`). The **MCP** column is the
-alternative typed-tool surface — Claude Desktop can use either; Cursor and
-Antigravity expose both. Any MCP install uses a fast, pre-installed `yt-ai-mcp`
-binary (`uv tool install`).
+The same `yt` / `yt-agent` **SKILL.md** files run on Claude Code, Codex
+(v0.117.0+), Cursor, and Antigravity — see [`../skills/README.md`](../skills/README.md)
+for what they do and how to install or paste them **by hand**.
+
+**Claude Desktop is the exception.** Its plugins are stored on your Claude
+account, not on disk (`~/.claude/plugins` belongs to Claude Code — Desktop chat
+does not read it), so no script can install or uninstall a Desktop plugin.
+`install.sh` therefore just prints the in-app steps for that host: Customize →
+Plugins → Add marketplace → `github.com/dasein108/yt-mem-ai` → Install. The
+scriptable Desktop path is MCP (`sh install.sh --mcp --claude-desktop`).
 
 ## The server itself
 
