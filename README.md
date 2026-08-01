@@ -5,6 +5,10 @@ you**: transcribe videos, remember them, follow your subscriptions, and turn all
 of it into summaries, timestamped highlights, Q&A, digests, and video reels.
 Everything runs on your machine — no cloud service, no API key.
 
+![Installing the yt skills for Codex in one command](https://raw.githubusercontent.com/dasein108/yt-mem-ai/main/docs/demo/codex-install.gif)
+
+<p align="center"><i>One command, two questions — here it's wiring the skills into Codex.</i></p>
+
 ## Table of Contents
 
 * [Features](#features)
