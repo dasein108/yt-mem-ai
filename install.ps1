@@ -3,6 +3,7 @@
 # Two steps:
 #   1. what to install   Plugin (skills + yt-ai CLI)  |  MCP (typed tools)
 #   2. where             Claude Code · Claude Desktop · Codex · Cursor · Antigravity
+#                        · OpenClaw · Hermes
 #
 # Anything that can't be automated (Claude Desktop plugins live on your Claude
 # account; a host whose CLI isn't on PATH) prints a bright WARNING with the exact
@@ -20,6 +21,8 @@ param(
   [switch]$Codex,
   [switch]$Cursor,
   [switch]$Antigravity,
+  [switch]$Openclaw,
+  [switch]$Hermes,
   [switch]$All,
   [switch]$Bootstrap,
   [switch]$Yes
@@ -52,6 +55,10 @@ $CursorMcp     = Join-Path $HOME ".cursor\mcp.json"
 $CursorSkills  = Join-Path $HOME ".cursor\skills"
 $GravityMcp    = Join-Path $HOME ".gemini\config\mcp_config.json"
 $GravitySkills = Join-Path $HOME ".gemini\skills"
+$OpenclawCfg   = Join-Path $HOME ".openclaw\openclaw.json"
+$OpenclawSkills= Join-Path $HOME ".agents\skills"      # personal (cross-agent) skill root
+$HermesCfg     = Join-Path $HOME ".hermes\config.yaml"
+$HermesSkills  = Join-Path $HOME ".hermes\skills"
 $CodexPrompts  = @("yt-summarize","yt-highlights","yt-qa","yt-presentation","yt-digest","yt-review","yt-group","yt-config","yt-setup")
 
 $Methods = @(
@@ -63,7 +70,9 @@ $Hosts = @(
   @{ id="claude-desktop"; label="Claude Desktop (app)" },
   @{ id="codex";          label="Codex          (CLI + IDE - shared ~/.codex)" },
   @{ id="cursor";         label="Cursor         (~/.cursor)" },
-  @{ id="antigravity";    label="Antigravity    (~/.gemini)" }
+  @{ id="antigravity";    label="Antigravity    (~/.gemini)" },
+  @{ id="openclaw";       label="OpenClaw       (~/.agents/skills)" },
+  @{ id="hermes";         label="Hermes         (~/.hermes)" }
 )
 
 function HostDetected($h) {
@@ -73,6 +82,8 @@ function HostDetected($h) {
     "codex"          { return ((Have "codex")       -or (Test-Path (Join-Path $HOME ".codex"))) }
     "cursor"         { return ((Have "cursor")      -or (Test-Path (Join-Path $HOME ".cursor"))) }
     "antigravity"    { return ((Have "antigravity") -or (Test-Path (Join-Path $HOME ".gemini"))) }
+    "openclaw"       { return ((Have "openclaw")    -or (Test-Path (Join-Path $HOME ".openclaw"))) }
+    "hermes"         { return ((Have "hermes")      -or (Test-Path (Join-Path $HOME ".hermes"))) }
   }
   return $false
 }
@@ -90,6 +101,9 @@ function JsonHasServer($path) {
     if ($n -is [System.Management.Automation.PSCustomObject]) {
       $srv = $n.PSObject.Properties['mcpServers']
       if ($srv -and $srv.Value -and $srv.Value.PSObject.Properties['yt-mem-ai']) { return $true }
+      $mcp = $n.PSObject.Properties['mcp']          # OpenClaw: mcp.servers
+      if ($mcp -and $mcp.Value -and $mcp.Value.PSObject.Properties['servers'] -and
+          $mcp.Value.servers.PSObject.Properties['yt-mem-ai']) { return $true }
       foreach ($p in $n.PSObject.Properties) { if (Walk $p.Value) { return $true } }
     } elseif ($n -is [System.Collections.IEnumerable] -and $n -isnot [string]) {
       foreach ($i in $n) { if (Walk $i) { return $true } }
@@ -111,6 +125,10 @@ function PairInstalled($m, $h) {
     "mcp:codex"             { return (FileHas $CodexCfg "^\[mcp_servers\.yt-mem-ai\]") }
     "mcp:cursor"            { return (JsonHasServer $CursorMcp) }
     "mcp:antigravity"       { return (JsonHasServer $GravityMcp) }
+    "plugin:openclaw"       { return (Test-Path (Join-Path $OpenclawSkills "yt\SKILL.md")) }
+    "plugin:hermes"         { return (Test-Path (Join-Path $HermesSkills  "yt\SKILL.md")) }
+    "mcp:openclaw"          { return (JsonHasServer $OpenclawCfg) }
+    "mcp:hermes"            { return (FileHas $HermesCfg "^\s+yt-mem-ai:") }
   }
   return $false
 }
@@ -121,6 +139,8 @@ $SelH = New-Object System.Collections.Generic.HashSet[string]
 $NonInteractive = $false
 if ($Plugin)        { [void]$SelM.Add("plugin"); $NonInteractive = $true }
 if ($Mcp)           { [void]$SelM.Add("mcp");    $NonInteractive = $true }
+if ($Openclaw)      { [void]$SelH.Add("openclaw");       $NonInteractive = $true }
+if ($Hermes)        { [void]$SelH.Add("hermes");         $NonInteractive = $true }
 if ($ClaudeCode)    { [void]$SelH.Add("claude-code");    $NonInteractive = $true }
 if ($ClaudeDesktop) { [void]$SelH.Add("claude-desktop"); $NonInteractive = $true }
 if ($Codex)         { [void]$SelH.Add("codex");          $NonInteractive = $true }
@@ -286,6 +306,55 @@ function RemoveServer($file) {
     Info "removed yt-mem-ai from $file"
   }
 }
+function MergeOpenclawServer {
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $OpenclawCfg) | Out-Null
+  $cfg = if (Test-Path $OpenclawCfg) { Get-Content $OpenclawCfg -Raw | ConvertFrom-Json } else { [pscustomobject]@{} }
+  if (-not $cfg.PSObject.Properties['mcp']) { $cfg | Add-Member mcp ([pscustomobject]@{}) }
+  if (-not $cfg.mcp.PSObject.Properties['servers']) { $cfg.mcp | Add-Member servers ([pscustomobject]@{}) }
+  $cfg.mcp.servers | Add-Member -NotePropertyName "yt-mem-ai" -NotePropertyValue (ServerObj) -Force
+  ($cfg | ConvertTo-Json -Depth 10) | Set-Content $OpenclawCfg -Encoding UTF8
+  Info "OpenClaw: MCP server merged into ~/.openclaw/openclaw.json."
+}
+# Hermes keeps MCP servers in YAML; splice a fixed block (no YAML tooling in PS).
+function MergeHermesServer {
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $HermesCfg) | Out-Null
+  $cmd  = if ($McpBin) { $McpBin } else { $Uvx }
+  $args = if ($McpBin) { "[]" } else { '["--from", "yt-mem-ai[mcp]", "yt-ai-mcp"]' }
+  $block = @(
+    "  yt-mem-ai:",
+    "    command: `"$cmd`"",
+    "    args: $args",
+    "    env:",
+    "      YT_STORE_PATH: `"$DataDir\lance`"",
+    "      YT_LOG_FILE: `"$DataDir\logs\common.jsonl`"",
+    "      YT_DOWNLOADS_DIR: `"$DataDir\downloads`"",
+    "    enabled: true")
+  $lines = if (Test-Path $HermesCfg) { @(Get-Content $HermesCfg) } else { @() }
+  $out = @(); $skip = $false
+  foreach ($ln in $lines) {                      # drop an existing entry first
+    if ($skip -and ($ln -match '^\s{4,}' -or $ln.Trim() -eq "")) { continue }
+    $skip = $false
+    if ($ln -match '^\s{2}yt-mem-ai:\s*$') { $skip = $true; continue }
+    $out += $ln
+  }
+  $idx = [Array]::FindIndex([string[]]$out, [Predicate[string]]{ param($l) $l -match '^mcp_servers:' })
+  if ($idx -lt 0) { $out += @("", "mcp_servers:") + $block }
+  else { $out = $out[0..$idx] + $block + $out[($idx+1)..($out.Count-1)] }
+  ($out -join "`n") | Set-Content $HermesCfg -Encoding UTF8
+  Info "Hermes: MCP server merged into ~/.hermes/config.yaml (restart Hermes, or /reload-mcp)."
+}
+function RemoveHermesServer {
+  if (-not (Test-Path $HermesCfg)) { return }
+  $out = @(); $skip = $false
+  foreach ($ln in @(Get-Content $HermesCfg)) {
+    if ($skip -and ($ln -match '^\s{4,}' -or $ln.Trim() -eq "")) { continue }
+    $skip = $false
+    if ($ln -match '^\s{2}yt-mem-ai:\s*$') { $skip = $true; continue }
+    $out += $ln
+  }
+  ($out -join "`n") | Set-Content $HermesCfg -Encoding UTF8
+}
+
 function CopySkills($dest) {
   New-Item -ItemType Directory -Force -Path $dest | Out-Null
   foreach ($s in "yt","yt-agent") {
@@ -382,6 +451,10 @@ YT_DOWNLOADS_DIR = "$DataDir\downloads"
     }
     "mcp:cursor"      { MergeServer $CursorMcp;  Info "Cursor: MCP server added (reload Cursor)." }
     "mcp:antigravity" { MergeServer $GravityMcp; Info "Antigravity: MCP server added (restart Antigravity)." }
+    "plugin:openclaw" { if (CopySkills $OpenclawSkills) { Info "OpenClaw: skills installed -> ~/.agents/skills." } }
+    "plugin:hermes"   { if (CopySkills $HermesSkills)   { Info "Hermes: skills installed -> ~/.hermes/skills (use /yt and /yt-agent)." } }
+    "mcp:openclaw"    { MergeOpenclawServer }
+    "mcp:hermes"      { MergeHermesServer }
   }
 }
 
@@ -423,6 +496,25 @@ function UninstallPair($m, $h) {
     }
     "mcp:cursor"      { RemoveServer $CursorMcp;  Info "Cursor: MCP server removed." }
     "mcp:antigravity" { RemoveServer $GravityMcp; Info "Antigravity: MCP server removed." }
+    "plugin:openclaw" {
+      Remove-Item (Join-Path $OpenclawSkills "yt"),(Join-Path $OpenclawSkills "yt-agent") -Recurse -Force -ErrorAction SilentlyContinue
+      Info "OpenClaw: skills removed."
+    }
+    "plugin:hermes" {
+      Remove-Item (Join-Path $HermesSkills "yt"),(Join-Path $HermesSkills "yt-agent") -Recurse -Force -ErrorAction SilentlyContinue
+      Info "Hermes: skills removed."
+    }
+    "mcp:openclaw" {
+      if (Test-Path $OpenclawCfg) {
+        $cfg = Get-Content $OpenclawCfg -Raw | ConvertFrom-Json
+        if ($cfg.PSObject.Properties['mcp'] -and $cfg.mcp.PSObject.Properties['servers'] -and $cfg.mcp.servers.PSObject.Properties['yt-mem-ai']) {
+          $cfg.mcp.servers.PSObject.Properties.Remove('yt-mem-ai')
+          ($cfg | ConvertTo-Json -Depth 10) | Set-Content $OpenclawCfg -Encoding UTF8
+        }
+      }
+      Info "OpenClaw: MCP server removed."
+    }
+    "mcp:hermes" { RemoveHermesServer; Info "Hermes: MCP server removed." }
   }
 }
 

@@ -22,7 +22,8 @@ root (`install.sh`) does both deliveries: `--plugin` = the `yt` / `yt-agent`
    run it with switches, e.g. `-Plugin -Codex -Cursor` / `-Mcp -ClaudeDesktop`.
 
    Methods: `--plugin`, `--mcp`. Hosts: `--claude-code`, `--claude-desktop`,
-   `--codex` (CLI + IDE), `--cursor`, `--antigravity`. Also `--all`, `-y`.
+   `--codex` (CLI + IDE), `--cursor`, `--antigravity`, `--openclaw`, `--hermes`.
+   Also `--all`, `-y`.
    Run it with no flags in a terminal for the two-step wizard.
 
 2. If a step prints in-app instructions — Claude Code's `/plugin marketplace add

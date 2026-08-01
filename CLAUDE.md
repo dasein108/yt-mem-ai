@@ -141,7 +141,12 @@ not an API) to keep it free and high-quality.
   are additive-only. Anything unautomatable (Desktop plugins, a missing host
   CLI, a skill fetch that failed) prints a bright `warnbox` with manual steps.
   Flags: `--plugin --mcp | --claude-code --claude-desktop --codex --cursor
-  --antigravity | --all --all-hosts --all-methods -y --bootstrap`. `curl … | sh`
+  --antigravity --openclaw --hermes | --all --all-hosts --all-methods -y
+  --bootstrap`. **OpenClaw** (skills `~/.agents/skills`, MCP via `openclaw mcp
+  add` or `openclaw.json`'s `mcp.servers` — note the non-standard shape) and
+  **Hermes** (skills `~/.hermes/skills`, MCP in `~/.hermes/config.yaml`'s
+  `mcp_servers:`) are hosts 6-7; the Hermes writer splices a fixed YAML block by
+  hand because neither sh nor python3's stdlib can emit YAML. `curl … | sh`
   with no flags **re-execs itself**: stdin is the script text, so it re-downloads
   a copy to a temp file and runs it with `< /dev/tty` (guarded by
   `YT_INSTALL_REEXEC`; `YT_INSTALL_RAW_ROOT` overrides the source for tests) —

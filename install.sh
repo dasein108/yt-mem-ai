@@ -4,6 +4,7 @@
 # Two steps:
 #   1. what to install   Plugin (skills + yt-ai CLI)  |  MCP (typed tools)
 #   2. where             Claude Code · Claude Desktop · Codex · Cursor · Antigravity
+#                        · OpenClaw · Hermes
 #
 # Anything that can't be automated (Claude Desktop plugins live on your Claude
 # account; a host whose CLI isn't on PATH) prints a bright WARNING with the exact
@@ -15,7 +16,8 @@
 #   curl -LsSf …/install.sh | sh             # no TTY → bootstraps the CLI only
 #
 # Flags: --plugin --mcp | --claude-code --claude-desktop --codex --cursor
-#        --antigravity (alias --gravity) | --all --all-hosts --all-methods
+#        --antigravity (alias --gravity) --openclaw --hermes | --all --all-hosts
+#        --all-methods
 #        -y/--yes  --bootstrap  -h/--help
 set -eu
 
@@ -88,9 +90,13 @@ CURSOR_MCP="$HOME/.cursor/mcp.json"
 CURSOR_SKILLS="$HOME/.cursor/skills"
 GRAVITY_MCP="$HOME/.gemini/config/mcp_config.json"
 GRAVITY_SKILLS="$HOME/.gemini/skills"
+OPENCLAW_CFG="$HOME/.openclaw/openclaw.json"
+OPENCLAW_SKILLS="$HOME/.agents/skills"     # personal agent skills (cross-agent)
+HERMES_CFG="$HOME/.hermes/config.yaml"
+HERMES_SKILLS="$HOME/.hermes/skills"
 
 METHODS="plugin mcp"
-HOSTS="claude-code claude-desktop codex cursor antigravity"
+HOSTS="claude-code claude-desktop codex cursor antigravity openclaw hermes"
 
 method_label() {
   case "$1" in
@@ -105,6 +111,8 @@ host_label() {
     codex)          echo "Codex          (CLI + IDE)";;
     cursor)         echo "Cursor        ";;
     antigravity)    echo "Antigravity   ";;
+    openclaw)       echo "OpenClaw       (~/.agents/skills)";;
+    hermes)         echo "Hermes        ";;
   esac
 }
 host_detected() {
@@ -114,6 +122,8 @@ host_detected() {
     codex)          have codex || [ -d "$HOME/.codex" ] ;;
     cursor)         have cursor || [ -d "$HOME/.cursor" ] ;;
     antigravity)    have antigravity || [ -d "$HOME/.gemini" ] ;;
+    openclaw)       have openclaw || [ -d "$HOME/.openclaw" ] ;;
+    hermes)         have hermes || [ -d "$HOME/.hermes" ] ;;
   esac
 }
 
@@ -133,7 +143,10 @@ except Exception:
     sys.exit(1)
 def has(node):
     if isinstance(node, dict):
-        if isinstance(node.get("mcpServers"), dict) and "yt-mem-ai" in node["mcpServers"]:
+        maps = [node.get("mcpServers")]
+        if isinstance(node.get("mcp"), dict):          # OpenClaw: mcp.servers
+            maps.append(node["mcp"].get("servers"))
+        if any(isinstance(m, dict) and "yt-mem-ai" in m for m in maps):
             return True
         return any(has(v) for v in node.values())
     if isinstance(node, list):
@@ -145,6 +158,16 @@ PYEOF
     grep -qs '"yt-mem-ai"[[:space:]]*:' "$1" 2>/dev/null
   fi
 }
+# Hermes keeps MCP servers in YAML (~/.hermes/config.yaml, mcp_servers:).
+yaml_has_server() {  # file
+  [ -f "$1" ] || return 1
+  awk '
+    /^[^[:space:]#]/ { in_mcp = ($0 ~ /^mcp_servers:/) }
+    in_mcp && /^[[:space:]]+yt-mem-ai:/ { found = 1 }
+    END { exit found ? 0 : 1 }
+  ' "$1"
+}
+
 # Claude Code enables plugins by "<plugin>@<marketplace>" in settings.json.
 # (extraKnownMarketplaces can mention yt-mem-ai without the plugin installed.)
 claude_plugin_installed() {
@@ -167,6 +190,10 @@ pair_installed() {  # method host
     mcp:codex)             grep -qs '^\[mcp_servers\.yt-mem-ai\]' "$CODEX_CFG" 2>/dev/null ;;
     mcp:cursor)            json_has_server "$CURSOR_MCP" ;;
     mcp:antigravity)       json_has_server "$GRAVITY_MCP" ;;
+    plugin:openclaw)       [ -e "$OPENCLAW_SKILLS/yt/SKILL.md" ] ;;
+    plugin:hermes)         [ -e "$HERMES_SKILLS/yt/SKILL.md" ] ;;
+    mcp:openclaw)          json_has_server "$OPENCLAW_CFG" ;;
+    mcp:hermes)            yaml_has_server "$HERMES_CFG" ;;
     *) return 1 ;;
   esac
 }
@@ -198,7 +225,7 @@ yt-mem-ai installer
 
 What:  --plugin (skills + yt-ai CLI)   --mcp (yt-ai-mcp server)   --all-methods
 Where: --claude-code  --claude-desktop  --codex  --cursor  --antigravity (--gravity)
-       --all-hosts
+       --openclaw  --hermes  --all-hosts
 Other: --all  -y/--yes  --bootstrap (just install the CLI)  -h/--help
 EOF
   exit 0
@@ -218,6 +245,8 @@ for arg in "$@"; do
     --codex|--codex=*)                   add_to SEL_H codex;          NONINTERACTIVE=1 ;;
     --cursor|--cursor=*)                 add_to SEL_H cursor;         NONINTERACTIVE=1 ;;
     --antigravity|--antigravity=*|--gravity|--gravity=*) add_to SEL_H antigravity; NONINTERACTIVE=1 ;;
+    --openclaw|--openclaw=*)             add_to SEL_H openclaw;      NONINTERACTIVE=1 ;;
+    --hermes|--hermes=*)                 add_to SEL_H hermes;        NONINTERACTIVE=1 ;;
     *) die "unknown argument: $arg (try --help)" ;;
   esac
 done
@@ -615,6 +644,101 @@ toml_remove_yt() {
   ' "$_file" > "$_file.tmp" 2>/dev/null && mv "$_file.tmp" "$_file"
 }
 
+# OpenClaw's config keeps servers under mcp.servers (not mcpServers).
+openclaw_merge_server() {
+  mkdir -p "$(dirname "$OPENCLAW_CFG")"
+  [ -n "$PY" ] || { warnbox "python3 not found — add this to $OPENCLAW_CFG by hand:" \
+      "\"mcp\": { \"servers\": { \"yt-mem-ai\": { \"command\": \"$(mcp_cmd)\", \"args\": $(mcp_args_json) } } }"; return 0; }
+  YT_FILE="$OPENCLAW_CFG" YT_CMD="$(mcp_cmd)" YT_ARGS="$(mcp_args_json)" YT_DATA="$DATA_DIR" "$PY" - <<'PYEOF'
+import json, os
+f, cmd, args, data = (os.environ[k] for k in ("YT_FILE", "YT_CMD", "YT_ARGS", "YT_DATA"))
+cfg = {}
+if os.path.exists(f):
+    try: cfg = json.load(open(f))
+    except Exception: cfg = {}
+cfg.setdefault("mcp", {}).setdefault("servers", {})["yt-mem-ai"] = {
+    "command": cmd,
+    "args": json.loads(args),
+    "env": {
+        "YT_STORE_PATH": f"{data}/lance",
+        "YT_LOG_FILE": f"{data}/logs/common.jsonl",
+        "YT_DOWNLOADS_DIR": f"{data}/downloads",
+    },
+}
+json.dump(cfg, open(f, "w"), indent=2)
+print("wrote", f)
+PYEOF
+  msg "OpenClaw: MCP server merged into ~/.openclaw/openclaw.json."
+}
+openclaw_remove_server() {
+  [ -f "$OPENCLAW_CFG" ] || return 0
+  [ -n "$PY" ] || return 0
+  YT_FILE="$OPENCLAW_CFG" "$PY" - <<'PYEOF'
+import json, os
+f = os.environ["YT_FILE"]
+try:
+    cfg = json.load(open(f))
+except Exception:
+    raise SystemExit(0)
+srv = cfg.get("mcp", {}).get("servers", {})
+if "yt-mem-ai" in srv:
+    del srv["yt-mem-ai"]
+    json.dump(cfg, open(f, "w"), indent=2)
+PYEOF
+}
+
+# Merge (or drop) the server in a Hermes YAML config. Hand-rolled because a
+# POSIX shell has no YAML tooling and python3's stdlib has no yaml module: we
+# splice a fixed block under an existing `mcp_servers:` key, or append the key.
+yaml_merge_server() {  # file
+  mkdir -p "$(dirname "$1")"
+  [ -n "$PY" ] || { warnbox "python3 not found — add this to $1 by hand:" \
+      "mcp_servers:" "  yt-mem-ai:" "    command: \"$(mcp_cmd)\"" "    args: $(mcp_args_json)"; return 0; }
+  YT_FILE="$1" YT_CMD="$(mcp_cmd)" YT_ARGS="$(mcp_args_json)" YT_DATA="$DATA_DIR" "$PY" - <<'PYEOF'
+import json, os
+f, cmd, args, data = (os.environ[k] for k in ("YT_FILE", "YT_CMD", "YT_ARGS", "YT_DATA"))
+args = json.loads(args)
+block = [
+    "  yt-mem-ai:",
+    f'    command: "{cmd}"',
+    "    args: [" + ", ".join(f'"{a}"' for a in args) + "]",
+    "    env:",
+    f'      YT_STORE_PATH: "{data}/lance"',
+    f'      YT_LOG_FILE: "{data}/logs/common.jsonl"',
+    f'      YT_DOWNLOADS_DIR: "{data}/downloads"',
+    "    enabled: true",
+]
+lines = open(f).read().splitlines() if os.path.exists(f) else []
+# drop any existing yt-mem-ai entry (idempotent re-install)
+out, skip = [], False
+for ln in lines:
+    if skip and (ln.strip() == "" or ln.startswith("      ") or ln.startswith("    ")):
+        continue
+    skip = False
+    if ln.strip() == "yt-mem-ai:" and ln.startswith("  "):
+        skip = True
+        continue
+    out.append(ln)
+idx = next((i for i, ln in enumerate(out) if ln.startswith("mcp_servers:")), None)
+if idx is None:
+    if out and out[-1].strip():
+        out.append("")
+    out += ["mcp_servers:"] + block
+else:
+    out[idx + 1:idx + 1] = block
+open(f, "w").write("\n".join(out).rstrip() + "\n")
+print("wrote", f)
+PYEOF
+}
+yaml_remove_server() {  # file
+  [ -f "$1" ] || return 0
+  awk '
+    /^[[:space:]]+yt-mem-ai:[[:space:]]*$/ { skip = 1; next }
+    skip && (/^[[:space:]]{4,}/ || /^[[:space:]]*$/) { next }
+    { skip = 0; print }
+  ' "$1" > "$1.tmp" 2>/dev/null && mv "$1.tmp" "$1"
+}
+
 # copy the canonical yt + yt-agent SKILL.md into a host's skills dir.
 # Returns non-zero (and warns) if a skill file didn't land — a silent empty
 # SKILL.md would look installed but do nothing.
@@ -765,6 +889,35 @@ EOF
     mcp:antigravity)
       json_merge_server "$GRAVITY_MCP" "yt-mem-ai"
       msg "Antigravity: MCP server merged into ~/.gemini/config/mcp_config.json (restart Antigravity)." ;;
+
+    plugin:openclaw)
+      # ~/.agents/skills is OpenClaw's personal (cross-agent) skill root.
+      install_yt_skills "$OPENCLAW_SKILLS" \
+        && msg "OpenClaw: skills installed → ~/.agents/skills/ (they load on the next run)." ;;
+
+    plugin:hermes)
+      install_yt_skills "$HERMES_SKILLS" \
+        && msg "Hermes: skills installed → ~/.hermes/skills/ (use them as /yt and /yt-agent)." ;;
+
+    mcp:openclaw)
+      if have openclaw; then
+        if [ -n "$MCP_BIN" ]; then
+          openclaw mcp add yt-mem-ai --command "$MCP_BIN" \
+            --env "YT_STORE_PATH=$DATA_DIR/lance" --env "YT_LOG_FILE=$DATA_DIR/logs/common.jsonl" \
+            --env "YT_DOWNLOADS_DIR=$DATA_DIR/downloads" >/dev/null 2>&1
+        else
+          openclaw mcp add yt-mem-ai --command "$UVX" --arg "--from" --arg "yt-mem-ai[mcp]" --arg "yt-ai-mcp" \
+            --env "YT_STORE_PATH=$DATA_DIR/lance" --env "YT_LOG_FILE=$DATA_DIR/logs/common.jsonl" \
+            --env "YT_DOWNLOADS_DIR=$DATA_DIR/downloads" >/dev/null 2>&1
+        fi && { msg "OpenClaw: added MCP server 'yt-mem-ai'."; return 0; }
+        warnbox "OpenClaw: 'openclaw mcp add' failed — writing openclaw.json directly."
+      fi
+      # OpenClaw nests the map as mcp.servers, so patch that shape.
+      openclaw_merge_server ;;
+
+    mcp:hermes)
+      yaml_merge_server "$HERMES_CFG"
+      msg "Hermes: MCP server merged into ~/.hermes/config.yaml (restart Hermes, or /reload-mcp)." ;;
   esac
 }
 
@@ -804,6 +957,20 @@ uninstall_pair() {  # method host
       json_remove_server "$CURSOR_MCP" "yt-mem-ai"; msg "Cursor: MCP server removed." ;;
     mcp:antigravity)
       json_remove_server "$GRAVITY_MCP" "yt-mem-ai"; msg "Antigravity: MCP server removed." ;;
+    plugin:openclaw)
+      rm -rf "$OPENCLAW_SKILLS/yt" "$OPENCLAW_SKILLS/yt-agent" 2>/dev/null || true
+      msg "OpenClaw: skills removed from ~/.agents/skills/." ;;
+    plugin:hermes)
+      rm -rf "$HERMES_SKILLS/yt" "$HERMES_SKILLS/yt-agent" 2>/dev/null || true
+      msg "Hermes: skills removed from ~/.hermes/skills/." ;;
+    mcp:openclaw)
+      if have openclaw && openclaw mcp remove yt-mem-ai >/dev/null 2>&1; then
+        msg "OpenClaw: MCP server removed."
+      else
+        openclaw_remove_server; msg "OpenClaw: MCP server removed from openclaw.json."
+      fi ;;
+    mcp:hermes)
+      yaml_remove_server "$HERMES_CFG"; msg "Hermes: MCP server removed from config.yaml." ;;
   esac
 }
 

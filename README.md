@@ -35,7 +35,7 @@ Everything runs on your machine — no cloud service, no API key.
 * 🎬 **Makes media too** — clickable highlight docs, still frames, and rendered
   supercut reels.
 * 🔌 **Works with your tools** — Claude Code, Claude Desktop, Codex, Cursor,
-  Antigravity: skills or MCP, your pick.
+  Antigravity, OpenClaw, Hermes: skills or MCP, your pick.
 
 ## How to install
 
@@ -51,7 +51,7 @@ An interactive wizard opens. Pick what you want, tick your apps, press enter:
 step 1/2 — what (pick one)     step 2/2 — where (tick any)
 > Plugin  skills + CLI         [x] Claude Code    [ ] Claude Desktop
   MCP     typed tools          [x] Codex          [ ] Cursor
-                               [ ] Antigravity
+                               [ ] Antigravity    [ ] OpenClaw   [ ] Hermes
 ```
 
 **Plugin** teaches your assistant to act on plain requests — *"summarize this
@@ -71,8 +71,8 @@ curl -LsSf https://raw.githubusercontent.com/dasein108/yt-mem-ai/main/install.sh
   | sh -s -- --mcp --claude-desktop --cursor
 ```
 
-Hosts: `--claude-code` `--claude-desktop` `--codex` `--cursor` `--antigravity`,
-or `--all`. Full flag list and uninstall notes:
+Hosts: `--claude-code` `--claude-desktop` `--codex` `--cursor` `--antigravity`
+`--openclaw` `--hermes`, or `--all`. Full flag list and uninstall notes:
 [`integrations/README.md`](integrations/README.md). Rather have an agent do it?
 Paste [`integrations/PROMPT.md`](integrations/PROMPT.md) into any assistant.
 
@@ -104,12 +104,23 @@ That's the whole setup — no paths, no `env` block. Settings live in
 | **Cursor** | `~/.cursor/mcp.json` (reload Cursor) |
 | **Antigravity** | `~/.gemini/config/mcp_config.json` (restart) |
 | **Codex** | `~/.codex/config.toml` — TOML, see below (or `codex mcp add yt-mem-ai -- uvx --from 'yt-mem-ai[mcp]' yt-ai-mcp`) |
+| **OpenClaw** | `openclaw mcp add yt-mem-ai --command uvx --arg --from --arg 'yt-mem-ai[mcp]' --arg yt-ai-mcp` (or `~/.openclaw/openclaw.json` → `mcp.servers`) |
+| **Hermes** | `~/.hermes/config.yaml` under `mcp_servers:` — YAML, see below |
 
 ```toml
 # ~/.codex/config.toml
 [mcp_servers.yt-mem-ai]
 command = "uvx"
 args = ["--from", "yt-mem-ai[mcp]", "yt-ai-mcp"]
+```
+
+```yaml
+# ~/.hermes/config.yaml
+mcp_servers:
+  yt-mem-ai:
+    command: "uvx"
+    args: ["--from", "yt-mem-ai[mcp]", "yt-ai-mcp"]
+    enabled: true
 ```
 
 Restart the app and the tools show up — see [Usage](#mcp-tools) for what they do.
@@ -135,11 +146,12 @@ plugin also works on **claude.ai** and **Cowork**. Prefer tools over skills? The
 MCP setup above works for Desktop too — and that one *can* be scripted.
 
 <details>
-<summary><b>Skills by hand — Codex, Cursor, Antigravity</b></summary>
+<summary><b>Skills by hand — Codex, Cursor, Antigravity, OpenClaw, Hermes</b></summary>
 
 Each host loads `SKILL.md` files from a user-scope directory: Codex
 `~/.codex/skills/` (CLI and IDE share it, v0.117.0+), Cursor `~/.cursor/skills/`,
-Antigravity `~/.gemini/skills/`.
+Antigravity `~/.gemini/skills/`, OpenClaw `~/.agents/skills/`, Hermes
+`~/.hermes/skills/` (where they become `/yt` and `/yt-agent`).
 
 ```bash
 # from a checkout

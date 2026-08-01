@@ -28,6 +28,8 @@ Copy the two directories into the host's skills folder:
 # Codex (v0.117.0+)               → ~/.codex/skills/
 # Cursor                          → ~/.cursor/skills/
 # Antigravity                     → ~/.gemini/skills/
+# OpenClaw                        → ~/.agents/skills/
+# Hermes                          → ~/.hermes/skills/
 cp -R skills/yt skills/yt-agent ~/.codex/skills/
 
 # or without a checkout:

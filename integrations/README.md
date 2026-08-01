@@ -15,7 +15,7 @@ sh install.sh          # macOS/Linux  (Windows: powershell -File install.ps1)
 
 Two steps: **1)** what — a single choice, **Plugin** or **MCP** (run it twice,
 or pass `--all-methods`, to get both); **2)** where — tick hosts: Claude Code,
-Claude Desktop, Codex, Cursor, Antigravity. `↑`/`↓` (or `j`/`k`) move, **enter** selects/continues; on the host
+Claude Desktop, Codex, Cursor, Antigravity, OpenClaw, Hermes. `↑`/`↓` (or `j`/`k`) move, **enter** selects/continues; on the host
 screen **space** toggles, `a` all, `n` none, `q` quits. Falls back to a numbered
 menu without bash/cursor addressing.
 
@@ -38,7 +38,8 @@ curl -LsSf https://raw.githubusercontent.com/dasein108/yt-mem-ai/main/install.sh
 ```
 
 Flags: `--plugin` `--mcp` `--all-methods` · `--claude-code` `--claude-desktop`
-`--codex` `--cursor` `--antigravity` (alias `--gravity`) `--all-hosts` ·
+`--codex` `--cursor` `--antigravity` (alias `--gravity`) `--openclaw` `--hermes`
+`--all-hosts` ·
 `--all` `-y` `--bootstrap` `-h`. Manual MCP config (any host, no script):
 [`mcp/README.md`](mcp/README.md). Manual skills: [`../skills/README.md`](../skills/README.md).
 The zero-effort path is [`PROMPT.md`](PROMPT.md) — paste it into any agent.
@@ -52,9 +53,11 @@ The zero-effort path is [`PROMPT.md`](PROMPT.md) — paste it into any agent.
 | **Codex** ([docs](codex/README.md)) — CLI *and* IDE, shared `~/.codex` | `~/.codex/skills/` + prompts + AGENTS.md | `~/.codex/config.toml` |
 | **Cursor** ([docs](cursor/README.md)) | `~/.cursor/skills/` | merge `~/.cursor/mcp.json` |
 | **Antigravity** ([docs](antigravity/README.md)) | `~/.gemini/skills/` | merge `~/.gemini/config/mcp_config.json` |
+| **OpenClaw** | `~/.agents/skills/` (personal skill root) | `openclaw mcp add`, else `~/.openclaw/openclaw.json` → `mcp.servers` |
+| **Hermes** | `~/.hermes/skills/` (become `/yt`, `/yt-agent`) | `~/.hermes/config.yaml` → `mcp_servers:` (YAML) |
 
 The same `yt` / `yt-agent` **SKILL.md** files run on Claude Code, Codex
-(v0.117.0+), Cursor, and Antigravity — see [`../skills/README.md`](../skills/README.md)
+(v0.117.0+), Cursor, Antigravity, OpenClaw, and Hermes — see [`../skills/README.md`](../skills/README.md)
 for what they do and how to install or paste them **by hand**.
 
 **Claude Desktop is the exception.** Its plugins are stored on your Claude
