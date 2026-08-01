@@ -470,7 +470,8 @@ choose_method() {
     esac
   done
   trap - EXIT INT
-  printf '\033[?25h'
+  # Collapse this screen so step 2 replaces it instead of stacking below it.
+  printf '\033[%dA\033[J\033[?25h' "$_rows"
   CHOICE=" $_cur "
 }
 
