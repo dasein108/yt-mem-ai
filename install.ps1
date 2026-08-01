@@ -52,7 +52,7 @@ $CursorMcp     = Join-Path $HOME ".cursor\mcp.json"
 $CursorSkills  = Join-Path $HOME ".cursor\skills"
 $GravityMcp    = Join-Path $HOME ".gemini\config\mcp_config.json"
 $GravitySkills = Join-Path $HOME ".gemini\skills"
-$CodexPrompts  = @("yt-summarize","yt-highlights","yt-qa","yt-presentation","yt-digest","yt-review","yt-group")
+$CodexPrompts  = @("yt-summarize","yt-highlights","yt-qa","yt-presentation","yt-digest","yt-review","yt-group","yt-config","yt-setup")
 
 $Methods = @(
   @{ id="plugin"; label="Plugin   - yt + yt-agent skills + the yt-ai CLI (auto-triggers on 'summarize this video')" },

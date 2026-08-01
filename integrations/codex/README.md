@@ -29,6 +29,15 @@ codex
 You need `uv`/`uvx` on PATH so the skills can run the CLI (the installer
 bootstraps it).
 
+## Config
+
+Settings live in a global config file (`~/.yt-mem-ai/config.env`) — no config UI.
+Run `/yt-setup` (first-run wizard: cookies browser, optional Webshare proxy,
+embedding model) or `/yt-config` (view/change individual keys), or just ask the
+`yt` skill in plain language ("set my Webshare login", "use the multilingual
+embedding model"). All routes hit `uvx yt-mem-ai config …`, validate known keys,
+and mask secrets.
+
 ## MCP only (optional)
 
 If you want the typed MCP tool surface instead:

@@ -645,7 +645,7 @@ install_yt_skills() {  # dest_dir  [local_integration_subdir]
 # --------------------------------------------------------------------------- #
 # per-pair install / uninstall
 # --------------------------------------------------------------------------- #
-CODEX_PROMPTS="yt-summarize yt-highlights yt-qa yt-presentation yt-digest yt-review yt-group"
+CODEX_PROMPTS="yt-summarize yt-highlights yt-qa yt-presentation yt-digest yt-review yt-group yt-config yt-setup"
 
 host_missing_warning() {  # host — bright note when the app isn't on this machine
   host_detected "$1" && return 0
