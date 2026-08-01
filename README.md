@@ -9,6 +9,11 @@ Everything runs on your machine — no cloud service, no API key.
 
 <p align="center"><i>One command, two questions — here it's wiring the skills into Codex.</i></p>
 
+**Example** — *"make a presentation from [this video](https://www.youtube.com/watch?v=96jN2OCOfLs)"*
+(Andrej Karpathy: From Vibe Coding to Agentic Engineering, Sequoia, 30 min) →
+**[13 slides, PDF](https://github.com/dasein108/yt-mem-ai/blob/main/docs/demo/karpathy-agentic-engineering.pdf)**,
+every quote timestamped from the transcript. Ingest to deck in one request.
+
 ## Table of Contents
 
 * [Features](#features)
