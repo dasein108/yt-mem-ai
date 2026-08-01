@@ -50,4 +50,4 @@ Sleep 700ms
 Enter
 
 # installation output — long enough to show the Codex + "done" lines
-Sleep 9s
+Sleep 13s
