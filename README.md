@@ -219,6 +219,15 @@ yt-ai status                                             # what's in the store
 
 Everything lands in `~/.yt-mem-ai/` (library, logs, downloads).
 
+> **The first run is slow — that's expected.** Installing pulls the ML stack
+> (torch, LanceDB, sentence-transformers ≈ **1 GB** on disk), and your first
+> `fetch` or `search` downloads the embedding model on top of that. If a video
+> has no captions, the Whisper model (`small`, ≈ 460 MB) downloads too — the
+> captions path never needs it. All of it is cached, so it happens once, not per
+> video. On a GUI host the first MCP launch can outlast the app's startup check
+> for the same reason: run `uvx --from 'yt-mem-ai[mcp]' yt-ai-mcp --help` once in
+> a terminal to warm the cache, then reopen the app.
+
 **Daily routine**
 
 ```bash

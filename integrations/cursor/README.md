@@ -1,7 +1,14 @@
 # yt-mem-ai — Cursor
 
 Cursor supports both **Agent Skills** (`SKILL.md`) and **MCP servers**, so you can
-install either or both.
+install either or both — or take the whole thing as one plugin.
+
+## As a plugin (skills + MCP in one)
+
+`.cursor-plugin/plugin.json` here bundles both surfaces: the `yt` / `yt-agent`
+skills and the `yt-ai-mcp` server (`mcp.json`). That's the shape Cursor's
+directory lists — one entry, not two. The manifest only requires `name`;
+everything else is discovered from the default directories.
 
 ## Skills
 

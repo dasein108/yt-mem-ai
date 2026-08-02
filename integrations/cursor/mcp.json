@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "yt-mem-ai": {
+      "command": "uvx",
+      "args": ["--from", "yt-mem-ai[mcp]", "yt-ai-mcp"]
+    }
+  }
+}

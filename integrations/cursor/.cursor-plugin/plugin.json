@@ -1,0 +1,15 @@
+{
+  "name": "yt-mem-ai",
+  "version": "0.1.0",
+  "description": "A local YouTube memory for your agent: transcribe, remember, and summarize videos. Ships the yt + yt-agent skills and the yt-ai-mcp server.",
+  "author": {
+    "name": "dasein",
+    "url": "https://github.com/dasein108"
+  },
+  "homepage": "https://github.com/dasein108/yt-mem-ai",
+  "repository": "https://github.com/dasein108/yt-mem-ai",
+  "license": "MIT",
+  "keywords": ["youtube", "transcription", "summarization", "mcp", "skills"],
+  "skills": "./skills/",
+  "mcp": "./mcp.json"
+}
