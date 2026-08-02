@@ -279,8 +279,12 @@ _find_bin() {  # name → absolute path or empty
 }
 # Skills shell out to the CLI → install it as a real binary (uvx stays a fallback).
 ensure_yt_ai_cli() {
+  # Install WITH the [mcp] extra even in plugin mode: `uv tool install` replaces
+  # the whole tool environment, so a plain `yt-mem-ai` here would strip the mcp
+  # dependency out from under an existing MCP install and leave a `yt-ai-mcp`
+  # entry point that dies with ModuleNotFoundError. The extra is small.
   msg "installing the yt-ai CLI (uv tool install yt-mem-ai) — first run pulls ML deps, please wait…"
-  uv tool install --force yt-mem-ai >/dev/null 2>&1 || uv tool install yt-mem-ai || true
+  uv tool install --force "yt-mem-ai[mcp]" >/dev/null 2>&1 || uv tool install "yt-mem-ai[mcp]" || true
   YT_BIN=$(_find_bin yt-ai)
   if [ -n "$YT_BIN" ]; then msg "CLI ready: $YT_BIN (skills also work via 'uvx yt-mem-ai')."
   else warn "couldn't locate the yt-ai binary — skills fall back to 'uvx yt-mem-ai' (slower first run)."; fi

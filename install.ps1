@@ -168,8 +168,10 @@ function EnsureUv {
 }
 $Uvx = $null; $McpBin = $null; $YtBin = $null
 function EnsureCli {
+  # With the [mcp] extra even in plugin mode: uv tool install replaces the whole
+  # tool env, so a plain yt-mem-ai would break an existing yt-ai-mcp install.
   Info "installing the yt-ai CLI (uv tool install yt-mem-ai) - first run pulls ML deps..."
-  uv tool install --force yt-mem-ai 2>$null
+  uv tool install --force "yt-mem-ai[mcp]" 2>$null
   $c = Get-Command yt-ai -ErrorAction SilentlyContinue
   $script:YtBin = if ($c) { $c.Source } else { $p = Join-Path $HOME ".local\bin\yt-ai.exe"; if (Test-Path $p) { $p } else { $null } }
   if ($script:YtBin) { Info "CLI ready: $($script:YtBin)" }

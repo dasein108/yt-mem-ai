@@ -30,8 +30,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.6", "httpx>=0.27", "mcp>=1.2"]
-mcp = ["mcp>=1.2"]
+dev = ["pytest>=8.0", "ruff>=0.6", "httpx>=0.27", "mcp>=1.2,<2"]
+# mcp 2.0 dropped mcp.server.fastmcp, which mcp_server.py is built on — pin
+# until the server is ported to the 2.x API.
+mcp = ["mcp>=1.2,<2"]
 
 [project.urls]
 Homepage = "https://github.com/dasein108/yt-mem-ai"
