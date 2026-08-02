@@ -7,12 +7,12 @@
     "url": "https://github.com/dasein108/yt-mem-ai",
     "source": "github"
   },
-  "version": "0.6.2",
+  "version": "0.6.3",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "yt-mem-ai",
-      "version": "0.6.2",
+      "version": "0.6.3",
       "transport": {
         "type": "stdio"
       }
