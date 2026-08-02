@@ -1,10 +1,16 @@
 {
   "name": "yt-mem-ai",
   "version": "0.1.0",
-  "description": "YouTube AI: ingest, transcribe, embed, search, and summarize/highlight/digest videos. Ships the yt + yt-agent skills and /yt-* commands, which drive the yt-ai CLI (via uvx).",
-  "author": { "name": "dasein" },
+  "description": "A local YouTube memory for Claude: transcribe videos, search everything you've watched, and turn it into summaries, timestamped highlights, Q&A, slide decks and daily digests.",
+  "author": {
+    "name": "dasein"
+  },
   "homepage": "https://github.com/dasein108/yt-mem-ai",
   "repository": "https://github.com/dasein108/yt-mem-ai",
   "license": "MIT",
-  "keywords": ["youtube", "transcription", "summarization"]
+  "keywords": [
+    "youtube",
+    "transcription",
+    "summarization"
+  ]
 }

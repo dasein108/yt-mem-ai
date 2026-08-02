@@ -1,14 +1,17 @@
 {
   "name": "yt-mem-ai",
-  "owner": { "name": "dasein", "url": "https://github.com/dasein108" },
+  "owner": {
+    "name": "dasein",
+    "url": "https://github.com/dasein108"
+  },
   "metadata": {
-    "description": "yt-mem-ai — YouTube AI skills for Claude (Desktop chat, web, Cowork) and Claude Code."
+    "description": "Give Claude a memory of the YouTube videos you watch \u2014 transcribe, remember, search, and turn them into summaries, highlights and decks."
   },
   "plugins": [
     {
       "name": "yt-mem-ai",
       "source": "./integrations/claude-code",
-      "description": "Summarize, highlight, Q&A, and digest YouTube videos. Ships the yt + yt-agent skills and /yt-* commands; the skills drive the yt-ai CLI via uvx (no package or MCP server needed)."
+      "description": "A local YouTube memory: fetches transcripts (captions, Whisper fallback), keeps them searchable on your machine, and writes summaries, timestamped highlights, Q&A, decks and daily digests. Ships the yt + yt-agent skills and /yt-* commands; no API key."
     }
   ]
 }
