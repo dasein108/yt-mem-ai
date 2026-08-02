@@ -1,5 +1,7 @@
 # yt-mem-ai — a local YouTube memory for your AI assistant
 
+<!-- mcp-name: io.github.dasein108/yt-mem-ai -->
+
 Give Claude, Codex, Cursor, or any MCP host the ability to **watch YouTube for
 you**: transcribe videos, remember them, follow your subscriptions, and turn all
 of it into summaries, timestamped highlights, Q&A, digests, and video reels.

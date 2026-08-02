@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.dasein108/yt-mem-ai",
+  "title": "yt-mem-ai",
+  "description": "A local YouTube memory: transcribe videos (captions or Whisper), store them in an embedded LanceDB, search semantically, and produce summaries, timestamped highlights, digests and slide decks.",
+  "repository": {
+    "url": "https://github.com/dasein108/yt-mem-ai",
+    "source": "github"
+  },
+  "version": "0.6.2",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "yt-mem-ai",
+      "version": "0.6.2",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
