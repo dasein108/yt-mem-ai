@@ -8,7 +8,11 @@ install either or both — or take the whole thing as one plugin.
 `.cursor-plugin/plugin.json` here bundles both surfaces: the `yt` / `yt-agent`
 skills and the `yt-ai-mcp` server (`mcp.json`). That's the shape Cursor's
 directory lists — one entry, not two. The manifest only requires `name`;
-everything else is discovered from the default directories.
+`skills/` and `mcp.json` would be discovered even without the explicit paths.
+
+Submit it for review at <https://cursor.com/marketplace/publish> — every plugin
+is manually reviewed before listing, and each update is reviewed again. Plugins
+must be open source (we're MIT).
 
 ## Skills
 

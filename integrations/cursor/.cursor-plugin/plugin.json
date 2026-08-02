@@ -9,7 +9,13 @@
   "homepage": "https://github.com/dasein108/yt-mem-ai",
   "repository": "https://github.com/dasein108/yt-mem-ai",
   "license": "MIT",
-  "keywords": ["youtube", "transcription", "summarization", "mcp", "skills"],
+  "keywords": [
+    "youtube",
+    "transcription",
+    "summarization",
+    "mcp",
+    "skills"
+  ],
   "skills": "./skills/",
-  "mcp": "./mcp.json"
+  "mcpServers": "./mcp.json"
 }
