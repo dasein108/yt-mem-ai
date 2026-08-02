@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.dasein108/yt-mem-ai",
   "title": "yt-mem-ai",
-  "description": "A local YouTube memory: transcribe videos (captions or Whisper), store them in an embedded LanceDB, search semantically, and produce summaries, timestamped highlights, digests and slide decks.",
+  "description": "Local YouTube memory: transcribe, embed and search videos, with summaries and highlights.",
   "repository": {
     "url": "https://github.com/dasein108/yt-mem-ai",
     "source": "github"
